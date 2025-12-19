@@ -3,8 +3,8 @@ using System.Net;
 using System.Net.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Soft_eng.Models;
-using MySql.Data.MySqlClient;             // Needed for MySQL
-using Microsoft.Extensions.Configuration; // Needed to read appsettings.json
+using MySql.Data.MySqlClient;             
+using Microsoft.Extensions.Configuration; 
 
 namespace Soft_eng.Controllers
 {
