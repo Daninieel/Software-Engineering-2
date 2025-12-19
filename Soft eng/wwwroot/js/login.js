@@ -2,10 +2,10 @@
 
     var loginButton = document.getElementById("loginBtn");
 
-    // Attach event listener to the button
+
     loginButton.addEventListener("click", function (event) {
         if (!validateForm()) {
-            event.preventDefault(); // Stop the form from submitting if invalid
+            event.preventDefault(); 
         }
     });
 
@@ -18,7 +18,7 @@
             return false;
         }
 
-        // Logic to verify logic runs (remove in production)
+        
         console.log("Validation passed.");
         return true;
     }

@@ -7,7 +7,7 @@
     var p2 = document.getElementById("confirmPassword").value;
 
     if (p1 !== p2) {
-        event.preventDefault(); // Stop form submission
+        event.preventDefault(); 
     alert("Passwords do not match!");
              }
          });
