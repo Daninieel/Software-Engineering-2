@@ -1,0 +1,151 @@
+﻿@{
+    ViewBag.Title = "AddBooks";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Add Book</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/addbooks.css">
+</head>
+<body>
+
+    <header class="top-header">
+        <div class="logo-circle">
+            <img src="~/images/school_logo.jpg" alt="SIA Logo" style="width: 100%; height: 100%; border-radius: 50%;">
+        </div>
+
+        <div class="user-area">
+            <a href="@Url.Action("Login", "Home")" class="logout-link">
+                <span class="logout-text">Log Out</span>
+            </a>
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li><a href="#">Dashboard</a></li>
+                    <li><a href="#">Inventory</a></li>
+                    <li class="active"><a href="#">Add Books</a></li>
+                    <li><a href="#">Borrowed Books</a></li>
+                    <li><a href="#">Requested Books</a></li>
+                    <li><a href="#">Fine</a></li>
+                    <li><a href="#">AI Chatbot</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            <h2>Add Book</h2>
+
+            <div class="form-card">
+                <form id="addBookForm">
+
+                    <div class="form-group full-width">
+                        <label>Book Title</label>
+                        <input type="text" name="title">
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Author</label>
+                            <input type="text" name="author">
+                        </div>
+                        <div class="form-group">
+                            <label>Pages</label>
+                            <input type="number" name="pages" id="pagesInput" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Edition</label>
+                            <input type="text" name="edition" placeholder="1st/2021">
+                        </div>
+                        <div class="form-group">
+                            <label>Year</label>
+                            <input type="text" name="year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-mixed">
+                        <div class="left-col">
+                            <div class="form-group">
+                                <label>ISBN</label>
+                                <input type="text" name="isbn">
+                            </div>
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label>Publisher</label>
+                                <input type="text" name="publisher">
+                            </div>
+                        </div>
+                        <div class="right-col">
+                            <div class="form-group h-100">
+                                <label>Remarks</label>
+                                <textarea name="remarks"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Source Type</label>
+                            <div class="select-wrapper">
+                                <select name="sourceType">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="donation">Donation</option>
+                                    <option value="purchased">Purchased</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Date Received</label>
+                            <input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Book Status</label>
+                            <div class="select-wrapper">
+                                <select name="status">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="available">Available</option>
+                                    <option value="damaged">Damaged</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Total Copies</label>
+                            <input type="number" name="copies">
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Shelf Location</label>
+                        <input type="text" name="shelf">
+                    </div>
+
+                    <div class="button-area">
+                        <button type="submit" class="btn btn-green">Add Books</button>
+                        <button type="button" class="btn btn-blue" onclick="document.getElementById('fileUpload').click()">Upload an image</button>
+                        <input type="file" id="fileUpload" style="display: none;">
+                    </div>
+
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="addbooks.js"></script>
+</body>
+</html>

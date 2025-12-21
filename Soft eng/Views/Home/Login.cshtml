@@ -8,42 +8,36 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Saint Isidore Academy</title>
-
     <link rel="stylesheet" href="~/css/login.css" />
 </head>
 <body>
 
     <div class="login-card">
-
         <div class="logo-container">
             <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
         </div>
 
-        @using (Html.BeginForm("Login", "Home", FormMethod.Post, new { id = "loginForm" }))
-        {
+        <form id="loginForm">
             <div class="form-group">
                 <label for="username">Email</label>
-                <input type="text" id="username" name="username" required />
+                <input type="text" id="username" name="username" />
             </div>
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required />
-
+                <input type="password" id="password" name="password" />
                 <a href="@Url.Action("Forgotpassword", "Home")" class="forgot-password">Forgot Password?</a>
             </div>
 
-            <button type="submit" class="btn-login" id="loginBtn">Log In</button>
+            <button type="button" class="btn-login" id="loginBtn">Log In</button>
 
-            <div style="margin-top: 20px; text-align: center; font-size: 0.9em;">
+            <div class="footer-text">
                 <span>Don't have an account?</span>
-                <a href="@Url.Action("Register", "Home")" style="font-weight: bold; text-decoration: none; color: #007bff;">Create Account</a>
+                <a href="@Url.Action("Register", "Home")">Create Account</a>
             </div>
-        }
-
+        </form>
     </div>
 
     <script src="~/js/login.js"></script>
-
 </body>
 </html>

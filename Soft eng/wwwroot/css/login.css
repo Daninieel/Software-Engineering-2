@@ -100,6 +100,22 @@ input:focus {
         background-color: #329a52;
     }
 
+.footer-text {
+    margin-top: 20px;
+    color: white;
+    font-size: 0.9em;
+}
+
+    .footer-text a {
+        color: white;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
 @media screen and (max-width: 480px) {
     .login-card {
         padding: 30px 20px;

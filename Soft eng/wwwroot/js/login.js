@@ -2,10 +2,12 @@
 
     var loginButton = document.getElementById("loginBtn");
 
-
     loginButton.addEventListener("click", function (event) {
-        if (!validateForm()) {
-            event.preventDefault(); 
+        event.preventDefault();
+
+        if (validateForm()) {
+            window.location.href = "/Home/AddBooks";
+
         }
     });
 
@@ -14,12 +16,11 @@
         var pass = document.getElementById("password").value;
 
         if (user.trim() === "" || pass.trim() === "") {
-            alert("Please fill in both User and Password fields.");
+            alert("Please fill in both Email and Password fields.");
             return false;
         }
 
-        
-        console.log("Validation passed.");
+        console.log("Validation successful. Redirecting...");
         return true;
     }
 });

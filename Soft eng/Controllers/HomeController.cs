@@ -17,6 +17,11 @@ namespace Soft_eng.Controllers
             _configuration = configuration;
         }
 
+        public IActionResult Addbooks()
+        {
+            return View();
+        }
+
         public IActionResult Index()
         {
             return View();
