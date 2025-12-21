@@ -1,34 +1,42 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
-
     const addBookForm = document.getElementById('addBookForm');
-    const fileInput = document.getElementById('fileUpload');
+    const fileUpload = document.getElementById('fileUpload');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const pagesInput = document.getElementById('pagesInput');
+    const mobileActions = document.getElementById('mobile-only-actions');
+    const startScanBtn = document.getElementById('startScanBtn');
+    const cameraModal = document.getElementById('cameraModal');
+    const video = document.getElementById('video');
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) { mobileActions.style.display = 'block'; }
+
+    uploadBtn.addEventListener('click', () => fileUpload.click());
 
     addBookForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const formData = new FormData(addBookForm);
-        const data = Object.fromEntries(formData.entries());
-
-        console.log('Book Data Submitted:', data);
-
-        alert('Book successfully added!');
-
-        addBookForm.reset();
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            const fileName = e.target.files[0].name;
-            alert(`Image selected: ${fileName}`);
+        if (parseInt(pagesInput.value) <= 0) {
+            e.preventDefault();
+            alert('Pages cannot be zero or negative!');
+            return;
         }
+        alert('Book successfully added!');
     });
 
-    const logoutBtn = document.querySelector('.logout-text');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to log out?')) {
-                window.location.href = "/Home/Login";
-            }
-        });
-    }
+    let stream = null;
+    startScanBtn.addEventListener('click', async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            cameraModal.style.display = 'flex';
+        } catch (err) { alert("Camera not accessible."); }
+    });
+
+    document.getElementById('closeCameraBtn').addEventListener('click', () => {
+        if (stream) { stream.getTracks().forEach(t => t.stop()); }
+        cameraModal.style.display = 'none';
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Logout?')) { window.location.href = "/Home/Login"; }
+    });
 });

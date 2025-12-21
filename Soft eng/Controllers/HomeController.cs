@@ -3,23 +3,13 @@ using System.Net;
 using System.Net.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Soft_eng.Models;
-using MySql.Data.MySqlClient;             
-using Microsoft.Extensions.Configuration; 
 
 namespace Soft_eng.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly IConfiguration _configuration;
-
-        public HomeController(IConfiguration configuration)
+        public HomeController()
         {
-            _configuration = configuration;
-        }
-
-        public IActionResult Addbooks()
-        {
-            return View();
         }
 
         public IActionResult Index()
@@ -27,6 +17,15 @@ namespace Soft_eng.Controllers
             return View();
         }
 
+        public IActionResult Addbooks()
+        {
+            return View();
+        }
+
+        public IActionResult Login()
+        {
+            return View();
+        }
 
         public IActionResult Register()
         {
@@ -41,40 +40,9 @@ namespace Soft_eng.Controllers
                 ViewBag.Message = "Passwords do not match!";
                 return View();
             }
-
-            string connStr = _configuration.GetConnectionString("MySqlConn");
-
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    conn.Open();
-                    string query = "INSERT INTO Register (FullName, Email, Password) VALUES (@FullName, @Email, @Password)";
-
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@FullName", fullname);
-                        cmd.Parameters.AddWithValue("@Email", email);
-                        cmd.Parameters.AddWithValue("@Password", password);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                // Success!
-                return RedirectToAction("Login");
-            }
-            catch (MySqlException ex)
-            {
-                ViewBag.Message = "Error: " + ex.Message; 
-                return View();
-            }
+            return RedirectToAction("Login");
         }
 
-        public IActionResult Login()
-        {
-            return View();
-        }
         public IActionResult ForgotPassword()
         {
             return View();
@@ -83,41 +51,24 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public IActionResult ForgotPassword(string email)
         {
-            string connStr = _configuration.GetConnectionString("MySqlConn");
-            bool emailExists = false;
+            string token = Guid.NewGuid().ToString();
+            string resetLink = Url.Action("ResetPassword", "Home", new { token = token, email = email }, Request.Scheme);
 
-            using (MySqlConnection conn = new MySqlConnection(connStr))
+            try
             {
-                conn.Open();
-                string query = "SELECT Count(*) FROM Register WHERE Email = @Email";
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Email", email);
-                    int count = Convert.ToInt32(cmd.ExecuteScalar());
-                    if (count > 0) emailExists = true;
-                }
-            }
-
-            if (emailExists)
-            {
-
-                string token = Guid.NewGuid().ToString();
-
-                string resetLink = Url.Action("ResetPassword", "Home", new { token = token, email = email }, Request.Scheme);
-
                 SendEmail(email, resetLink);
                 ViewBag.Message = "Reset link sent to your email.";
             }
-            else
+            catch (Exception ex)
             {
-                ViewBag.Message = "Email not found.";
+                ViewBag.Message = "Error sending email: " + ex.Message;
             }
 
             return View();
         }
+
         public IActionResult ResetPassword(string token, string email)
         {
-
             ViewBag.Token = token;
             ViewBag.Email = email;
             return View();
@@ -131,25 +82,8 @@ namespace Soft_eng.Controllers
                 ViewBag.Message = "Passwords do not match.";
                 return View();
             }
-            string connStr = _configuration.GetConnectionString("MySqlConn");
-
-            using (MySqlConnection conn = new MySqlConnection(connStr))
-            {
-                conn.Open();
-                string query = "UPDATE Register SET Password = @Password WHERE Email = @Email";
-
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Password", newPassword);
-                    cmd.Parameters.AddWithValue("@Email", email);
-                    cmd.ExecuteNonQuery();
-                }
-            }
-
-            ViewBag.Message = "Password successfully changed. You can now login.";
             return RedirectToAction("Login");
         }
-
 
         private void SendEmail(string userEmail, string link)
         {

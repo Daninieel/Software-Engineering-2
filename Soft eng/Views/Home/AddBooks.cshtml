@@ -15,8 +15,11 @@
 <body>
 
     <header class="top-header">
-        <div class="logo-circle">
-            <img src="~/images/school_logo.jpg" alt="SIA Logo" style="width: 100%; height: 100%; border-radius: 50%;">
+        <div class="logo-area">
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+            </div>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
         </div>
 
         <div class="user-area">
@@ -62,7 +65,7 @@
                         </div>
                         <div class="form-group">
                             <label>Pages</label>
-                            <input type="number" name="pages" id="pagesInput" min="0">
+                            <input type="number" name="pages" id="pagesInput" min="1">
                         </div>
                     </div>
 
@@ -126,7 +129,7 @@
                         </div>
                         <div class="form-group">
                             <label>Total Copies</label>
-                            <input type="number" name="copies">
+                            <input type="number" name="copies" min="1">
                         </div>
                     </div>
 
@@ -137,8 +140,18 @@
 
                     <div class="button-area">
                         <button type="submit" class="btn btn-green">Add Books</button>
-                        <button type="button" class="btn btn-blue" onclick="document.getElementById('fileUpload').click()">Upload an image</button>
-                        <input type="file" id="fileUpload" style="display: none;">
+
+                        <button type="button" class="btn btn-blue" onclick="document.getElementById('fileUpload').click()">
+                            Upload an image
+                        </button>
+
+                        <div id="mobile-scan-container" style="display: none;">
+                            <button type="button" class="btn btn-purple" id="startScanBtn">
+                                Scan Book
+                            </button>
+                        </div>
+
+                        <input type="file" id="fileUpload" accept="image/*" style="display: none;">
                     </div>
 
                 </form>
@@ -146,6 +159,16 @@
         </main>
     </div>
 
-    <script src="addbooks.js"></script>
+    <div id="cameraModal" class="camera-overlay" style="display: none;">
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <div class="camera-controls">
+                <button type="button" id="captureBtn" class="btn btn-green">Capture</button>
+                <button type="button" id="closeCameraBtn" class="btn btn-red">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/addbooks.js"></script>
 </body>
 </html>
