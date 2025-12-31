@@ -23,9 +23,11 @@
         </div>
 
         <div class="user-area">
-            <a href="@Url.Action("Login", "Home")" class="logout-link">
-                <span class="logout-text">Log Out</span>
-            </a>
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                    <span class="logout-text">Log Out</span>
+                </a>
+            </form>
             <div class="user-avatar">
                 <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>

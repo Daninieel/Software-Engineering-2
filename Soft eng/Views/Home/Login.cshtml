@@ -17,19 +17,19 @@
             <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
         </div>
 
-        <form id="loginForm">
+        <form id="loginForm" asp-action="Login" asp-controller="Home" method="post">
             <div class="form-group">
                 <label for="username">Email</label>
-                <input type="text" id="username" name="username" />
+                <input type="text" id="username" name="email" required />
             </div>
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" />
+                <input type="password" id="password" name="password" required />
                 <a href="@Url.Action("Forgotpassword", "Home")" class="forgot-password">Forgot Password?</a>
             </div>
 
-            <button type="button" class="btn-login" id="loginBtn">Log In</button>
+            <button type="submit" class="btn-login" id="loginBtn">Log In</button>
 
             <div class="footer-text">
                 <span>Don't have an account?</span>
