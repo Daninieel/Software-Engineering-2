@@ -23,6 +23,9 @@ namespace Soft_eng.Controllers
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
         public IActionResult AdminDashboard() => View();
+        public IActionResult RequestedBooks() => View();
+
+
 
         [HttpPost]
         public async Task<IActionResult> Register(string fullname, string email, string password, string confirmPassword)
