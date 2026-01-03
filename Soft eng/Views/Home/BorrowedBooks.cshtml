@@ -1,8 +1,7 @@
 ﻿@{
-    ViewBag.Title = "RequestedBooks";
+    ViewBag.Title = "BorrowedBooks";
     Layout = null;
 }
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +10,7 @@
     <title>Library Management System - Add Book</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="~/css/requestedbooks.css">
+    <link rel="stylesheet" href="~/css/borrowedbooks.css">
 </head>
 <body>
 
@@ -55,7 +54,7 @@
 
         <!-- CONTENT -->
         <main class="content-area">
-            <h2>Requested Books</h2>
+            <h2>Borrowed Books</h2>
 
             <!-- SEARCH + FILTER -->
             <div class="search-filter">
@@ -68,11 +67,12 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Request ID</th>
-                            <th>Requester Name</th>
-                            <th>Requested Title</th>
-                            <th>Date Requested</th>
-                            <th>Status</th>
+                            <th>Loan ID</th>
+                            <th>Borrower Name</th>
+                            <th>Title</th>
+                            <th>Due Date</th>
+                            <th>Date Returned</th>
+                            <th>Overdue Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,9 +83,8 @@
 
             <!-- ACTION BUTTONS -->
             <div class="button-area">
-                <button class="btn btn-blue">Add Request</button>
-                <button class="btn btn-green">Generate Report</button>
-                <button class="btn btn-orange">Print</button>
+                <button class="btn btn-blue">Issue Book</button>
+                <button class="btn btn-green">Generate Report</button>             
                 <button class="btn btn-red">Edit Request</button>
             </div>
         </main>

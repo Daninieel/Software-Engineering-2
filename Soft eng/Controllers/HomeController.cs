@@ -24,6 +24,7 @@ namespace Soft_eng.Controllers
         public IActionResult ForgotPassword() => View();
         public IActionResult AdminDashboard() => View();
         public IActionResult RequestedBooks() => View();
+        public IActionResult BorrowedBooks () => View();
 
 
 
