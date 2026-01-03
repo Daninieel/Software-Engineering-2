@@ -1,0 +1,251 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #f0f0f0;
+}
+
+/* HEADER */
+.top-header {
+    background-color: #c0392b;
+    color: white;
+    padding: 0 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-circle {
+    background: white;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    border: 3px solid rgba(255,255,255,0.3);
+}
+
+    .logo-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+.school-name {
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    display: none;
+}
+
+@media(min-width: 768px) {
+    .school-name {
+        display: block;
+    }
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.logout-link {
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-text {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+.logout-link:hover .logout-text {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.6);
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* LAYOUT */
+.main-layout {
+    display: flex;
+    min-height: calc(100vh - 100px);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    background-color: white;
+    padding-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+}
+
+    .sidebar nav ul {
+        list-style: none;
+        width: 100%;
+        text-align: center;
+    }
+
+        .sidebar nav ul li {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+            .sidebar nav ul li a {
+                text-decoration: none;
+                color: #444;
+                font-weight: 600;
+                font-size: 0.95rem;
+                display: block;
+                padding: 12px 0;
+                transition: 0.3s;
+            }
+
+                .sidebar nav ul li a:hover {
+                    color: #e74c3c;
+                    background-color: #fffafa;
+                }
+
+            .sidebar nav ul li.active a {
+                background-color: #e74c3c;
+                color: white;
+                padding: 12px 30px;
+                margin: 0 auto;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+                white-space: nowrap;
+            }
+
+/* CONTENT */
+.content-area {
+    flex: 1;
+    padding: 40px;
+    background: #f8f9fa;
+}
+
+    .content-area h2 {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+/* SEARCH */
+.search-filter {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+    .search-filter input {
+        width: 60%;
+        padding: 14px 18px;
+        border-radius: 8px;
+        border: none;
+        background: #eee;
+    }
+
+.btn-filter {
+    padding: 14px 30px;
+    background: #ddd;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* TABLE */
+
+.table-card {
+    background: white;
+    width: 100%;
+    max-width: 1100px;
+    height: 570px; /* controls square size */
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    padding: 25px;
+    margin: 30px auto; /* makes white square table responsive to zoom ins and outs */
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: center;
+    padding: 15px;
+    border-bottom: 2px solid #333;
+}
+
+td {
+    text-align: center;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* BUTTONS */
+.button-area {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 15px 40px;
+    color: white;
+    border-radius: 50px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-blue {
+    background: #5dade2;
+    text-decoration: none; /* removed the underline on add books*/
+}
+
+.btn-green {
+    background: #2ecc71;
+}
+
+.btn-orange {
+    background: #f39c12;
+}
+
+.btn-red {
+    background: #e74c3c;
+}

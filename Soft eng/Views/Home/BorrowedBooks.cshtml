@@ -42,11 +42,11 @@
             <nav>
                 <ul>
                     <li><a href="#">Dashboard</a></li>
-                    <li><a href="#">Inventory</a></li>
+                    <li><a asp-action="Inventory">Inventory</a></li>
                     <li><a asp-action="AddBooks">Add Books</a></li>
-                    <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
+                    <li class="active"><a asp-action="BorrowedBooks">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooks">Requested Books</a></li>
-                    <li><a href="#">Fine</a></li>
+                    <li><a asp-action="Fine">Fine</a></li>
                     <li><a href="#">AI Chatbot</a></li>
                 </ul>
             </nav>
@@ -85,7 +85,7 @@
             <div class="button-area">
                 <button class="btn btn-blue">Issue Book</button>
                 <button class="btn btn-green">Generate Report</button>             
-                <button class="btn btn-red">Edit Request</button>
+                <button class="btn btn-red">Edit Issue Book</button>
             </div>
         </main>
 

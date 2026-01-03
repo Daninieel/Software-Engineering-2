@@ -20,11 +20,13 @@ namespace Soft_eng.Controllers
         public IActionResult Index() => View();
         public IActionResult Login() => View();
         public IActionResult Register() => View();
+        public IActionResult Inventory() => View();
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
         public IActionResult AdminDashboard() => View();
         public IActionResult RequestedBooks() => View();
         public IActionResult BorrowedBooks () => View();
+        public IActionResult Fine () => View();
 
 
 
