@@ -220,6 +220,7 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> ResetPassword(string email, string newPassword, string confirmPassword, string token)
         {
+            // 1. Validation: Check if passwords match
             if (newPassword != confirmPassword)
             {
                 ViewBag.Message = "Passwords do not match.";
@@ -231,21 +232,42 @@ namespace Soft_eng.Controllers
             try
             {
                 await _connection.OpenAsync();
+
+                // 2. Security: Hash the new password before saving
                 string hashed = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
+                // 3. Database Update: Use parameterized query to prevent SQL injection
                 const string updateSql = "UPDATE Register SET Password = @p, ConfirmPassword = @p WHERE Email = @e";
+
                 using var cmd = new MySqlCommand(updateSql, _connection);
                 cmd.Parameters.AddWithValue("@p", hashed);
-                cmd.Parameters.AddWithValue("@e", email);
-                await cmd.ExecuteNonQueryAsync();
-                return RedirectToAction("Login");
+                cmd.Parameters.AddWithValue("@e", email.Trim());
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                if (rowsAffected > 0)
+                {
+         
+                    return RedirectToAction("Login");
+                }
+                else
+                {
+                    ViewBag.Message = "User email not found in database.";
+                    ViewBag.Token = token;
+                    ViewBag.Email = email;
+                    return View();
+                }
             }
-            catch
+            catch (Exception ex)
             {
+                ViewBag.Message = "A database error occurred: " + ex.Message;
+                ViewBag.Token = token;
+                ViewBag.Email = email;
                 return View();
             }
             finally
             {
-                await _connection.CloseAsync();
+                await _connection.CloseAsync(); 
             }
         }
 
@@ -253,19 +275,36 @@ namespace Soft_eng.Controllers
         {
             var senderEmail = "markdanielc0502@gmail.com";
             var appPassword = "yfco kddx caaz ulob";
+
             using var smtpClient = new SmtpClient("smtp.gmail.com")
             {
                 Port = 587,
                 Credentials = new NetworkCredential(senderEmail, appPassword),
                 EnableSsl = true,
             };
+
+            string emailBody = $@"
+        <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+            <h2 style='color: #2c3e50;'>Saint Isidore Academy Library</h2>
+            <p>Hello,</p>
+            <p>We received a request to reset the password for your library account associated with this email address.</p>
+            <p>To choose a new password, please click the link below:</p>
+            <div style='margin: 25px 0;'>
+                <a href='{link}' style='color: #3498db; font-weight: bold; text-decoration: underline;'>Click to Reset Password</a>
+            </div>
+            <p>If you did not request this change, you can safely ignore this email.</p>
+            <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;' />
+            <p style='font-size: 0.8em; color: #777;'>&copy; {DateTime.Now.Year} Saint Isidore Academy. All rights reserved.</p>
+        </div>";
+
             var mailMessage = new MailMessage
             {
-                From = new MailAddress(senderEmail),
-                Subject = "Password Reset",
-                Body = $"<a href='{link}'>Reset Password</a>",
+                From = new MailAddress(senderEmail, "Saint Isidore Academy Library"),
+                Subject = "Saint Isidore Library Password Reset",
+                Body = emailBody,
                 IsBodyHtml = true,
             };
+
             mailMessage.To.Add(userEmail);
             await smtpClient.SendMailAsync(mailMessage);
         }
