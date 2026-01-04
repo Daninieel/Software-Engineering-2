@@ -7,10 +7,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Saint Isidore Academy ADMIN</title>
+    <title>Admin Dashboard - Saint Isidore Academy</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/inventory.admin.css">
+    <style>
+        body {
+            background-color: #EDEDED;
+        }
+
+        .dashboard-container {
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-filter-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .search-box {
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            flex: 2;
+            font-size: 15px;
+            height: 46px;
+            box-sizing: border-box;
+        }
+
+        .time-filter {
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            flex: 1;
+            font-size: 15px;
+            height: 46px;
+            box-sizing: border-box;
+            max-width: 150px;
+        }
+
+        .filter-dropdown {
+            position: relative;
+            flex: 1;
+            max-width: 150px;
+        }
+
+        .filter-btn {
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            width: 100%;
+            font-size: 15px;
+            height: 46px;
+            box-sizing: border-box;
+        }
+
+        .filter-options {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+            .filter-options.show {
+                display: block;
+            }
+
+        .filter-option {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+            .filter-option:hover {
+                background: #f5f5f5;
+            }
+
+            .filter-option:last-child {
+                border-bottom: none;
+            }
+
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        /* Row 1: Total Books Box - Full width */
+        .row-1 {
+            display: flex;
+            width: 100%;
+        }
+
+        .total-books-box {
+            background: white;
+            padding: 40px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+        }
+
+        .total-books-label {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .total-books-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Row 2: 3 boxes for Borrowed Books stats - Full width containers */
+        .row-2 {
+            display: flex;
+            width: 100%;
+            gap: 25px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 35px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+            width: 33.33%;
+        }
+
+        .stat-label {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Row 3: 3 boxes for Missing Books stats - Full width containers */
+        .row-3 {
+            display: flex;
+            width: 100%;
+            gap: 25px;
+        }
+
+        /* Row 4: 2 column box - Decreased height, same width */
+        .row-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+        }
+
+        .table-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 250px; /* Reduced height */
+            display: flex;
+            flex-direction: column;
+        }
+
+            .table-card h3 {
+                margin: 0 0 15px 0;
+                font-size: 16px;
+                text-align: center;
+                font-weight: 600;
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: center;
+            padding: 10px 8px;
+            border-bottom: 2px solid #ddd;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            background-color: #f8f9fa;
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        /* Override existing styles to match design */
+        .content-area {
+            padding: 20px;
+        }
+
+            .content-area h2 {
+                margin: 0 0 20px 0;
+                font-size: 22px;
+                font-weight: 600;
+            }
+
+        .main-layout {
+            margin-top: 60px;
+        }
+
+        /* Adjust table container to be shorter */
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+            /* Make tables scrollable if needed */
+            .table-container table {
+                min-height: 100px;
+            }
+    </style>
 </head>
 <body>
 
@@ -19,7 +272,7 @@
             <div class="logo-circle">
                 <img src="~/images/school_logo.jpg" alt="Logo">
             </div>
-            <span class="school-name">SAINT ISIDORE ACADEMY ADMIN</span>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
         </div>
 
         <div class="user-area">
@@ -50,39 +303,147 @@
         </aside>
 
         <main class="content-area">
-            <h2>Admin Dashboard</h2>
+            <h2>Dashboard</h2>
 
-            <div class="form-card" style="max-width:900px;">
-                <div style="display:flex;gap:20px;flex-wrap:wrap;">
-                    <a class="btn btn-blue" asp-action="InventoryAdmin">
-                        <i class="fas fa-boxes"></i> Manage Inventory
-                    </a>
-                    <a class="btn btn-green" asp-action="AddBooksAdmin">
-                        <i class="fas fa-plus"></i> Add New Book
-                    </a>
-                    <a class="btn btn-orange" asp-action="RequestedBooksAdmin">
-                        <i class="fas fa-clipboard-list"></i> View Requests
-                    </a>
-                    <a class="btn btn-red" asp-action="BorrowedBooksAdmin">
-                        <i class="fas fa-book-reader"></i> Borrowed Books
-                    </a>
-                    <a class="btn btn-purple" asp-action="FineAdmin" style="background-color: #6f42c1; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">
-                        <i class="fas fa-hand-holding-usd"></i> Manage Fines
-                    </a>
+            <div class="dashboard-header">
+                <div class="search-filter-container">
+                    <input type="text" class="search-box" placeholder="Search by Title, Author, etc.">
+                    <select class="time-filter">
+                        <option>1 Month</option>
+                    </select>
+                    <div class="filter-dropdown">
+                        <button type="button" class="filter-btn" id="filterBtn">Filter</button>
+                        <div class="filter-options" id="filterOptions">
+                            <div class="filter-option">Available</div>
+                            <div class="filter-option">Borrowed</div>
+                            <div class="filter-option">Damaged</div>
+                            <div class="filter-option">Missing/Lost</div>
+                            <div class="filter-option">Author</div>
+                            <div class="filter-option">Title</div>
+                            <div class="filter-option">Publisher</div>
+                            <div class="filter-option">Donation</div>
+                            <div class="filter-option">Year</div>
+                            <div class="filter-option">Category</div>
+                            <div class="filter-option">Shelf Location</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-container">
+                <!-- Row 1: Total Books Box - Full width -->
+                <div class="row-1">
+                    <div class="total-books-box">
+                        <div class="total-books-label">Total Books</div>
+                        <div class="total-books-value">0</div>
+                    </div>
                 </div>
 
-                <section style="margin-top:24px;">
-                    <h3>Quick Stats</h3>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Total Books<br /><strong>--</strong></div>
-                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Borrowed<br /><strong>--</strong></div>
-                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Requests<br /><strong>--</strong></div>
-                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Overdue<br /><strong>--</strong></div>
+                <!-- Row 2: 3 boxes for Borrowed Books stats - Full width -->
+                <div class="row-2">
+                    <div class="stat-box">
+                        <div class="stat-label">Borrowed Books</div>
+                        <div class="stat-value">0</div>
                     </div>
-                </section>
+                    <div class="stat-box">
+                        <div class="stat-label">Returned Books</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Overdue Books</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                </div>
+
+                <!-- Row 3: 3 boxes for Missing Books stats - Full width -->
+                <div class="row-3">
+                    <div class="stat-box">
+                        <div class="stat-label">Missing Books</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Damaged Books</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Fine</div>
+                        <div class="stat-value">P0</div>
+                    </div>
+                </div>
+
+                <!-- Row 4: 2 column box - Decreased height, same width -->
+                <div class="row-4">
+                    <div class="table-card">
+                        <h3>Overdue History</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>UserID</th>
+                                        <th>Name</th>
+                                        <th>Date Borrowed</th>
+                                        <th>Fine</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="5" class="no-data">No overdue records</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-card">
+                        <h3>Recent Borrowed Books</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="no-data">No recent borrowed books</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterBtn = document.getElementById('filterBtn');
+            const filterOptions = document.getElementById('filterOptions');
+
+            filterBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                filterOptions.classList.toggle('show');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!filterBtn.contains(e.target) && !filterOptions.contains(e.target)) {
+                    filterOptions.classList.remove('show');
+                }
+            });
+
+            // Handle filter option selection
+            const filterOptionsList = filterOptions.querySelectorAll('.filter-option');
+            filterOptionsList.forEach(option => {
+                option.addEventListener('click', function() {
+                    filterBtn.textContent = this.textContent;
+                    filterOptions.classList.remove('show');
+                });
+            });
+        });
+    </script>
 
 </body>
 </html>

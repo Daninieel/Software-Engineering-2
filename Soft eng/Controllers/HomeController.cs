@@ -1,10 +1,11 @@
-using System.Diagnostics;
-using System.Net;
-using System.Net.Mail;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using Soft_eng.Models;
-using BCrypt.Net;
+using System.Data;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Mail;
 
 namespace Soft_eng.Controllers
 {
@@ -93,13 +94,15 @@ namespace Soft_eng.Controllers
         {
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
-                ViewBag.Message = "Email and password are required.";
+                ViewBag.ErrorMessage = "Email and password are required.";
                 return View();
             }
 
             string normalizedEmail = email.Trim();
 
-            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123")
+            // Hardcoded admin login
+            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase)
+                && password == "adminsia123")
             {
                 return RedirectToAction("AdminDashboardAdmin");
             }
@@ -107,25 +110,22 @@ namespace Soft_eng.Controllers
             try
             {
                 await _connection.OpenAsync();
-                const string selectSql = "SELECT Password, Role FROM Register WHERE Email = @e LIMIT 1";
-                using var cmd = new MySqlCommand(selectSql, _connection);
+
+                const string sql = "SELECT Password, Role FROM Register WHERE Email = @e LIMIT 1";
+                using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@e", normalizedEmail);
+
                 using var reader = await cmd.ExecuteReaderAsync();
-                if (!await reader.ReadAsync())
+
+                // ? Email not found OR password incorrect
+                if (!await reader.ReadAsync() ||
+                    !BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
                 {
-                    ViewBag.Message = "User not found.";
+                    ViewBag.ErrorMessage = "Invalid email or password.";
                     return View();
                 }
 
-                string storedHash = reader.GetString(0);
-                string role = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
-
-                if (!BCrypt.Net.BCrypt.Verify(password, storedHash))
-                {
-                    ViewBag.Message = "Invalid Email or Password.";
-                    return View();
-                }
-
+                string role = reader.IsDBNull("Role") ? "" : reader.GetString("Role");
                 reader.Close();
 
                 const string updateSql = "UPDATE Register SET IsLoggedIn = 1, LastLoginAt = NOW() WHERE Email = @e";
@@ -133,16 +133,13 @@ namespace Soft_eng.Controllers
                 updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
                 await updateCmd.ExecuteNonQueryAsync();
 
-                if (string.Equals(role, "School Admin", StringComparison.OrdinalIgnoreCase))
-                    return RedirectToAction("AdminDashboardAdmin");
-                if (string.Equals(role, "Librarian", StringComparison.OrdinalIgnoreCase))
-                    return RedirectToAction("Inventory");
-
-                return RedirectToAction("Index");
+                return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase)
+                    ? RedirectToAction("AdminDashboardAdmin")
+                    : RedirectToAction("Inventory");
             }
             catch
             {
-                ViewBag.Message = "A database error occurred.";
+                ViewBag.ErrorMessage = "Something went wrong. Please try again.";
                 return View();
             }
             finally
