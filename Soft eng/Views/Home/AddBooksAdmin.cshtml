@@ -1,0 +1,176 @@
+@{
+    ViewBag.Title = "AddBooks";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Add Book</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/addbooks.css">
+</head>
+<body>
+
+    <header class="top-header">
+        <div class="logo-area">
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+            </div>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
+        </div>
+
+        <div class="user-area">
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                    <span class="logout-text">Log Out</span>
+                </a>
+            </form>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar admin">
+            <nav>
+                <ul>
+                    <li><a asp-action="AdminDashboardAdmin">Dashboard</a></li>
+                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
+                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
+                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
+                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li><a href="#">AI Chatbot</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            <h2>Add Book</h2>
+
+            <div class="form-card">
+                <form id="addBookForm">
+
+                    <div class="form-group full-width">
+                        <label>Book Title</label>
+                        <input type="text" name="title">
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Author</label>
+                            <input type="text" name="author">
+                        </div>
+                        <div class="form-group">
+                            <label>Pages</label>
+                            <input type="number" name="pages" id="pagesInput" min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Edition</label>
+                            <input type="text" name="edition" placeholder="1st/2021">
+                        </div>
+                        <div class="form-group">
+                            <label>Year</label>
+                            <input type="text" name="year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-mixed">
+                        <div class="left-col">
+                            <div class="form-group">
+                                <label>ISBN</label>
+                                <input type="text" name="isbn">
+                            </div>
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label>Publisher</label>
+                                <input type="text" name="publisher">
+                            </div>
+                        </div>
+                        <div class="right-col">
+                            <div class="form-group h-100">
+                                <label>Remarks</label>
+                                <textarea name="remarks"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Source Type</label>
+                            <div class="select-wrapper">
+                                <select name="sourceType">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="donation">Donation</option>
+                                    <option value="purchased">Purchased</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Date Received</label>
+                            <input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-row">
+                        <div class="form-group">
+                            <label>Book Status</label>
+                            <div class="select-wrapper">
+                                <select name="status">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="available">Available</option>
+                                    <option value="damaged">Damaged</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Total Copies</label>
+                            <input type="number" name="copies" min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Shelf Location</label>
+                        <input type="text" name="shelf">
+                    </div>
+
+                    <div class="button-area">
+                        <button type="submit" class="btn btn-green">Add Books</button>
+
+                        <button type="button" class="btn btn-blue" onclick="document.getElementById('fileUpload').click()">
+                            Upload an image
+                        </button>
+
+                        <div id="mobile-scan-container" style="display: none;">
+                            <button type="button" class="btn btn-purple" id="startScanBtn">
+                                Scan Book
+                            </button>
+                        </div>
+
+                        <input type="file" id="fileUpload" accept="image/*" style="display: none;">
+                    </div>
+
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div id="cameraModal" class="camera-overlay" style="display: none;">
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <div class="camera-controls">
+                <button type="button" id="captureBtn" class="btn btn-green">Capture</button>
+                <button type="button" id="closeCameraBtn" class="btn btn-red">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/addbooks.js"></script>
+</body>
+</html>

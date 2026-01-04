@@ -1,0 +1,96 @@
+﻿@{
+    ViewBag.Title = "Fine";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Add Book</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/fine.css">
+</head>
+<body>
+
+    <!-- HEADER (same as Add Books) -->
+    <header class="top-header">
+        <div class="logo-area">
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+            </div>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
+        </div>
+
+        <div class="user-area">
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                    <span class="logout-text">Log Out</span>
+                </a>
+            </form>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar admin">
+            <nav>
+                <ul>
+                    <li><a asp-action="AdminDashboardAdmin">Dashboard</a></li>
+                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
+                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
+                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
+                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li><a href="#">AI Chatbot</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content-area">
+            <h2>Fine</h2>
+
+            <!-- SEARCH + FILTER -->
+            <div class="search-filter">
+                <input type="text" placeholder="Search by Title, Borrower, etc.">
+                <button class="btn-filter">Filter</button>
+            </div>
+
+            <!-- TABLE -->
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fine ID</th>
+                            <th>Loan ID</th>
+                            <th>Borrower Name</th>
+                            <th>Book Title</th>
+                            <th>Payment Status</th>
+                            <th>Fine Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DATA WILL GO HERE LATER -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="button-area">
+                <button class="btn btn-green">Generate Report</button>
+                <button class="btn btn-red">Edit Fine</button>
+            </div>
+
+            <div class="total-fine">
+                Total Fine:
+            </div>
+        </main>
+
+    </div>
+
+</body>
+</html>

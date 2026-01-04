@@ -1,0 +1,94 @@
+@{
+    ViewBag.Title = "Inventory (Admin)";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Library Inventory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/inventory.admin.css">
+</head>
+<body>
+
+    <!-- HEADER (admin style) -->
+    <header class="top-header admin">
+        <div class="logo-area">
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+            </div>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
+        </div>
+
+        <div class="user-area">
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                    <span class="logout-text">Log Out</span>
+                </a>
+            </form>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar admin">
+            <nav>
+                <ul>
+                    <li><a asp-action="AdminDashboardAdmin">Dashboard</a></li>
+                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
+                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
+                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
+                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li><a href="#">AI Chatbot</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content-area">
+            <h2>Admin Inventory</h2>
+
+            <!-- SEARCH + FILTER -->
+            <div class="search-filter">
+                <input type="text" placeholder="Search by Title, Borrower, etc.">
+                <button class="btn-filter">Filter</button>
+            </div>
+
+            <!-- TABLE -->
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Book ID</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Shelf Location</th>
+                            <th>Availability</th>
+                            <th>Date Received</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DATA WILL GO HERE LATER -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="button-area">
+                <a asp-action="AddBooksAdmin" class="btn btn-blue">
+                    Add Books
+                </a>
+                <button class="btn btn-red">Edit Book</button>
+            </div>
+        </main>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+@{
+    ViewBag.Title = "Admin Dashboard";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Saint Isidore Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/inventory.admin.css">
+</head>
+<body>
+
+    <header class="top-header admin">
+        <div class="logo-area">
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="Logo">
+            </div>
+            <span class="school-name">SAINT ISIDORE ACADEMY</span>
+        </div>
+
+        <div class="user-area">
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                    <span class="logout-text">Log Out</span>
+                </a>
+            </form>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar admin">
+            <nav>
+                <ul>
+                    <li><a asp-action="AdminDashboardAdmin">Dashboard</a></li>
+                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
+                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
+                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
+                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li><a href="#">AI Chatbot</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            <h2>Admin Dashboard</h2>
+
+            <div class="form-card" style="max-width:900px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <a class="btn btn-blue" asp-action="InventoryAdmin">
+                        <i class="fas fa-boxes"></i> Manage Inventory
+                    </a>
+                    <a class="btn btn-green" asp-action="AddBooksAdmin">
+                        <i class="fas fa-plus"></i> Add New Book
+                    </a>
+                    <a class="btn btn-orange" asp-action="RequestedBooksAdmin">
+                        <i class="fas fa-clipboard-list"></i> View Requests
+                    </a>
+                    <a class="btn btn-red" asp-action="BorrowedBooksAdmin">
+                        <i class="fas fa-book-reader"></i> Borrowed Books
+                    </a>
+                    <a class="btn btn-purple" asp-action="FineAdmin" style="background-color: #6f42c1; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">
+                        <i class="fas fa-hand-holding-usd"></i> Manage Fines
+                    </a>
+                </div>
+
+                <section style="margin-top:24px;">
+                    <h3>Quick Stats</h3>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Total Books<br /><strong>--</strong></div>
+                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Borrowed<br /><strong>--</strong></div>
+                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Requests<br /><strong>--</strong></div>
+                        <div style="background:white;padding:16px;border-radius:8px;min-width:180px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Overdue<br /><strong>--</strong></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

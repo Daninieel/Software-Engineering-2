@@ -124,6 +124,28 @@ input[type="email"],
         background-color: #329a52;
     }
 
+/* password toggle inside input */
+.password-wrap { position: relative; }
+.password-wrap input[type="password"], .password-wrap input[type="text"] {
+    padding-right: 44px; /* space for the icon */
+}
+.password-wrap .toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.password-wrap .toggle-password:focus { outline: none; }
+.password-wrap .toggle-password svg { color: #444; }
+
 @media screen and (max-width: 480px) {
     .login-card {
         padding: 30px 20px;
@@ -139,4 +161,6 @@ input[type="email"],
     .btn-login {
         width: 100%;
     }
+
+    .password-wrap input[type="password"], .password-wrap input[type="text"] { padding-right: 40px; }
 }

@@ -1,5 +1,5 @@
-﻿@{
-    ViewBag.Title = "Register";
+@{
+    ViewBag.Title = "Register (Admin)";
     Layout = null;
 }
 
@@ -7,17 +7,17 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register - Saint Isidore Academy</title>
+    <title>Admin Register - Saint Isidore Academy</title>
 
-    <link rel="stylesheet" href="~/css/register.css" />
+    <link rel="stylesheet" href="~/css/register.admin.css" />
 </head>
 <body>
 
     <div class="login-card">
 
         <div class="logo-container">
-            <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
-            <h3>Create Account</h3>
+            <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Logo" />
+            <h3 style="color:white;margin-top:12px; text-align:center;">SAINT ISIDORE ACADEMY - ADMIN</h3>
         </div>
 
         @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { id = "registerForm" }))
@@ -29,7 +29,7 @@
 
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="student@saintisidore.edu" required />
+                <input type="email" id="email" name="email" placeholder="admin@saintisidore.edu" required />
             </div>
 
             <div class="form-group">
@@ -64,8 +64,8 @@
 
     </div>
 
-    <script src="~/js/register.js"></script>
-    <script src="~/js/passwordToggle.js"></script>
+    <script src="~/js/register.admin.js"></script>
+    <script src="~/js/passwordToggle.admin.js"></script>
 
 </body>
 </html>
