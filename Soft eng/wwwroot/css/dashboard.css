@@ -1,0 +1,669 @@
+body {
+    background-color: #EDEDED;
+}
+
+.dashboard-container {
+    padding: 20px;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.search-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.search-box {
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    flex: 2;
+    font-size: 15px;
+    height: 46px;
+    box-sizing: border-box;
+}
+
+.time-filter {
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: white;
+    flex: 1;
+    font-size: 15px;
+    height: 46px;
+    box-sizing: border-box;
+    max-width: 150px;
+}
+
+.filter-dropdown {
+    position: relative;
+    flex: 1;
+    max-width: 150px;
+}
+
+.filter-btn {
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: white;
+    cursor: pointer;
+    width: 100%;
+    font-size: 15px;
+    height: 46px;
+    box-sizing: border-box;
+}
+
+.filter-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+    .filter-options.show {
+        display: block;
+    }
+
+.filter-option {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+    .filter-option:hover {
+        background: #f5f5f5;
+    }
+
+    .filter-option:last-child {
+        border-bottom: none;
+    }
+
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+/* Row 1: Total Books Box - Full width */
+.row-1 {
+    display: flex;
+    width: 100%;
+}
+
+.total-books-box {
+    background: white;
+    padding: 40px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 100%;
+}
+
+.total-books-label {
+    font-size: 20px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.total-books-value {
+    font-size: 48px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Row 2: 3 boxes for Borrowed Books stats - Full width containers */
+.row-2 {
+    display: flex;
+    width: 100%;
+    gap: 25px;
+}
+
+.stat-box {
+    background: white;
+    padding: 35px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    width: 33.33%;
+}
+
+.stat-label {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Row 3: 3 boxes for Missing Books stats - Full width containers */
+.row-3 {
+    display: flex;
+    width: 100%;
+    gap: 25px;
+}
+
+/* Row 4: 2 column box - Decreased height, same width */
+.row-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 20px;
+}
+
+.table-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: 250px; /* Reduced height */
+    display: flex;
+    flex-direction: column;
+}
+
+    .table-card h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: center;
+    padding: 10px 8px;
+    border-bottom: 2px solid #ddd;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    background-color: #f8f9fa;
+}
+
+td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    text-align: center;
+}
+
+.no-data {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-style: italic;
+    font-size: 14px;
+}
+
+/* Override existing styles to match design */
+.content-area {
+    padding: 20px;
+}
+
+    .content-area h2 {
+        margin: 0 0 20px 0;
+        font-size: 22px;
+        font-weight: 600;
+    }
+
+.main-layout {
+    display: flex;
+    min-height: calc(100vh - 100px);
+}
+
+/* Adjust table container to be shorter */
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+}
+
+    /* Make tables scrollable if needed */
+    .table-container table {
+        min-height: 100px;
+    }
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #f0f0f0;
+}
+
+/* HEADER */
+.top-header {
+    background-color: #c0392b;
+    color: white;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    position: relative;
+    z-index: 1000;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Hamburger Menu Button */
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+    transition: all 0.3s ease;
+}
+
+.hamburger-btn span {
+    width: 28px;
+    height: 3px;
+    background-color: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+@media(max-width: 767px) {
+    .hamburger-btn {
+        display: flex;
+    }
+
+    .hamburger-btn.active span:nth-child(1) {
+        transform: rotate(45deg) translate(10px, 10px);
+    }
+
+    .hamburger-btn.active span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .hamburger-btn.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -7px);
+    }
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.logout-link {
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-text {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+.logout-link:hover .logout-text {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.6);
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* LAYOUT */
+.main-layout {
+    display: flex;
+    min-height: calc(100vh - 100px);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    background-color: white;
+    padding-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+}
+
+    .sidebar nav ul {
+        list-style: none;
+        width: 100%;
+        text-align: center;
+    }
+
+        .sidebar nav ul li {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+            .sidebar nav ul li a {
+                text-decoration: none;
+                color: #444;
+                font-weight: 600;
+                font-size: 0.95rem;
+                display: block;
+                padding: 12px 0;
+                transition: 0.3s;
+            }
+
+                .sidebar nav ul li a:hover {
+                    color: #e74c3c;
+                    background-color: #fffafa;
+                }
+
+            .sidebar nav ul li.active a {
+                background-color: #e74c3c;
+                color: white;
+                padding: 12px 30px;
+                margin: 0 auto;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+                white-space: nowrap;
+            }
+
+/* CONTENT */
+.content-area {
+    flex: 1;
+    padding: 40px;
+    background: #f8f9fa;
+}
+
+    .content-area h2 {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+/* SEARCH */
+.search-filter {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+    .search-filter input {
+        width: 60%;
+        padding: 14px 18px;
+        border-radius: 8px;
+        border: none;
+        background: #eee;
+    }
+
+.btn-filter {
+    padding: 14px 30px;
+    background: #ddd;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* TABLE */
+
+.table-card {
+    background: white;
+    width: 100%;
+    max-width: 1100px;
+    height: 570px; /* controls square size */
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    padding: 25px;
+    margin: 30px auto; /* makes white square table responsive to zoom ins and outs */
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: center;
+    padding: 15px;
+    border-bottom: 2px solid #333;
+}
+
+td {
+    text-align: center;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* BUTTONS */
+.button-area {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 15px 40px;
+    color: white;
+    border-radius: 50px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-blue {
+    background: #5dade2;
+}
+
+.btn-green {
+    background: #2ecc71;
+}
+
+.btn-orange {
+    background: #f39c12;
+}
+
+.btn-red {
+    background: #e74c3c;
+}
+
+/* MOBILE RESPONSIVE STYLES */
+
+@media(max-width: 767px) {
+    .top-header {
+        height: 70px;
+        padding: 0 12px;
+    }
+
+    .logo-circle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .logout-text {
+        display: none;
+    }
+
+    .user-avatar img {
+        width: 40px;
+        height: 40px;
+    }
+
+    /* Sidebar Mobile */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 70px;
+        width: 100%;
+        max-width: 280px;
+        height: auto;
+        max-height: calc(100vh - 70px);
+        border-radius: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 999;
+        padding-top: 15px;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .sidebar nav ul li {
+        border-bottom: 1px solid #eee;
+        margin-bottom: 0;
+    }
+
+    .sidebar nav ul li a {
+        padding: 12px 15px;
+        text-align: left;
+        border-left: 4px solid transparent;
+        font-size: 0.85rem;
+    }
+
+    .sidebar nav ul li.active a {
+        border-left: 4px solid #a93226;
+        padding-left: 15px;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    /* Main Layout Mobile */
+    .main-layout {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    .content-area {
+        padding: 15px 10px;
+    }
+
+    .content-area h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    .dashboard-header {
+        margin-bottom: 15px;
+    }
+
+    .search-filter-container {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .search-box,
+    .time-filter,
+    .filter-btn {
+        width: 100%;
+        font-size: 13px;
+        height: 40px;
+        padding: 8px 12px;
+    }
+
+    .stats-container {
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .row-1, .row-2, .row-3 {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .total-books-box {
+        padding: 20px 10px;
+    }
+
+    .stat-box {
+        padding: 20px 10px;
+        min-height: 100px;
+    }
+
+    .total-books-value {
+        font-size: 28px;
+    }
+
+    .stat-value {
+        font-size: 22px;
+    }
+
+    .row-4 {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .table-card {
+        padding: 12px;
+        min-height: 200px;
+        height: auto;
+    }
+
+    table {
+        font-size: 11px;
+    }
+
+    th, td {
+        padding: 6px;
+        font-size: 11px;
+    }
+
+    .button-area {
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        flex: 1;
+        min-width: 80px;
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+}

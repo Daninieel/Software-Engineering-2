@@ -7,10 +7,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Saint Isidore Academy</title>
+    <title>@ViewBag.Title - Saint Isidore Academy</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="~/css/dashboard.admin.css">
+
+    <link rel="stylesheet" href="~/css/dashboard.css">
 </head>
 <body>
 
@@ -34,21 +35,21 @@
                 </a>
             </form>
             <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>
         </div>
     </header>
 
     <div class="main-layout">
-        <aside class="sidebar admin" id="sidebar">
+        <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
-                    <li class="active"><a asp-action="AdminDashboardAdmin">Dashboard</a></li>
-                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
-                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
-                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
-                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
-                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li class="active"><a asp-action="Dashboard">Dashboard</a></li>
+                    <li><a asp-action="Inventory">Inventory</a></li>
+                    <li><a asp-action="AddBooks">Add Books</a></li>
+                    <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooks">Requested Books</a></li>
+                    <li><a asp-action="Fine">Fine</a></li>
                     <li><a href="#">AI Chatbot</a></li>
                 </ul>
             </nav>
@@ -83,7 +84,6 @@
             </div>
 
             <div class="stats-container">
-                <!-- Row 1: Total Books Box - Full width -->
                 <div class="row-1">
                     <div class="total-books-box">
                         <div class="total-books-label">Total Books</div>
@@ -91,7 +91,6 @@
                     </div>
                 </div>
 
-                <!-- Row 2: 3 boxes for Borrowed Books stats - Full width -->
                 <div class="row-2">
                     <div class="stat-box">
                         <div class="stat-label">Borrowed Books</div>
@@ -107,7 +106,6 @@
                     </div>
                 </div>
 
-                <!-- Row 3: 3 boxes for Missing Books stats - Full width -->
                 <div class="row-3">
                     <div class="stat-box">
                         <div class="stat-label">Missing Books</div>
@@ -123,9 +121,8 @@
                     </div>
                 </div>
 
-                <!-- Row 4: 2 column box - Decreased height, same width -->
                 <div class="row-4">
-                    <div class="table-card">
+                    <div class="table-card dashboard-table">
                         <h3>Overdue History</h3>
                         <div class="table-container">
                             <table>
@@ -147,7 +144,7 @@
                         </div>
                     </div>
 
-                    <div class="table-card">
+                    <div class="table-card dashboard-table">
                         <h3>Recent Borrowed Books</h3>
                         <div class="table-container">
                             <table>
@@ -171,6 +168,5 @@
 
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
-
 </body>
 </html>
