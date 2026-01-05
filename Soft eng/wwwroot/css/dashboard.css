@@ -262,63 +262,70 @@ body {
     background-color: #f0f0f0;
 }
 
-/* HEADER */
+/* HEADER - Updated to fix stray elements */
 .top-header {
     background-color: #c0392b;
     color: white;
-    padding: 0 20px;
+    padding: 0 50px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     height: 100px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     position: relative;
-    z-index: 1000;
 }
 
 .logo-area {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
 }
 
-/* Hamburger Menu Button */
+    .logo-area::before,
+    .logo-area::after,
+    .top-header::before,
+    .top-header::after {
+        display: none !important;
+        content: none !important;
+    }
+
 .hamburger-btn {
     display: none;
     background: none;
     border: none;
-    color: white;
-    font-size: 28px;
     cursor: pointer;
-    flex-direction: column;
-    gap: 6px;
-    padding: 0;
-    transition: all 0.3s ease;
 }
 
-.hamburger-btn span {
-    width: 28px;
-    height: 3px;
-    background-color: white;
-    border-radius: 2px;
-    transition: all 0.3s ease;
+.logo-circle {
+    background: white;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    border: 3px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
 }
 
-@media(max-width: 767px) {
-    .hamburger-btn {
-        display: flex;
+    .logo-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
-    .hamburger-btn.active span:nth-child(1) {
-        transform: rotate(45deg) translate(10px, 10px);
-    }
+.school-name {
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: white;
+}
 
-    .hamburger-btn.active span:nth-child(2) {
-        opacity: 0;
-    }
-
-    .hamburger-btn.active span:nth-child(3) {
-        transform: rotate(-45deg) translate(7px, -7px);
+@media(min-width: 768px) {
+    .school-name {
+        display: block;
     }
 }
 
@@ -510,160 +517,4 @@ td {
 
 .btn-red {
     background: #e74c3c;
-}
-
-/* MOBILE RESPONSIVE STYLES */
-
-@media(max-width: 767px) {
-    .top-header {
-        height: 70px;
-        padding: 0 12px;
-    }
-
-    .logo-circle {
-        width: 50px;
-        height: 50px;
-    }
-
-    .logout-text {
-        display: none;
-    }
-
-    .user-avatar img {
-        width: 40px;
-        height: 40px;
-    }
-
-    /* Sidebar Mobile */
-    .sidebar {
-        position: fixed;
-        left: 0;
-        top: 70px;
-        width: 100%;
-        max-width: 280px;
-        height: auto;
-        max-height: calc(100vh - 70px);
-        border-radius: 0;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 999;
-        padding-top: 15px;
-        overflow-y: auto;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    }
-
-    .sidebar.active {
-        transform: translateX(0);
-    }
-
-    .sidebar nav ul li {
-        border-bottom: 1px solid #eee;
-        margin-bottom: 0;
-    }
-
-    .sidebar nav ul li a {
-        padding: 12px 15px;
-        text-align: left;
-        border-left: 4px solid transparent;
-        font-size: 0.85rem;
-    }
-
-    .sidebar nav ul li.active a {
-        border-left: 4px solid #a93226;
-        padding-left: 15px;
-        border-radius: 0;
-        margin: 0;
-    }
-
-    /* Main Layout Mobile */
-    .main-layout {
-        flex-direction: column;
-        min-height: auto;
-    }
-
-    .content-area {
-        padding: 15px 10px;
-    }
-
-    .content-area h2 {
-        font-size: 18px;
-        margin-bottom: 15px;
-    }
-
-    .dashboard-header {
-        margin-bottom: 15px;
-    }
-
-    .search-filter-container {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .search-box,
-    .time-filter,
-    .filter-btn {
-        width: 100%;
-        font-size: 13px;
-        height: 40px;
-        padding: 8px 12px;
-    }
-
-    .stats-container {
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-
-    .row-1, .row-2, .row-3 {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .total-books-box {
-        padding: 20px 10px;
-    }
-
-    .stat-box {
-        padding: 20px 10px;
-        min-height: 100px;
-    }
-
-    .total-books-value {
-        font-size: 28px;
-    }
-
-    .stat-value {
-        font-size: 22px;
-    }
-
-    .row-4 {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-
-    .table-card {
-        padding: 12px;
-        min-height: 200px;
-        height: auto;
-    }
-
-    table {
-        font-size: 11px;
-    }
-
-    th, td {
-        padding: 6px;
-        font-size: 11px;
-    }
-
-    .button-area {
-        gap: 8px;
-        margin-top: 20px;
-    }
-
-    .btn {
-        flex: 1;
-        min-width: 80px;
-        padding: 8px 12px;
-        font-size: 11px;
-    }
 }

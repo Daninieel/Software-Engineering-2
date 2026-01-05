@@ -7,11 +7,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@ViewBag.Title - Saint Isidore Academy</title>
+    <title>Admin Dashboard - Saint Isidore Academy</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <link rel="stylesheet" href="~/css/dashboard.css">
+    <link rel="stylesheet" href="~/css/dashboard.admin.css">
 </head>
 <body>
 
@@ -84,6 +83,7 @@
             </div>
 
             <div class="stats-container">
+                <!-- Row 1: Total Books Box - Full width -->
                 <div class="row-1">
                     <div class="total-books-box">
                         <div class="total-books-label">Total Books</div>
@@ -91,6 +91,7 @@
                     </div>
                 </div>
 
+                <!-- Row 2: 3 boxes for Borrowed Books stats - Full width -->
                 <div class="row-2">
                     <div class="stat-box">
                         <div class="stat-label">Borrowed Books</div>
@@ -106,6 +107,7 @@
                     </div>
                 </div>
 
+                <!-- Row 3: 3 boxes for Missing Books stats - Full width -->
                 <div class="row-3">
                     <div class="stat-box">
                         <div class="stat-label">Missing Books</div>
@@ -121,8 +123,9 @@
                     </div>
                 </div>
 
+                <!-- Row 4: 2 column box - Decreased height, same width -->
                 <div class="row-4">
-                    <div class="table-card dashboard-table">
+                    <div class="table-card">
                         <h3>Overdue History</h3>
                         <div class="table-container">
                             <table>
@@ -144,7 +147,7 @@
                         </div>
                     </div>
 
-                    <div class="table-card dashboard-table">
+                    <div class="table-card">
                         <h3>Recent Borrowed Books</h3>
                         <div class="table-container">
                             <table>
@@ -168,5 +171,6 @@
 
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
+
 </body>
 </html>

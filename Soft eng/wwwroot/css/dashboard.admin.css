@@ -1,5 +1,3 @@
-@import url('dashboard.css');
-
 body {
     background-color: #EDEDED;
 }
@@ -264,7 +262,7 @@ body {
     background-color: #f0f0f0;
 }
 
-/* HEADER */
+/* HEADER - Updated to fix stray elements */
 .top-header {
     background-color: #c0392b;
     color: white;
@@ -274,12 +272,28 @@ body {
     align-items: center;
     height: 100px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    position: relative;
 }
 
 .logo-area {
     display: flex;
     align-items: center;
     gap: 20px;
+}
+
+    .logo-area::before,
+    .logo-area::after,
+    .top-header::before,
+    .top-header::after {
+        display: none !important;
+        content: none !important;
+    }
+
+.hamburger-btn {
+    display: none; 
+    background: none;
+    border: none;
+    cursor: pointer;
 }
 
 .logo-circle {
@@ -292,6 +306,7 @@ body {
     align-items: center;
     overflow: hidden;
     border: 3px solid rgba(255,255,255,0.3);
+    flex-shrink: 0; 
 }
 
     .logo-circle img {
@@ -305,7 +320,7 @@ body {
     font-size: 1.3rem;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    display: none;
+    color: white;
 }
 
 @media(min-width: 768px) {
