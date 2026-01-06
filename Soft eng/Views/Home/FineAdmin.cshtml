@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/fine.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
 </head>
 <body>
 
@@ -57,7 +58,22 @@
             <!-- SEARCH + FILTER -->
             <div class="search-filter">
                 <input type="text" placeholder="Search by Title, Borrower, etc.">
-                <button class="btn-filter">Filter</button>
+                <div class="filter-dropdown">
+                    <button type="button" class="btn-filter filter-btn">Filter</button>
+                    <div class="filter-options">
+                        <div class="filter-option">Available</div>
+                        <div class="filter-option">Borrowed</div>
+                        <div class="filter-option">Damaged</div>
+                        <div class="filter-option">Missing/Lost</div>
+                        <div class="filter-option">Author</div>
+                        <div class="filter-option">Title</div>
+                        <div class="filter-option">Publisher</div>
+                        <div class="filter-option">Donation</div>
+                        <div class="filter-option">Year</div>
+                        <div class="filter-option">Category</div>
+                        <div class="filter-option">Shelf Location</div>
+                    </div>
+                </div>
             </div>
 
             <!-- TABLE -->
@@ -92,5 +108,6 @@
 
     </div>
 
+    <script src="~/js/dashboard.js"></script>
 </body>
 </html>
