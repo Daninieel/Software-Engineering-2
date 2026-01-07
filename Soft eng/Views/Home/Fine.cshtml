@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/fine.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/report-modal.css">
+    <link rel="stylesheet" href="~/css/chatbot.css">
 </head>
 <body>
 
@@ -99,7 +101,7 @@
 
             <!-- ACTION BUTTONS -->
             <div class="button-area">
-                <button class="btn btn-green">Generate Report</button>
+                <button class="btn btn-green" id="openReportModal">Generate Report</button>
                 <button class="btn btn-red">Edit Fine</button>
             </div>
 
@@ -109,6 +111,26 @@
         </main>
 
     </div>
+
+    <!-- Report Format Selection Modal -->
+    <div id="reportModal" class="report-modal">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="~/js/dashboard.js"></script>
+    <script src="~/js/reportGeneration.js"></script>
+    <script src="~/js/chatbot.js"></script>
 </body>
 </html>

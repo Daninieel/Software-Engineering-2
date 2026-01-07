@@ -6,16 +6,26 @@ using System.Data;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Mail;
+using System.Text;
+using System.Text.Json;
 
 namespace Soft_eng.Controllers
 {
+    public class ChatRequest
+    {
+        public string Message { get; set; }
+        public List<object> History { get; set; }
+    }
+
     public class HomeController : Controller
     {
         private readonly MySqlConnection _connection;
+        private readonly IConfiguration _configuration;
 
-        public HomeController(MySqlConnection connection)
+        public HomeController(MySqlConnection connection, IConfiguration configuration)
         {
             _connection = connection;
+            _configuration = configuration;
         }
 
         public IActionResult Login() => View();
@@ -28,22 +38,44 @@ namespace Soft_eng.Controllers
         public IActionResult RequestedBooks() => View();
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
-
         public IActionResult LoginAdmin() => View("Login.admin");
         public IActionResult RegisterAdmin() => View("Register.admin");
         public IActionResult InventoryAdmin() => View("InventoryAdmin");
         public IActionResult AddBooksAdmin() => View("AddBooksAdmin");
         public IActionResult ForgotPasswordAdmin() => View("ForgotPasswordAdmin");
+        public IActionResult RequestedBooksAdmin() => View("RequestedBooksAdmin");
+        public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
+        public IActionResult FineAdmin() => View("FineAdmin");
+        public IActionResult AdminDashboardAdmin() => View("AdminDashboard");
+
         public IActionResult ResetPasswordAdmin(string token, string email)
         {
             ViewBag.Token = token;
             ViewBag.Email = email;
             return View("ResetPasswordAdmin");
         }
-        public IActionResult RequestedBooksAdmin() => View("RequestedBooksAdmin");
-        public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
-        public IActionResult FineAdmin() => View("FineAdmin");
-        public IActionResult AdminDashboardAdmin() => View("AdminDashboard");
+
+        [HttpPost]
+        public async Task<IActionResult> Chat([FromBody] ChatRequest request)
+        {
+            var apiKey = _configuration["Gemini:ApiKey"];
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
+
+            var payload = new
+            {
+                contents = request.History.Append(new
+                {
+                    role = "user",
+                    parts = new[] { new { text = "Context: You are the Saint Isidore Academy Library Assistant. " + request.Message } }
+                })
+            };
+
+            using var client = new HttpClient();
+            var response = await client.PostAsync(url, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var result = await response.Content.ReadAsStringAsync();
+
+            return Content(result, "application/json");
+        }
 
         [HttpPost]
         public async Task<IActionResult> Register(string fullname, string email, string password, string confirmPassword)
@@ -101,7 +133,6 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim();
 
-            // Hardcoded admin login
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase)
                 && password == "adminsia123")
             {
@@ -118,7 +149,6 @@ namespace Soft_eng.Controllers
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
-                // ? Email not found OR password incorrect
                 if (!await reader.ReadAsync() ||
                     !BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
                 {
@@ -218,7 +248,6 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> ResetPassword(string email, string newPassword, string confirmPassword, string token)
         {
-            // 1. Validation: Check if passwords match
             if (newPassword != confirmPassword)
             {
                 ViewBag.Message = "Passwords do not match.";
@@ -231,10 +260,8 @@ namespace Soft_eng.Controllers
             {
                 await _connection.OpenAsync();
 
-                // 2. Security: Hash the new password before saving
                 string hashed = BCrypt.Net.BCrypt.HashPassword(newPassword);
 
-                // 3. Database Update: Use parameterized query to prevent SQL injection
                 const string updateSql = "UPDATE Register SET Password = @p, ConfirmPassword = @p WHERE Email = @e";
 
                 using var cmd = new MySqlCommand(updateSql, _connection);
@@ -245,7 +272,6 @@ namespace Soft_eng.Controllers
 
                 if (rowsAffected > 0)
                 {
-         
                     return RedirectToAction("Login");
                 }
                 else
@@ -265,8 +291,190 @@ namespace Soft_eng.Controllers
             }
             finally
             {
-                await _connection.CloseAsync(); 
+                await _connection.CloseAsync();
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GenerateReport(string reportType, string format)
+        {
+            try
+            {
+                var data = await GetReportData(reportType);
+
+                if (format.ToLower() == "csv")
+                {
+                    return GenerateCSV(data, reportType);
+                }
+                else if (format.ToLower() == "pdf")
+                {
+                    return GeneratePDF(data, reportType);
+                }
+
+                return BadRequest("Invalid format");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error generating report: {ex.Message}");
+            }
+        }
+
+        private async Task<DataTable> GetReportData(string reportType)
+        {
+            DataTable dt = new DataTable();
+
+            try
+            {
+                await _connection.OpenAsync();
+                string query = reportType switch
+                {
+                    "borrowedbooks" => "SELECT LoanID, BorrowerName, BookTitle, DueDate, DateReturned, OverdueStatus FROM Loans ORDER BY LoanID DESC",
+                    "fine" => "SELECT FineID, LoanID, BorrowerName, BookTitle, PaymentStatus, FineAmount FROM Fines ORDER BY FineID DESC",
+                    "requestedbooks" => "SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status FROM Requests ORDER BY RequestID DESC",
+                    _ => throw new ArgumentException("Invalid report type")
+                };
+
+                using var cmd = new MySqlCommand(query, _connection);
+                using var adapter = new MySqlDataAdapter(cmd);
+                adapter.Fill(dt);
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return dt;
+        }
+
+        private IActionResult GenerateCSV(DataTable data, string reportType)
+        {
+            StringBuilder csv = new StringBuilder();
+            csv.Append('\uFEFF');
+            csv.AppendLine($"Saint Isidore Academy Library - {GetReportTitle(reportType)} Report");
+            csv.AppendLine($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            csv.AppendLine();
+
+            List<string> headers = new List<string>();
+            for (int i = 0; i < data.Columns.Count; i++)
+            {
+                headers.Add(EscapeCSV(data.Columns[i].ColumnName));
+            }
+            csv.AppendLine(string.Join(",", headers));
+
+            foreach (DataRow row in data.Rows)
+            {
+                List<string> values = new List<string>();
+                for (int i = 0; i < data.Columns.Count; i++)
+                {
+                    var cellValue = row[i];
+                    string escapedValue = EscapeCSV(cellValue?.ToString() ?? "");
+                    values.Add(escapedValue);
+                }
+                csv.AppendLine(string.Join(",", values));
+            }
+
+            csv.AppendLine();
+            csv.AppendLine($"Total Records: {data.Rows.Count}");
+
+            string filename = $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            byte[] bytes = Encoding.UTF8.GetBytes(csv.ToString());
+
+            return File(bytes, "text/csv; charset=utf-8", filename);
+        }
+
+        private string GetReportTitle(string reportType)
+        {
+            return reportType switch
+            {
+                "borrowedbooks" => "Borrowed Books",
+                "fine" => "Fine",
+                "requestedbooks" => "Requested Books",
+                _ => "Report"
+            };
+        }
+
+        private string EscapeCSV(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
+            {
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            }
+
+            return value;
+        }
+
+        private IActionResult GeneratePDF(DataTable data, string reportType)
+        {
+            StringBuilder html = new StringBuilder();
+            html.Append(@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #c0392b; padding-bottom: 15px; }
+        .header h1 { color: #c0392b; margin: 5px 0; }
+        .header p { margin: 5px 0; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #c0392b; color: white; padding: 12px; text-align: left; border: 1px solid #999; font-weight: bold; }
+        td { padding: 10px; border: 1px solid #ddd; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; }
+        .summary { margin-top: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #c0392b; }
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <h1>Saint Isidore Academy Library</h1>
+        <h2>" + GetReportTitle(reportType) + @" Report</h2>
+        <p>Generated on: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + @"</p>
+    </div>
+    <table>
+        <thead>
+            <tr>");
+
+            foreach (DataColumn col in data.Columns)
+            {
+                html.Append($"<th>{EscapeHTML(col.ColumnName)}</th>");
+            }
+            html.Append(@"</tr>
+        </thead>
+        <tbody>");
+
+            foreach (DataRow row in data.Rows)
+            {
+                html.Append("<tr>");
+                foreach (var cell in row.ItemArray)
+                {
+                    html.Append($"<td>{EscapeHTML(cell?.ToString() ?? "")}</td>");
+                }
+                html.Append("</tr>");
+            }
+
+            html.Append(@"</tbody>
+    </table>
+    <div class='summary'><strong>Summary:</strong><br>Total Records: " + data.Rows.Count + @"</div>
+    <div class='footer'><p>&copy; " + DateTime.Now.Year + @" Saint Isidore Academy Library. All rights reserved.</p></div>
+</body>
+</html>");
+
+            string filename = $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+            byte[] bytes = Encoding.UTF8.GetBytes(html.ToString());
+
+            return File(bytes, "text/html; charset=utf-8", filename);
+        }
+
+        private string EscapeHTML(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            return value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
         }
 
         private async Task SendEmail(string userEmail, string link)

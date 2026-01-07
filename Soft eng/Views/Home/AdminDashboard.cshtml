@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/dashboard.admin.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/chatbot.css">
 </head>
 <body>
 
@@ -35,7 +36,7 @@
                 </a>
             </form>
             <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+                <img src="~/images/school_logo.jpg" alt="Logo">
             </div>
         </div>
     </header>
@@ -50,7 +51,7 @@
                     <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
                     <li><a asp-action="FineAdmin">Fine</a></li>
-                    <li><a href="#">AI Chatbot</a></li>
+                    <li><a asp-action="Chatbot">AI Chatbot</a></li>
                 </ul>
             </nav>
         </aside>
@@ -172,6 +173,7 @@
 
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/chatbot.js"></script>
 
 </body>
 </html>
