@@ -52,16 +52,6 @@
                 <input type="text" id="searchInput" placeholder="Search by Title, Author, etc.">
                 <div class="filter-dropdown">
                     <button type="button" class="btn-filter filter-btn">Filter</button>
-                    <div class="filter-options">
-                        <div class="filter-option" data-filter="all">All Books</div>
-                        <div class="filter-option" data-filter="status" data-value="Available">Available</div>
-                        <div class="filter-option" data-filter="status" data-value="Damaged">Damaged</div>
-                        <div class="filter-option" data-filter="status" data-value="Missing">Missing</div>
-                        <hr>
-                        <div class="filter-option" data-filter="sort" data-value="title">Sort by Title</div>
-                        <div class="filter-option" data-filter="sort" data-value="author">Sort by Author</div>
-                        <div class="filter-option" data-filter="sort" data-value="shelf">Sort by Shelf Location</div>
-                    </div>
                 </div>
             </div>
 
@@ -81,14 +71,14 @@
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            <tr class="book-row" data-status="@item.Availability">
+                            <tr class="book-row">
                                 <td><input type="radio" name="selectedBook" value="@item.BookID"></td>
                                 <td>@item.BookID</td>
                                 <td class="title-cell">@item.BookTitle</td>
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" class="btn-see-more">See more</a></td>
+                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">See more</a></td>
                             </tr>
                         }
                     </tbody>
@@ -97,10 +87,11 @@
 
             <div class="button-area">
                 <a asp-action="AddBooks" class="btn btn-blue">Add Books</a>
-                <button type="button" id="editBtn" class="btn btn-red" data-admin="false">Edit Book</button>
+                <button type="button" id="editBtn" class="btn btn-red">Edit Book</button>
             </div>
         </main>
     </div>
+
     <script src="~/js/inventory.js"></script>
     <script src="~/js/chatbot.js"></script>
 </body>

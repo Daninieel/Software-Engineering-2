@@ -124,10 +124,9 @@ input[type="email"],
         background-color: #329a52;
     }
 
-/* password toggle inside input */
 .password-wrap { position: relative; }
 .password-wrap input[type="password"], .password-wrap input[type="text"] {
-    padding-right: 44px; /* space for the icon */
+    padding-right: 44px; 
 }
 .password-wrap .toggle-password {
     position: absolute;

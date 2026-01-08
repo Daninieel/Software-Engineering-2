@@ -69,7 +69,7 @@
     if (editBtn) {
         editBtn.addEventListener('click', function () {
             const selected = document.querySelector('input[name="selectedBook"]:checked');
-            const isAdmin = window.location.pathname.toLowerCase().includes("admin");
+            const isAdmin = !!document.getElementById('adminEditBtn') || window.location.pathname.toLowerCase().includes("admin");
 
             if (selected) {
                 window.location.href = `/Home/EditBook?id=${selected.value}&fromAdmin=${isAdmin}`;

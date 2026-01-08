@@ -103,7 +103,6 @@ body {
     margin-bottom: 30px;
 }
 
-/* Row 1: Total Books Box - Full width */
 .row-1 {
     display: flex;
     width: 100%;
@@ -130,7 +129,6 @@ body {
     color: #333;
 }
 
-/* Row 2: 3 boxes for Borrowed Books stats - Full width containers */
 .row-2 {
     display: flex;
     width: 100%;
@@ -163,14 +161,12 @@ body {
     color: #333;
 }
 
-/* Row 3: 3 boxes for Missing Books stats - Full width containers */
 .row-3 {
     display: flex;
     width: 100%;
     gap: 25px;
 }
 
-/* Row 4: 2 column box - Decreased height, same width */
 .row-4 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -182,7 +178,7 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    height: 250px; /* Reduced height */
+    height: 250px; 
     display: flex;
     flex-direction: column;
 }

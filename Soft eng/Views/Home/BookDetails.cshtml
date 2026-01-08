@@ -2,8 +2,6 @@
 @{
     ViewBag.Title = "Book Details";
     Layout = null;
-    // Check if the current user is an admin based on the sidebar logic in your project
-    // This allows the "Back" button to go to the correct inventory (Admin vs Librarian)
     var backAction = Model.BookID > 0 ? "Inventory" : "InventoryAdmin";
 }
 <!DOCTYPE html>

@@ -88,7 +88,7 @@
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" class="btn-see-more">See more</a></td>
+                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="true" class="btn-see-more">See more</a></td>
                             </tr>
                         }
                     </tbody>
@@ -101,6 +101,7 @@
             </div>
         </main>
     </div>
+
     <script src="~/js/inventory.js"></script>
     <script src="~/js/chatbot.js"></script>
 </body>

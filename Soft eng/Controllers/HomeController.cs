@@ -586,7 +586,6 @@ namespace Soft_eng.Controllers
             return View(book);
         }
 
-        // POST: Save the updated details back to the database
         [HttpPost]
         public async Task<IActionResult> EditBook(Inventory book, bool isAdmin = false)
         {

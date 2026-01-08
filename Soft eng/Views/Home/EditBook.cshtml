@@ -14,7 +14,7 @@
         <div class="form-card">
             <form asp-action="EditBook" method="post">
                 <input type="hidden" name="BookID" value="@Model.BookID" />
-                <input type="hidden" name="isAdmin" value="@ViewBag.FromAdmin.ToString().ToLower()" />
+                <input type="hidden" name="isAdmin" value="@((ViewBag.FromAdmin ?? false).ToString().ToLower())" />
 
                 <div class="form-group full-width">
                     <label>Book Title</label>

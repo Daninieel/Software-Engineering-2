@@ -24,7 +24,6 @@ namespace Soft_eng.Models
         [Compare("Password", ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; }
 
-        // Added Role property to distinguish between Librarian and School Admin
         public string Role { get; set; } = "Librarian";
     }
 }

@@ -9,7 +9,6 @@ body {
     background-color: #f0f0f0;
 }
 
-/* HEADER */
 .top-header {
     background-color: #c0392b;
     color: white;
@@ -58,6 +57,7 @@ body {
         display: block;
     }
 }
+
 .user-area {
     display: flex;
     align-items: center;
@@ -91,13 +91,11 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* LAYOUT */
 .main-layout {
     display: flex;
     min-height: calc(100vh - 100px);
 }
 
-/* SIDEBAR */
 .sidebar {
     width: 280px;
     min-width: 280px;
@@ -145,7 +143,6 @@ body {
                 white-space: nowrap;
             }
 
-/* CONTENT */
 .content-area {
     flex: 1;
     padding: 40px;
@@ -157,7 +154,6 @@ body {
         margin-bottom: 30px;
     }
 
-/* SEARCH */
 .search-filter {
     display: flex;
     gap: 20px;
@@ -181,17 +177,15 @@ body {
     cursor: pointer;
 }
 
-/* TABLE */
-
 .table-card {
     background: white;
     width: 100%;
     max-width: 1100px;
-    height: 570px; /* controls square size */
+    height: 570px;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     padding: 25px;
-    margin: 30px auto; /* makes white square table responsive to zoom ins and outs */
+    margin: 30px auto;
     margin-top: 30px;
     display: flex;
     flex-direction: column;
@@ -214,7 +208,6 @@ td {
     border-bottom: 1px solid #ddd;
 }
 
-/* BUTTONS */
 .button-area {
     display: flex;
     justify-content: center;
@@ -247,7 +240,3 @@ td {
 .btn-red {
     background: #e74c3c;
 }
-
-
-
-

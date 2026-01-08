@@ -22,7 +22,6 @@
 
         <form id="loginForm" asp-action="Login" asp-controller="Home" method="post">
 
-            <!-- ?? ERROR MESSAGE -->
             @if (ViewBag.ErrorMessage != null)
             {
                 <div class="login-error">
@@ -82,6 +81,6 @@
     </div>
 
     <script src="~/js/login.admin.js"></script>
-    <script src="~/js/passwordToggle.admin.js"></script>
+    <script src="~/js/passwordToggle.js"></script>
 </body>
 </html>

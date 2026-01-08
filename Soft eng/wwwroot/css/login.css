@@ -40,9 +40,7 @@ body {
         object-fit: contain;
     }
 
-/* ===============================
-   FORM
-================================= */
+
 .form-group {
     margin-bottom: 20px;
     text-align: left;
@@ -71,9 +69,6 @@ input:focus {
     outline: 2px solid #4CAF50;
 }
 
-/* ===============================
-   ?? LOGIN ERROR MESSAGE
-================================= */
 .login-error {
     background-color: #ffe5e5;
     color: #b30000;
@@ -85,17 +80,11 @@ input:focus {
     font-weight: 600;
 }
 
-/* ===============================
-   ?? INPUT ERROR STATE
-================================= */
 .input-error {
     border: 2px solid #b30000 !important;
     background-color: #fff5f5;
 }
 
-/* ===============================
-   LINKS
-================================= */
 .forgot-password {
     display: block;
     text-align: left;
@@ -109,9 +98,6 @@ input:focus {
         text-decoration: underline;
     }
 
-/* ===============================
-   BUTTON
-================================= */
 .btn-login {
     background-color: #3BB161;
     color: white;
@@ -131,9 +117,6 @@ input:focus {
         background-color: #329a52;
     }
 
-/* ===============================
-   FOOTER
-================================= */
 .footer-text {
     margin-top: 20px;
     color: white;
@@ -150,16 +133,13 @@ input:focus {
             text-decoration: underline;
         }
 
-/* ===============================
-   PASSWORD TOGGLE
-================================= */
 .password-wrap {
     position: relative;
 }
 
     .password-wrap input[type="password"],
     .password-wrap input[type="text"] {
-        padding-right: 44px; /* space for the icon */
+        padding-right: 44px;
     }
 
     .password-wrap .toggle-password {
@@ -184,10 +164,6 @@ input:focus {
         .password-wrap .toggle-password svg {
             color: #444;
         }
-
-/* ===============================
-   RESPONSIVE
-================================= */
 @media screen and (max-width: 480px) {
     .login-card {
         padding: 30px 20px;
