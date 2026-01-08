@@ -1,5 +1,4 @@
 ﻿@model List<Soft_eng.Models.Inventory>
-
 @{
     ViewBag.Title = "Inventory";
     Layout = null;
@@ -17,24 +16,18 @@
     <link rel="stylesheet" href="~/css/chatbot.css">
 </head>
 <body>
-
     <header class="top-header">
         <div class="logo-area">
-            <div class="logo-circle">
-                <img src="~/images/school_logo.jpg" alt="SIA Logo">
-            </div>
+            <div class="logo-circle"><img src="~/images/school_logo.jpg" alt="SIA Logo"></div>
             <span class="school-name">SAINT ISIDORE ACADEMY</span>
         </div>
-
         <div class="user-area">
             <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
                 <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
                     <span class="logout-text">Log Out</span>
                 </a>
             </form>
-            <div class="user-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
-            </div>
+            <div class="user-avatar"><img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar"></div>
         </div>
     </header>
 
@@ -55,21 +48,25 @@
 
         <main class="content-area">
             <h2>Inventory</h2>
-
             <div class="search-filter">
                 <input type="text" id="searchInput" placeholder="Search by Title, Author, etc.">
                 <div class="filter-dropdown">
                     <button type="button" class="btn-filter filter-btn">Filter</button>
                     <div class="filter-options">
-                        <div class="filter-option">Available</div>
-                        <div class="filter-option">Borrowed</div>
-                        <div class="filter-option">Damaged</div>
+                        <div class="filter-option" data-filter="all">All Books</div>
+                        <div class="filter-option" data-filter="status" data-value="Available">Available</div>
+                        <div class="filter-option" data-filter="status" data-value="Damaged">Damaged</div>
+                        <div class="filter-option" data-filter="status" data-value="Missing">Missing</div>
+                        <hr>
+                        <div class="filter-option" data-filter="sort" data-value="title">Sort by Title</div>
+                        <div class="filter-option" data-filter="sort" data-value="author">Sort by Author</div>
+                        <div class="filter-option" data-filter="sort" data-value="shelf">Sort by Shelf Location</div>
                     </div>
                 </div>
             </div>
 
             <div class="table-card">
-                <table>
+                <table id="inventoryTable">
                     <thead>
                         <tr>
                             <th>Select</th>
@@ -82,32 +79,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @if (Model != null && Model.Any())
+                        @foreach (var item in Model)
                         {
-                            @foreach (var item in Model)
-                            {
-                                <tr>
-                                    <td>
-                                        <input type="radio" name="selectedBook" value="@item.BookID" class="book-radio">
-                                    </td>
-                                    <td>@item.BookID</td>
-                                    <td>@item.BookTitle</td>
-                                    <td>@item.Author</td>
-                                    <td>@item.ShelfLocation</td>
-                                    <td>@item.Availability</td>
-                                    <td>
-                                        <a asp-action="BookDetails"
-                                           asp-route-id="@item.BookID"
-                                           asp-route-fromAdmin="false"
-                                           class="btn-see-more">See more</a>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="7" style="text-align:center;">No books found in inventory.</td>
+                            <tr class="book-row" data-status="@item.Availability">
+                                <td><input type="radio" name="selectedBook" value="@item.BookID"></td>
+                                <td>@item.BookID</td>
+                                <td class="title-cell">@item.BookTitle</td>
+                                <td class="author-cell">@item.Author</td>
+                                <td class="shelf-cell">@item.ShelfLocation</td>
+                                <td class="status-cell">@item.Availability</td>
+                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" class="btn-see-more">See more</a></td>
                             </tr>
                         }
                     </tbody>
@@ -116,24 +97,11 @@
 
             <div class="button-area">
                 <a asp-action="AddBooks" class="btn btn-blue">Add Books</a>
-                <button type="button" id="editBtn" class="btn btn-red">Edit Book</button>
+                <button type="button" id="editBtn" class="btn btn-red" data-admin="false">Edit Book</button>
             </div>
         </main>
     </div>
-
-    <script>
-        document.getElementById('editBtn').addEventListener('click', function() {
-            const selected = document.querySelector('input[name="selectedBook"]:checked');
-            if (selected) {
-                const bookId = selected.value;
-                window.location.href = `/Home/EditBook?id=${bookId}&fromAdmin=false`;
-            } else {
-                alert("Please select a book to edit.");
-            }
-        });
-    </script>
-
-    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/inventory.js"></script>
     <script src="~/js/chatbot.js"></script>
 </body>
 </html>
