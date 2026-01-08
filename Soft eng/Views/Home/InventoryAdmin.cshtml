@@ -1,3 +1,4 @@
+@model List<Soft_eng.Models.Inventory>
 @{
     ViewBag.Title = "Inventory (Admin)";
     Layout = null;
@@ -16,7 +17,6 @@
 </head>
 <body>
 
-    <!-- HEADER (admin style) -->
     <header class="top-header admin">
         <div class="logo-area">
             <div class="logo-circle">
@@ -52,13 +52,11 @@
             </nav>
         </aside>
 
-        <!-- CONTENT -->
         <main class="content-area">
             <h2>Admin Inventory</h2>
 
-            <!-- SEARCH + FILTER -->
             <div class="search-filter">
-                <input type="text" placeholder="Search by Title, Borrower, etc.">
+                <input type="text" id="adminSearchInput" placeholder="Search by Title, Borrower, etc.">
                 <div class="filter-dropdown">
                     <button type="button" class="btn-filter filter-btn">Filter</button>
                     <div class="filter-options">
@@ -77,35 +75,71 @@
                 </div>
             </div>
 
-            <!-- TABLE -->
             <div class="table-card">
                 <table>
                     <thead>
                         <tr>
+                            <th>Select</th>
                             <th>Book ID</th>
                             <th>Title</th>
                             <th>Author</th>
                             <th>Shelf Location</th>
                             <th>Availability</th>
                             <th>Date Received</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- DATA WILL GO HERE LATER -->
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="radio" name="selectedBook" value="@item.BookID">
+                                    </td>
+                                    <td>@item.BookID</td>
+                                    <td>@item.BookTitle</td>
+                                    <td>@item.Author</td>
+                                    <td>@item.ShelfLocation</td>
+                                    <td>@item.Availability</td>
+                                    <td>@item.DateReceived?.ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        <a asp-action="BookDetails"
+                                           asp-route-id="@item.BookID"
+                                           asp-route-fromAdmin="true"
+                                           class="btn-see-more">See more</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" style="text-align:center;">No books found in inventory.</td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
 
-            <!-- ACTION BUTTONS -->
             <div class="button-area">
-                <a asp-action="AddBooksAdmin" class="btn btn-blue">
-                    Add Books
-                </a>
-                <button class="btn btn-red">Edit Book</button>
+                <a asp-action="AddBooksAdmin" class="btn btn-blue">Add Books</a>
+                <button type="button" id="adminEditBtn" class="btn btn-red">Edit Book</button>
             </div>
         </main>
-
     </div>
+
+    <script>
+        document.getElementById('adminEditBtn').addEventListener('click', function() {
+            const selected = document.querySelector('input[name="selectedBook"]:checked');
+            if (selected) {
+                window.location.href = `/Home/EditBook?id=${selected.value}&fromAdmin=true`;
+            } else {
+                alert("Please select a book to edit.");
+            }
+        });
+    </script>
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/chatbot.js"></script>
 </body>

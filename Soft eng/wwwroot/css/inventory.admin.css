@@ -248,3 +248,40 @@ td {
 .btn-red {
     background: #e74c3c;
 }
+
+/* SEE MORE BUTTON IN TABLE */
+.btn-see-more {
+    display: inline-block;
+    padding: 8px 20px;
+    background-color: #ddd; /* Light grey to match your "Filter" button */
+    color: #333;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+    .btn-see-more:hover {
+        background-color: #5dade2; /* Changes to blue on hover to match your primary theme */
+        color: white;
+        box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
+        transform: translateY(-1px);
+    }
+
+/* READ-ONLY INPUT STYLING (For the BookDetails page) */
+input[readonly],
+textarea[readonly] {
+    background-color: #f9f9f9 !important; /* Slightly darker background to show it's disabled */
+    border: 1px solid #ddd !important;
+    color: #666 !important;
+    cursor: default;
+    outline: none;
+}
+
+/* Ensure table cells align the button correctly */
+td:last-child {
+    text-align: center;
+}

@@ -1,5 +1,5 @@
 @{
-    ViewBag.Title = "AddBooks";
+    ViewBag.Title = "AddBooks Admin";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System - Add Book</title>
+    <title>Library Management System - Add Book (Admin)</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/addbooks.css">
@@ -54,32 +54,33 @@
             <h2>Add Book</h2>
 
             <div class="form-card">
-                <form id="addBookForm">
+                <form asp-action="AddBooks" method="post" id="addBookForm">
+                    <input type="hidden" name="isAdmin" value="true" />
 
                     <div class="form-group full-width">
                         <label>Book Title</label>
-                        <input type="text" name="title">
+                        <input type="text" name="BookTitle" required>
                     </div>
 
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Author</label>
-                            <input type="text" name="author">
+                            <input type="text" name="Author">
                         </div>
                         <div class="form-group">
                             <label>Pages</label>
-                            <input type="number" name="pages" id="pagesInput" min="1">
+                            <input type="number" name="Pages" id="pagesInput" min="1">
                         </div>
                     </div>
 
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Edition</label>
-                            <input type="text" name="edition" placeholder="1st/2021">
+                            <input type="text" name="Edition" placeholder="1st/2021">
                         </div>
                         <div class="form-group">
                             <label>Year</label>
-                            <input type="text" name="year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                            <input type="text" name="Year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
                         </div>
                     </div>
 
@@ -87,17 +88,17 @@
                         <div class="left-col">
                             <div class="form-group">
                                 <label>ISBN</label>
-                                <input type="text" name="isbn">
+                                <input type="text" name="ISBN">
                             </div>
                             <div class="form-group" style="margin-top: 20px;">
                                 <label>Publisher</label>
-                                <input type="text" name="publisher">
+                                <input type="text" name="Publisher">
                             </div>
                         </div>
                         <div class="right-col">
                             <div class="form-group h-100">
                                 <label>Remarks</label>
-                                <textarea name="remarks"></textarea>
+                                <textarea name="Remarks"></textarea>
                             </div>
                         </div>
                     </div>
@@ -106,7 +107,7 @@
                         <div class="form-group">
                             <label>Source Type</label>
                             <div class="select-wrapper">
-                                <select name="sourceType">
+                                <select name="SourceType">
                                     <option value="" disabled selected>Select</option>
                                     <option value="donation">Donation</option>
                                     <option value="purchased">Purchased</option>
@@ -115,7 +116,7 @@
                         </div>
                         <div class="form-group">
                             <label>Date Received</label>
-                            <input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                            <input type="text" name="DateReceived" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
                         </div>
                     </div>
 
@@ -123,7 +124,7 @@
                         <div class="form-group">
                             <label>Book Status</label>
                             <div class="select-wrapper">
-                                <select name="status">
+                                <select name="BookStatus">
                                     <option value="" disabled selected>Select</option>
                                     <option value="available">Available</option>
                                     <option value="damaged">Damaged</option>
@@ -132,13 +133,13 @@
                         </div>
                         <div class="form-group">
                             <label>Total Copies</label>
-                            <input type="number" name="copies" min="1">
+                            <input type="number" name="TotalCopies" min="1">
                         </div>
                     </div>
 
                     <div class="form-group full-width">
                         <label>Shelf Location</label>
-                        <input type="text" name="shelf">
+                        <input type="text" name="ShelfLocation">
                     </div>
 
                     <div class="button-area">

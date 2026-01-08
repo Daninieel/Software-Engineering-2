@@ -30,7 +30,6 @@ namespace Soft_eng.Controllers
 
         public IActionResult Login() => View();
         public IActionResult Register() => View();
-        public IActionResult Inventory() => View();
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
         public IActionResult Dashboard() => View();
@@ -40,7 +39,10 @@ namespace Soft_eng.Controllers
         public IActionResult Fine() => View();
         public IActionResult LoginAdmin() => View("Login.admin");
         public IActionResult RegisterAdmin() => View("Register.admin");
-        public IActionResult InventoryAdmin() => View("InventoryAdmin");
+        public IActionResult InventoryAdmin()
+        {
+            return RedirectToAction("Inventory", new { fromAdmin = true });
+        }
         public IActionResult AddBooksAdmin() => View("AddBooksAdmin");
         public IActionResult ForgotPasswordAdmin() => View("ForgotPasswordAdmin");
         public IActionResult RequestedBooksAdmin() => View("RequestedBooksAdmin");
@@ -346,6 +348,7 @@ namespace Soft_eng.Controllers
             return dt;
         }
 
+
         private IActionResult GenerateCSV(DataTable data, string reportType)
         {
             StringBuilder csv = new StringBuilder();
@@ -517,5 +520,181 @@ namespace Soft_eng.Controllers
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error() => View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+
+        public async Task<IActionResult> Inventory(bool fromAdmin = false)
+        {
+            List<Inventory> books = new List<Inventory>();
+            try
+            {
+                await _connection.OpenAsync();
+                const string sql = "SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived FROM Inventory ORDER BY BookID DESC";
+                using var cmd = new MySqlCommand(sql, _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    books.Add(new Inventory
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability"),
+                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived")
+                    });
+                }
+            }
+            finally { await _connection.CloseAsync(); }
+
+            ViewBag.FromAdmin = fromAdmin;
+            return fromAdmin ? View("InventoryAdmin", books) : View(books);
+        }
+
+        public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
+        {
+            Inventory book = null;
+            try
+            {
+                await _connection.OpenAsync();
+                using var cmd = new MySqlCommand("SELECT * FROM Inventory WHERE BookID = @id", _connection);
+                cmd.Parameters.AddWithValue("@id", id);
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    book = new Inventory
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        ISBN = reader.GetString("ISBN"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"),
+                        Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"),
+                        Year = reader.IsDBNull("Year") ? (DateTime?)null : reader.GetDateTime("Year"),
+                        Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"),
+                        Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"),
+                        SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"),
+                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived"),
+                        BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"),
+                        TotalCopies = reader.GetInt32("TotalCopies"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability")
+                    };
+                }
+            }
+            finally { await _connection.CloseAsync(); }
+
+            ViewBag.FromAdmin = fromAdmin;
+            return View(book);
+        }
+
+        // POST: Save the updated details back to the database
+        [HttpPost]
+        public async Task<IActionResult> EditBook(Inventory book, bool isAdmin = false)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+                const string sql = @"UPDATE Inventory SET 
+            ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, 
+            Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, 
+            Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@copies, BookStatus=@status 
+            WHERE BookID=@id";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@id", book.BookID);
+                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                cmd.Parameters.AddWithValue("@source", book.SourceType);
+                cmd.Parameters.AddWithValue("@title", book.BookTitle);
+                cmd.Parameters.AddWithValue("@received", book.DateReceived);
+                cmd.Parameters.AddWithValue("@author", book.Author);
+                cmd.Parameters.AddWithValue("@pages", book.Pages);
+                cmd.Parameters.AddWithValue("@edition", book.Edition);
+                cmd.Parameters.AddWithValue("@pub", book.Publisher);
+                cmd.Parameters.AddWithValue("@year", book.Year);
+                cmd.Parameters.AddWithValue("@rem", book.Remarks);
+                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation);
+                cmd.Parameters.AddWithValue("@copies", book.TotalCopies);
+                cmd.Parameters.AddWithValue("@status", book.BookStatus);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                if (isAdmin) return RedirectToAction("InventoryAdmin");
+                return RedirectToAction("Inventory");
+            }
+            finally { await _connection.CloseAsync(); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddBooks(Inventory book, bool isAdmin = false)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+                const string sql = @"INSERT INTO Inventory 
+                    (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) 
+                    VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                cmd.Parameters.AddWithValue("@source", book.SourceType);
+                cmd.Parameters.AddWithValue("@title", book.BookTitle);
+                cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
+                cmd.Parameters.AddWithValue("@author", book.Author);
+                cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                cmd.Parameters.AddWithValue("@edition", book.Edition);
+                cmd.Parameters.AddWithValue("@pub", book.Publisher);
+                cmd.Parameters.AddWithValue("@year", book.Year);
+                cmd.Parameters.AddWithValue("@rem", book.Remarks);
+                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation);
+                cmd.Parameters.AddWithValue("@avail", "Available");
+                cmd.Parameters.AddWithValue("@copies", book.TotalCopies);
+                cmd.Parameters.AddWithValue("@status", book.BookStatus);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                if (isAdmin)
+                {
+                    return RedirectToAction("InventoryAdmin");
+                }
+                return RedirectToAction("Inventory");
+            }
+            finally { await _connection.CloseAsync(); }
+        }
+
+        public async Task<IActionResult> BookDetails(int id, bool fromAdmin = false)
+        {
+            Inventory book = null;
+            try
+            {
+                await _connection.OpenAsync();
+                using var cmd = new MySqlCommand("SELECT * FROM Inventory WHERE BookID = @id", _connection);
+                cmd.Parameters.AddWithValue("@id", id);
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    book = new Inventory
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        ISBN = reader.GetString("ISBN"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"),
+                        Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"),
+                        Year = reader.IsDBNull("Year") ? (DateTime?)null : reader.GetDateTime("Year"),
+                        Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"),
+                        Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"),
+                        SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"),
+                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived"),
+                        BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"),
+                        TotalCopies = reader.GetInt32("TotalCopies"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability")
+                    };
+                }
+            }
+            finally { await _connection.CloseAsync(); }
+
+            ViewBag.FromAdmin = fromAdmin;
+            return View(book);
+        }
     }
 }
