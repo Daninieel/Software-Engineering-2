@@ -30,10 +30,53 @@ namespace Soft_eng.Controllers
 
         public IActionResult Login() => View();
         public IActionResult Register() => View();
+        public async Task <IActionResult> AdminDashboard()
+        {
+            int totalBooks = 0;
+
+            try
+            {
+                await _connection.OpenAsync();
+
+                const string sql = "SELECT IFNULL(SUM(TotalCopies), 0) FROM Inventory";
+                using var cmd = new MySqlCommand(sql, _connection);
+                totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            ViewBag.TotalBooks = totalBooks;
+            return View();
+        }
+
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
-        public IActionResult Dashboard() => View();
-        public IActionResult AdminDashboard() => View();
+        public async Task<IActionResult> Dashboard()
+        {
+            int totalBooks = 0;
+
+            try
+            {
+                await _connection.OpenAsync();
+
+                const string sql = "SELECT IFNULL(SUM(TotalCopies), 0) FROM Inventory";
+                using var cmd = new MySqlCommand(sql, _connection);
+                totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            ViewBag.TotalBooks = totalBooks;
+            return View();
+        }
+
+
+        
+        
         public IActionResult RequestedBooks() => View();
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
@@ -48,7 +91,6 @@ namespace Soft_eng.Controllers
         public IActionResult RequestedBooksAdmin() => View("RequestedBooksAdmin");
         public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
         public IActionResult FineAdmin() => View("FineAdmin");
-        public IActionResult AdminDashboardAdmin() => View("AdminDashboard");
 
         public IActionResult ResetPasswordAdmin(string token, string email)
         {
@@ -138,7 +180,7 @@ namespace Soft_eng.Controllers
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase)
                 && password == "adminsia123")
             {
-                return RedirectToAction("AdminDashboardAdmin");
+                return RedirectToAction("AdminDashboard");
             }
 
             try
@@ -167,7 +209,7 @@ namespace Soft_eng.Controllers
                 await updateCmd.ExecuteNonQueryAsync();
 
                 return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase)
-                    ? RedirectToAction("AdminDashboardAdmin")
+                    ? RedirectToAction("AdminDashboard")
                     : RedirectToAction("Inventory");
             }
             catch
