@@ -96,7 +96,7 @@
                             {
                                 <tr>
                                     <td>
-                                        <input type="radio" name="selectedBook" value="@item.BookID">
+                                        <input type="radio" name="selectedBook" value="@item.BookID" class="book-radio">
                                     </td>
                                     <td>@item.BookID</td>
                                     <td>@item.BookTitle</td>
@@ -116,7 +116,7 @@
                         else
                         {
                             <tr>
-                                <td colspan="8" style="text-align:center;">No books found in inventory.</td>
+                                <td colspan="8" style="text-align:center; padding: 50px 0;">No books found in inventory.</td>
                             </tr>
                         }
                     </tbody>
@@ -134,7 +134,8 @@
         document.getElementById('adminEditBtn').addEventListener('click', function() {
             const selected = document.querySelector('input[name="selectedBook"]:checked');
             if (selected) {
-                window.location.href = `/Home/EditBook?id=${selected.value}&fromAdmin=true`;
+                const bookId = selected.value;
+                window.location.href = `/Home/EditBook?id=${bookId}&fromAdmin=true`;
             } else {
                 alert("Please select a book to edit.");
             }

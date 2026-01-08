@@ -645,7 +645,7 @@ namespace Soft_eng.Controllers
                 cmd.Parameters.AddWithValue("@year", book.Year);
                 cmd.Parameters.AddWithValue("@rem", book.Remarks);
                 cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation);
-                cmd.Parameters.AddWithValue("@avail", "Available");
+                cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
                 cmd.Parameters.AddWithValue("@copies", book.TotalCopies);
                 cmd.Parameters.AddWithValue("@status", book.BookStatus);
 

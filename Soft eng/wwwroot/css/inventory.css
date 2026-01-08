@@ -190,7 +190,9 @@ body {
     background: white;
     width: 100%;
     max-width: 1100px;
-    height: 570px; /* controls square size */
+    height: auto;
+    min-height: 400px;
+    overflow-x: auto;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     padding: 25px;
