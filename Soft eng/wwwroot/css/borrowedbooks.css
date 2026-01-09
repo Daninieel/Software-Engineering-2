@@ -1,4 +1,4 @@
-* {
+﻿* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -200,12 +200,15 @@ th {
     text-align: center;
     padding: 15px;
     border-bottom: 2px solid #333;
+    font-weight: 600;
+    color: #333;
 }
 
 td {
     text-align: center;
     padding: 15px;
     border-bottom: 1px solid #ddd;
+    vertical-align: middle;
 }
 
 .button-area {
@@ -223,20 +226,737 @@ td {
     border: none;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .btn-blue {
     background: #5dade2;
 }
 
+    .btn-blue:hover {
+        background: #3498db;
+        transform: translateY(-2px);
+    }
+
 .btn-green {
     background: #2ecc71;
 }
+
+    .btn-green:hover {
+        background: #27ae60;
+        transform: translateY(-2px);
+    }
 
 .btn-orange {
     background: #f39c12;
 }
 
+    .btn-orange:hover {
+        background: #d68910;
+        transform: translateY(-2px);
+    }
+
 .btn-red {
     background: #e74c3c;
+}
+
+    .btn-red:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+    }
+
+/* Modal Styles */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+    .modal-header h2 {
+        color: #333;
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+
+    .modal-header p {
+        color: #666;
+        font-size: 16px;
+    }
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+    .form-group label {
+        display: block;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 15px;
+        transition: border 0.3s;
+    }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #5dade2;
+        }
+
+        /* Date input specific styling */
+        .form-group input[type="date"] {
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+        }
+
+            .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+                background: transparent;
+                bottom: 0;
+                color: transparent;
+                cursor: pointer;
+                height: auto;
+                left: 0;
+                position: absolute;
+                right: 0;
+                top: 0;
+                width: auto;
+            }
+
+        .form-group input[type="date"] {
+            position: relative;
+        }
+
+            .form-group input[type="date"]::after {
+                content: "📅";
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                font-size: 18px;
+            }
+
+        /* For Firefox */
+        .form-group input[type="date"] {
+            padding-right: 40px;
+        }
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.btn-cancel {
+    padding: 12px 25px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+    .btn-cancel:hover {
+        background: #c0392b;
+    }
+
+.btn-issue {
+    padding: 12px 25px;
+    background: #5dade2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+    .btn-issue:hover {
+        background: #3498db;
+    }
+
+.close-modal {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+}
+
+    .close-modal:hover {
+        color: #333;
+    }
+
+/* Overdue Status Button */
+.overdue-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    min-width: 70px;
+}
+
+.overdue-yes {
+    background: #e74c3c;
+    color: white;
+}
+
+.overdue-no {
+    background: #2ecc71;
+    color: white;
+}
+
+.overdue-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* See More Button */
+.see-more-btn {
+    padding: 8px 20px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+    .see-more-btn:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+    }
+
+/* Details Modal - Updated */
+.details-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.details-modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.details-modal-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e74c3c;
+}
+
+    .details-modal-header h2 {
+        color: #333;
+        font-size: 28px;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .details-modal-header p {
+        color: #666;
+        font-size: 16px;
+    }
+
+/* Single column form layout */
+.details-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
+.detail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.detail-input,
+.detail-select {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+    width: 100%;
+}
+
+    .detail-input:focus,
+    .detail-select:focus {
+        outline: none;
+        border-color: #3498db;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .detail-input:disabled,
+    .detail-select:disabled {
+        background: #f5f5f5;
+        color: #666;
+        cursor: not-allowed;
+    }
+
+    .detail-input::placeholder {
+        color: #999;
+    }
+
+/* Read-only fields */
+.read-only-field {
+    background: #f8f9fa;
+    color: #333;
+    padding: 12px 15px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    font-size: 14px;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+}
+
+/* Select styling */
+.detail-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 16px;
+    padding-right: 45px;
+    cursor: pointer;
+}
+
+/* Modal footer with buttons on right */
+.details-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.footer-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-back {
+    padding: 12px 30px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+    .btn-back:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+    }
+
+.btn-edit {
+    padding: 12px 30px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+    .btn-edit:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+    }
+
+.btn-save {
+    padding: 12px 30px;
+    background: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+    .btn-save:hover {
+        background: #27ae60;
+        transform: translateY(-2px);
+    }
+
+.close-details-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+    .close-details-modal:hover {
+        color: #333;
+        background-color: #f5f5f5;
+    }
+
+/* Date input styling */
+.detail-input[type="date"] {
+    position: relative;
+    font-family: 'Poppins', sans-serif;
+}
+
+    .detail-input[type="date"]::-webkit-calendar-picker-indicator {
+        background: transparent;
+        bottom: 0;
+        color: transparent;
+        cursor: pointer;
+        height: auto;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: auto;
+    }
+
+    .detail-input[type="date"]::after {
+        content: "📅";
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        font-size: 16px;
+    }
+
+.detail-input[type="date"] {
+    padding-right: 45px;
+}
+
+/* Scrollbar styling */
+.details-modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.details-modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.details-modal-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+    .details-modal-content::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+/* Spacing for new Action column */
+th:nth-child(7), td:nth-child(7) {
+    text-align: center;
+}
+
+/* Table row hover effect */
+tbody tr {
+    transition: all 0.3s ease;
+}
+
+    tbody tr:hover {
+        background-color: #f9f9f9;
+    }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .details-modal-content {
+        padding: 25px;
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .details-modal-header h2 {
+        font-size: 24px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .details-modal-footer {
+        margin-top: 30px;
+    }
+
+    .footer-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-back,
+    .btn-edit,
+    .btn-save {
+        width: 100%;
+    }
+
+    .content-area {
+        padding: 20px;
+    }
+
+    .table-card {
+        padding: 15px;
+        height: auto;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .search-filter {
+        flex-direction: column;
+        align-items: center;
+    }
+
+        .search-filter input {
+            width: 100%;
+        }
+
+    .button-area {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .sidebar {
+        width: 100px;
+        min-width: 100px;
+    }
+
+        .sidebar nav ul li a {
+            font-size: 12px;
+            padding: 10px 0;
+        }
+
+        .sidebar nav ul li.active a {
+            padding: 10px 15px;
+        }
+}
+
+@media (max-width: 480px) {
+    .top-header {
+        padding: 0 20px;
+        height: 80px;
+    }
+
+    .logo-circle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .user-avatar img {
+        width: 45px;
+        height: 45px;
+    }
+
+    .content-area h2 {
+        font-size: 20px;
+    }
+
+    th, td {
+        padding: 10px 5px;
+        font-size: 12px;
+    }
+
+    .overdue-btn, .see-more-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 22px;
+    }
+
+    .details-modal-content {
+        padding: 20px;
+    }
+
+    .details-modal-header {
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+    }
+
+        .details-modal-header h2 {
+            font-size: 22px;
+        }
+
+        .details-modal-header p {
+            font-size: 14px;
+        }
+}
+
+/* Loading state */
+.loading {
+    position: relative;
+    opacity: 0.7;
+}
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 30px;
+        height: 30px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* Error message styling */
+.error-message {
+    color: #e74c3c;
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Success message styling */
+.success-message {
+    color: #27ae60;
+    background-color: #e8f6ef;
+    border: 1px solid #abebc6;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+    text-align: center;
+}
+/* Validation Styles */
+.error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+.success-message {
+    color: #2ecc71;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Validation states for inputs */
+.detail-input.valid {
+    border-color: #2ecc71 !important;
+    box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2) !important;
+}
+
+.detail-input.invalid {
+    border-color: #e74c3c !important;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
 }

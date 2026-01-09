@@ -30,7 +30,7 @@ namespace Soft_eng.Controllers
 
         public IActionResult Login() => View();
         public IActionResult Register() => View();
-        public async Task <IActionResult> AdminDashboard()
+        public async Task<IActionResult> AdminDashboard()
         {
             int totalBooks = 0;
 
@@ -74,9 +74,6 @@ namespace Soft_eng.Controllers
             return View();
         }
 
-
-        
-        
         public IActionResult RequestedBooks() => View();
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
@@ -372,7 +369,7 @@ namespace Soft_eng.Controllers
                 await _connection.OpenAsync();
                 string query = reportType switch
                 {
-                    "borrowedbooks" => "SELECT LoanID, BorrowerName, BookTitle, DueDate, DateReturned, OverdueStatus FROM Loans ORDER BY LoanID DESC",
+                    "borrowedbooks" => "SELECT LoanID, BorrowerName, BookTitle, DueDate, DateReturned, OverdueStatus FROM BorrowedBooks ORDER BY LoanID DESC",
                     "fine" => "SELECT FineID, LoanID, BorrowerName, BookTitle, PaymentStatus, FineAmount FROM Fines ORDER BY FineID DESC",
                     "requestedbooks" => "SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status FROM Requests ORDER BY RequestID DESC",
                     _ => throw new ArgumentException("Invalid report type")
@@ -389,7 +386,6 @@ namespace Soft_eng.Controllers
 
             return dt;
         }
-
 
         private IActionResult GenerateCSV(DataTable data, string reportType)
         {
@@ -631,18 +627,42 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> EditBook(Inventory book, bool isAdmin = false)
         {
+            // Custom cross-field validation
+            if (!book.IsDateValid())
+            {
+                ModelState.AddModelError("DateReceived",
+                    "Date Received cannot be earlier than the published year.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.FromAdmin = isAdmin;
+                return View(book);
+            }
+
             try
             {
                 await _connection.OpenAsync();
+
                 const string sql = @"UPDATE Inventory SET 
-            ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, 
-            Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, 
-            Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@copies, BookStatus=@status 
+            ISBN=@isbn,
+            SourceType=@source,
+            BookTitle=@title,
+            DateReceived=@received,
+            Author=@author,
+            Pages=@pages,
+            Edition=@edition,
+            Publisher=@pub,
+            Year=@year,
+            Remarks=@rem,
+            ShelfLocation=@shelf,
+            TotalCopies=@copies,
+            BookStatus=@status
             WHERE BookID=@id";
 
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@id", book.BookID);
-                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                cmd.Parameters.AddWithValue("@isbn", book.ISBN);
                 cmd.Parameters.AddWithValue("@source", book.SourceType);
                 cmd.Parameters.AddWithValue("@title", book.BookTitle);
                 cmd.Parameters.AddWithValue("@received", book.DateReceived);
@@ -658,10 +678,14 @@ namespace Soft_eng.Controllers
 
                 await cmd.ExecuteNonQueryAsync();
 
-                if (isAdmin) return RedirectToAction("InventoryAdmin");
-                return RedirectToAction("Inventory");
+                return isAdmin
+                    ? RedirectToAction("InventoryAdmin")
+                    : RedirectToAction("Inventory");
             }
-            finally { await _connection.CloseAsync(); }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
         [HttpPost]
@@ -736,6 +760,258 @@ namespace Soft_eng.Controllers
 
             ViewBag.FromAdmin = fromAdmin;
             return View(book);
+        }
+
+        // ==================== BORROWED BOOKS FUNCTIONALITY ====================
+
+        // Get all borrowed books (now includes BorrowDate)
+        [HttpGet]
+        public async Task<IActionResult> GetBorrowedBooks(bool fromAdmin = false)
+        {
+            List<object> borrowedBooks = new List<object>();
+            try
+            {
+                await _connection.OpenAsync();
+
+                // Include BorrowDate in the query
+                string selectColumns = "LoanID, BorrowerName, BookTitle, BorrowDate, DueDate, DateReturned, OverdueStatus";
+
+                const string sql = "SELECT {0} FROM BorrowedBooks ORDER BY LoanID DESC";
+                string finalSql = string.Format(sql, selectColumns);
+
+                using var cmd = new MySqlCommand(finalSql, _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    borrowedBooks.Add(new
+                    {
+                        LoanID = reader.GetInt32("LoanID"),
+                        BorrowerName = reader.GetString("BorrowerName"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        BorrowDate = reader.GetDateTime("BorrowDate").ToString("MM/dd/yyyy"),
+                        DueDate = reader.GetDateTime("DueDate").ToString("MM/dd/yyyy"),
+                        DateReturned = reader.IsDBNull("DateReturned") ? "-" : reader.GetDateTime("DateReturned").ToString("MM/dd/yyyy"),
+                        OverdueStatus = reader.GetString("OverdueStatus")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error and return empty list
+                Console.WriteLine($"Error in GetBorrowedBooks: {ex.Message}");
+                return Json(new List<object>());
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return Json(borrowedBooks);
+        }
+
+        // Add a new borrowed book
+        [HttpPost]
+        public async Task<IActionResult> AddBorrowedBook(string borrowerName, string bookTitle, DateTime borrowDate)
+        {
+            try
+            {
+                // Calculate due date (next Thursday)
+                int daysUntilThursday = ((int)DayOfWeek.Thursday - (int)borrowDate.DayOfWeek + 7) % 7;
+                if (daysUntilThursday == 0) daysUntilThursday = 7; // If today is Thursday, get next Thursday
+                DateTime dueDate = borrowDate.AddDays(daysUntilThursday);
+
+                await _connection.OpenAsync();
+
+                const string sql = @"INSERT INTO BorrowedBooks (BorrowerName, BookTitle, BorrowDate, DueDate, OverdueStatus) 
+                                   VALUES (@borrower, @title, @borrowDate, @dueDate, 'No')";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@borrower", borrowerName);
+                cmd.Parameters.AddWithValue("@title", bookTitle);
+                cmd.Parameters.AddWithValue("@borrowDate", borrowDate);
+                cmd.Parameters.AddWithValue("@dueDate", dueDate);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                // Get the last inserted ID
+                const string getLastIdSql = "SELECT LAST_INSERT_ID()";
+                using var idCmd = new MySqlCommand(getLastIdSql, _connection);
+                var loanId = await idCmd.ExecuteScalarAsync();
+
+                return Json(new { success = true, loanId = loanId, dueDate = dueDate.ToString("MM/dd/yyyy") });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        // Update borrowed book (for editing basic info)
+        [HttpPost]
+        public async Task<IActionResult> UpdateBorrowedBook(int loanId, string borrowerName, string bookTitle, DateTime borrowDate)
+        {
+            try
+            {
+                // Calculate due date (next Thursday)
+                int daysUntilThursday = ((int)DayOfWeek.Thursday - (int)borrowDate.DayOfWeek + 7) % 7;
+                if (daysUntilThursday == 0) daysUntilThursday = 7;
+                DateTime dueDate = borrowDate.AddDays(daysUntilThursday);
+
+                await _connection.OpenAsync();
+
+                const string sql = @"UPDATE BorrowedBooks SET 
+                                   BorrowerName = @borrower,
+                                   BookTitle = @title,
+                                   BorrowDate = @borrowDate,
+                                   DueDate = @dueDate
+                                   WHERE LoanID = @loanId";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@borrower", borrowerName);
+                cmd.Parameters.AddWithValue("@title", bookTitle);
+                cmd.Parameters.AddWithValue("@borrowDate", borrowDate);
+                cmd.Parameters.AddWithValue("@dueDate", dueDate);
+                cmd.Parameters.AddWithValue("@loanId", loanId);
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = rowsAffected > 0, dueDate = dueDate.ToString("MM/dd/yyyy") });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        // Update overdue status
+        [HttpPost]
+        public async Task<IActionResult> UpdateOverdueStatus(int loanId, string status)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+
+                const string sql = @"UPDATE BorrowedBooks SET OverdueStatus = @status WHERE LoanID = @loanId";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@status", status);
+                cmd.Parameters.AddWithValue("@loanId", loanId);
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = rowsAffected > 0 });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        // Update date returned
+        [HttpPost]
+        public async Task<IActionResult> UpdateDateReturned(int loanId, string dateReturned)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+
+                string sql;
+                if (string.IsNullOrEmpty(dateReturned))
+                {
+                    sql = "UPDATE BorrowedBooks SET DateReturned = NULL WHERE LoanID = @loanId";
+                }
+                else
+                {
+                    sql = "UPDATE BorrowedBooks SET DateReturned = @dateReturned WHERE LoanID = @loanId";
+                }
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@loanId", loanId);
+
+                if (!string.IsNullOrEmpty(dateReturned))
+                {
+                    cmd.Parameters.AddWithValue("@dateReturned", DateTime.Parse(dateReturned));
+                }
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = rowsAffected > 0 });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        // Mark book as returned (sets current date)
+        [HttpPost]
+        public async Task<IActionResult> MarkAsReturned(int loanId)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+
+                const string sql = @"UPDATE BorrowedBooks SET DateReturned = @returnDate WHERE LoanID = @loanId";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@returnDate", DateTime.Now);
+                cmd.Parameters.AddWithValue("@loanId", loanId);
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = rowsAffected > 0 });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        // Delete borrowed book
+        [HttpPost]
+        public async Task<IActionResult> DeleteBorrowedBook(int loanId)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+
+                const string sql = @"DELETE FROM BorrowedBooks WHERE LoanID = @loanId";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@loanId", loanId);
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = rowsAffected > 0 });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
     }
 }

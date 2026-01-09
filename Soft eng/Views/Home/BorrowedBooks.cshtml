@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System - Add Book</title>
+    <title>Library Management System - Borrowed Books</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/borrowedbooks.css">
@@ -77,7 +77,7 @@
             </div>
 
             <div class="table-card">
-                <table>
+                <table id="borrowedBooksTable">
                     <thead>
                         <tr>
                             <th>Loan ID</th>
@@ -86,22 +86,147 @@
                             <th>Due Date</th>
                             <th>Date Returned</th>
                             <th>Overdue Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- Data will be populated here -->
                     </tbody>
                 </table>
             </div>
 
             <div class="button-area">
-                <button class="btn btn-blue">Issue Book</button>
-                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>             
-                <button class="btn btn-red">Edit Issue Book</button>
+                <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
+                <button class="btn btn-red" id="editIssueBookBtn">Edit Issue Book</button>
             </div>
         </main>
 
     </div>
 
+    <!-- Issue Book Modal -->
+    <div id="issueBookModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <div class="modal-header">
+                <h2>Borrow Book</h2>
+                <p>Input the details of the borrowed book</p>
+            </div>
+            <form id="issueBookForm">
+                <div class="form-group">
+                    <label for="borrowerName">Borrower Name</label>
+                    <input type="text" id="borrowerName" name="borrowerName" placeholder="Enter borrower name" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookTitle">Book Title</label>
+                    <input type="text" id="bookTitle" name="bookTitle" placeholder="Enter book title" required>
+                </div>
+                <div class="form-group">
+                    <label for="borrowDate">Borrow Date</label>
+                    <input type="date" id="borrowDate" name="borrowDate" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-issue">Issue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Details Modal - Updated Design -->
+    <div id="detailsModal" class="details-modal">
+        <div class="details-modal-content">
+            <button class="close-details-modal">&times;</button>
+            <div class="details-modal-header">
+                <h2>Details</h2>
+                <p>View and edit borrowed book information</p>
+            </div>
+
+            <div class="details-form">
+                <!-- Row 1: Loan ID (left) and Due Date (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Loan ID</div>
+                        <div class="read-only-field" id="detailLoanId">-</div>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Due Date</div>
+                        <input type="date" class="detail-input" id="detailDueDate">
+                    </div>
+                </div>
+
+                <!-- Row 2: Borrower Name (left) and Date Returned (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Borrower Name</div>
+                        <input type="text" class="detail-input" id="detailBorrowerName" placeholder="Enter borrower name">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Returned</div>
+                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
+                    </div>
+                </div>
+
+                <!-- Row 3: Book Title (left) and Date Borrowed (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book Title</div>
+                        <input type="text" class="detail-input" id="detailBookTitle" placeholder="Enter book title">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Borrowed</div>
+                        <input type="date" class="detail-input" id="detailBorrowDate">
+                    </div>
+                </div>
+
+                <!-- Row 4: Overdue Status (left) and Book Status (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Overdue Status</div>
+                        <select class="detail-select" id="detailOverdueStatus">
+                            <option value="Select">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Book Status</div>
+                        <select class="detail-select" id="detailBookStatus">
+                            <option value="Select">Select</option>
+                            <option value="Good">Good</option>
+                            <option value="Damage">Damage</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: Fine Amount (left) and Return Status (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Return Status</div>
+                        <select class="detail-select" id="detailReturnStatus">
+                            <option value="Select">Select</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Unreturned">Unreturned</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer with buttons on the right -->
+            <div class="details-modal-footer">
+                <div class="footer-buttons">
+                    <button type="button" class="btn-back" id="btnBack">Back</button>
+                    <button type="button" class="btn-edit" id="btnEdit">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
     <div id="reportModal" class="report-modal">
         <div class="report-modal-content">
             <button id="closeReportModal" class="close-report-modal">&times;</button>
@@ -118,8 +243,10 @@
         </div>
     </div>
 
+    <!-- JavaScript Files -->
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
+    <script src="~/js/borrowedbooks.js"></script>
 </body>
 </html>
