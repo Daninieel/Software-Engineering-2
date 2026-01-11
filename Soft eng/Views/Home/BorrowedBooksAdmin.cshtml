@@ -1,5 +1,5 @@
 ﻿@{
-    ViewBag.Title = "BorrowedBooks";
+    ViewBag.Title = "BorrowedBooksAdmin";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -31,7 +31,7 @@
                     <span class="logout-text">Log Out</span>
                 </a>
             </form>
-            <div class="user-avatar admin-avatar">
+            <div class="user-avatar">
                 <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
             </div>
         </div>
@@ -85,6 +85,7 @@
                             <th>Due Date</th>
                             <th>Date Returned</th>
                             <th>Overdue Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -95,7 +96,7 @@
 
             <div class="button-area">
                 <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
-                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>             
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
                 <button class="btn btn-red" id="editIssueBookBtn">Edit Issue Book</button>
             </div>
         </main>
@@ -131,6 +132,100 @@
         </div>
     </div>
 
+    <!-- Details Modal - Updated Design -->
+    <div id="detailsModal" class="details-modal">
+        <div class="details-modal-content">
+            <button class="close-details-modal">&times;</button>
+            <div class="details-modal-header">
+                <h2>Details</h2>
+                <p>View and edit borrowed book information</p>
+            </div>
+
+            <div class="details-form">
+                <!-- Row 1: Loan ID (left) and Due Date (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Loan ID</div>
+                        <div class="read-only-field" id="detailLoanId">-</div>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Due Date</div>
+                        <input type="date" class="detail-input" id="detailDueDate">
+                    </div>
+                </div>
+
+                <!-- Row 2: Borrower Name (left) and Date Returned (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Borrower Name</div>
+                        <input type="text" class="detail-input" id="detailBorrowerName" placeholder="Enter borrower name">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Returned</div>
+                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
+                    </div>
+                </div>
+
+                <!-- Row 3: Book Title (left) and Date Borrowed (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book Title</div>
+                        <input type="text" class="detail-input" id="detailBookTitle" placeholder="Enter book title">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Borrowed</div>
+                        <input type="date" class="detail-input" id="detailBorrowDate">
+                    </div>
+                </div>
+
+                <!-- Row 4: Overdue Status (left) and Book Status (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Overdue Status</div>
+                        <select class="detail-select" id="detailOverdueStatus">
+                            <option value="Select">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Book Status</div>
+                        <select class="detail-select" id="detailBookStatus">
+                            <option value="Select">Select</option>
+                            <option value="Good">Good</option>
+                            <option value="Damage">Damage</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: Fine Amount (left) and Return Status (right) -->
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Return Status</div>
+                        <select class="detail-select" id="detailReturnStatus">
+                            <option value="Select">Select</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Unreturned">Unreturned</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer with buttons on the right -->
+            <div class="details-modal-footer">
+                <div class="footer-buttons">
+                    <button type="button" class="btn-back" id="btnBack">Back</button>
+                    <button type="button" class="btn-edit" id="btnEdit">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
     <div id="reportModal" class="report-modal">
         <div class="report-modal-content">
             <button id="closeReportModal" class="close-report-modal">&times;</button>
@@ -147,232 +242,10 @@
         </div>
     </div>
 
+    <!-- JavaScript Files -->
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Modal Elements
-            const issueBookBtn = document.getElementById('issueBookBtn');
-            const issueBookModal = document.getElementById('issueBookModal');
-            const closeModalBtn = issueBookModal.querySelector('.close-modal');
-            const cancelBtn = issueBookModal.querySelector('.btn-cancel');
-            const issueBookForm = document.getElementById('issueBookForm');
-            const borrowedBooksTable = document.getElementById('borrowedBooksTable').getElementsByTagName('tbody')[0];
-            const borrowDateInput = document.getElementById('borrowDate');
-            
-            // Load borrowed books from database
-            loadBorrowedBooks();
-
-            // Function to format date as mm/dd/yyyy
-            function formatDate(date) {
-                if (!date) return '-';
-                const d = new Date(date);
-                const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                const day = d.getDate().toString().padStart(2, '0');
-                const year = d.getFullYear();
-                return `${month}/${day}/${year}`;
-            }
-
-            // Function to format date as yyyy-mm-dd (for date input)
-            function formatDateForInput(date) {
-                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                const day = date.getDate().toString().padStart(2, '0');
-                const year = date.getFullYear();
-                return `${year}-${month}-${day}`;
-            }
-
-            // Load borrowed books from server
-            async function loadBorrowedBooks() {
-                try {
-                    const response = await fetch('@Url.Action("GetBorrowedBooks", "Home")');
-                    if (!response.ok) {
-                        throw new Error('Failed to load borrowed books. Status: ' + response.status);
-                    }
-                    const books = await response.json();
-                    
-                    borrowedBooksTable.innerHTML = '';
-                    
-                    if (books && books.length > 0) {
-                        books.forEach(book => {
-                            const newRow = borrowedBooksTable.insertRow();
-                            newRow.dataset.loanId = book.loanID;
-                            
-                            newRow.innerHTML = `
-                                <td>${book.loanID}</td>
-                                <td>${book.borrowerName}</td>
-                                <td>${book.bookTitle}</td>
-                                <td>${book.dueDate}</td>
-                                <td>${book.dateReturned}</td>
-                                <td>
-                                    <button class="overdue-btn ${book.overdueStatus === 'Yes' ? 'overdue-yes' : 'overdue-no'}" 
-                                            onclick="toggleOverdueStatus(${book.loanID}, this)">
-                                        ${book.overdueStatus}
-                                    </button>
-                                </td>
-                            `;
-                        });
-                    } else {
-                        // Show empty table message
-                        const emptyRow = borrowedBooksTable.insertRow();
-                        emptyRow.innerHTML = `
-                            <td colspan="6" style="text-align: center; padding: 40px; color: #999; font-style: italic;">
-                                No borrowed books found. Click "Issue Book" to add one.
-                            </td>
-                        `;
-                    }
-                } catch (error) {
-                    console.error('Error loading borrowed books:', error);
-                    borrowedBooksTable.innerHTML = `
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px; color: #e74c3c;">
-                                Error loading borrowed books: ${error.message}
-                            </td>
-                        </tr>
-                    `;
-                }
-            }
-
-            // Open Modal
-            issueBookBtn.addEventListener('click', function() {
-                issueBookModal.style.display = 'flex';
-                // Set today's date as default in the borrow date field
-                const today = new Date();
-                borrowDateInput.value = formatDateForInput(today);
-                // Set min date to today (can't borrow for past dates)
-                borrowDateInput.min = formatDateForInput(today);
-                // Set max date to 1 year from now
-                const maxDate = new Date();
-                maxDate.setFullYear(maxDate.getFullYear() + 1);
-                borrowDateInput.max = formatDateForInput(maxDate);
-            });
-
-            // Close Modal
-            function closeModal() {
-                issueBookModal.style.display = 'none';
-                issueBookForm.reset();
-            }
-
-            closeModalBtn.addEventListener('click', closeModal);
-            cancelBtn.addEventListener('click', closeModal);
-
-            // Close modal when clicking outside
-            issueBookModal.addEventListener('click', function(e) {
-                if (e.target === issueBookModal) {
-                    closeModal();
-                }
-            });
-
-            // Handle form submission
-            issueBookForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                // Get form values
-                const borrowerName = document.getElementById('borrowerName').value.trim();
-                const bookTitle = document.getElementById('bookTitle').value.trim();
-                const borrowDateStr = document.getElementById('borrowDate').value;
-                
-                // Validate inputs
-                if (!borrowerName) {
-                    alert('Please enter borrower name');
-                    return;
-                }
-                
-                if (!bookTitle) {
-                    alert('Please enter book title');
-                    return;
-                }
-                
-                if (!borrowDateStr) {
-                    alert('Please select borrow date');
-                    return;
-                }
-                
-                try {
-                    // Send data to server
-                    const response = await fetch('@Url.Action("AddBorrowedBook", "Home")', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: new URLSearchParams({
-                            borrowerName: borrowerName,
-                            bookTitle: bookTitle,
-                            borrowDate: borrowDateStr
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to issue book. Status: ' + response.status);
-                    }
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        // Close modal and reset form
-                        closeModal();
-                        
-                        // Reload the table
-                        await loadBorrowedBooks();
-                        
-                        // Show success message
-                        alert('Book issued successfully!\nLoan ID: ' + result.loanId + '\nDue Date: ' + result.dueDate);
-                    } else {
-                        alert('Error issuing book: ' + (result.error || 'Unknown error'));
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while issuing the book: ' + error.message);
-                }
-            });
-
-            // Edit Issue Book button functionality
-            const editIssueBookBtn = document.getElementById('editIssueBookBtn');
-            editIssueBookBtn.addEventListener('click', function() {
-                const rows = borrowedBooksTable.rows;
-                if (rows.length === 0 || (rows.length === 1 && rows[0].cells[0].colSpan === 6)) {
-                    alert('No books to edit. Please issue a book first.');
-                    return;
-                }
-                
-                // For now, just show an alert - you can implement editing functionality here
-                alert('Edit functionality to be implemented. Select a book to edit.');
-            });
-        });
-
-        // Toggle overdue status function (for global access)
-        async function toggleOverdueStatus(loanId, button) {
-            const newStatus = button.textContent === 'No' ? 'Yes' : 'No';
-            
-            try {
-                const response = await fetch('@Url.Action("UpdateOverdueStatus", "Home")', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        loanId: loanId,
-                        status: newStatus
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to update status. Status: ' + response.status);
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    button.textContent = newStatus;
-                    button.className = newStatus === 'Yes' ? 'overdue-btn overdue-yes' : 'overdue-btn overdue-no';
-                } else {
-                    alert('Error updating status');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while updating status: ' + error.message);
-            }
-        }
-    </script>
+    <script src="~/js/borrowedbooks.js"></script>
 </body>
 </html>
