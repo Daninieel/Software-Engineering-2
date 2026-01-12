@@ -1,8 +1,8 @@
-@model Soft_eng.Models.Inventory
+@model Soft_eng.Models.LogBook
 @{
     ViewBag.Title = "Book Details";
     Layout = null;
-    var backAction = Model.BookID > 0 ? "Inventory" : "InventoryAdmin";
+    var backAction = Model?.BookID > 0 ? "Inventory" : "InventoryAdmin";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -44,93 +44,105 @@
         <main class="content-area">
             <h2>Book Details</h2>
 
-            <div class="form-card">
-                <form>
-                    <div class="form-group full-width">
-                        <label>Book Title</label>
-                        <input type="text" value="@Model.BookTitle" readonly>
-                    </div>
-
-                    <div class="form-grid-row">
-                        <div class="form-group">
-                            <label>Author</label>
-                            <input type="text" value="@Model.Author" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Pages</label>
-                            <input type="text" value="@Model.Pages" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-grid-row">
-                        <div class="form-group">
-                            <label>Edition</label>
-                            <input type="text" value="@Model.Edition" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Year</label>
-                            <input type="text" value="@(Model.Year.HasValue? Model.Year.Value.ToString("yyyy-MM-dd") : "")" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-grid-mixed">
-                        <div class="left-col">
-                            <div class="form-group">
-                                <label>ISBN</label>
-                                <input type="text" value="@Model.ISBN" readonly>
-                            </div>
-                            <div class="form-group" style="margin-top: 20px;">
-                                <label>Publisher</label>
-                                <input type="text" value="@Model.Publisher" readonly>
-                            </div>
-                        </div>
-                        <div class="right-col">
-                            <div class="form-group h-100">
-                                <label>Remarks</label>
-                                <textarea readonly>@Model.Remarks</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-grid-row">
-                        <div class="form-group">
-                            <label>Source Type</label>
-                            <input type="text" value="@Model.SourceType" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Date Received</label>
-                            <input type="text" value="@(Model.DateReceived.HasValue? Model.DateReceived.Value.ToString("yyyy-MM-dd") : "")" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-grid-row">
-                        <div class="form-group">
-                            <label>Book Status</label>
-                            <input type="text" value="@Model.BookStatus" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Total Copies</label>
-                            <input type="text" value="@Model.TotalCopies" readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label>Shelf Location</label>
-                        <input type="text" value="@Model.ShelfLocation" readonly>
-                    </div>
-
+            @if (Model == null)
+            {
+                <div class="form-card">
+                    <p>Book not found.</p>
                     <div class="button-area">
-                        @if (ViewBag.FromAdmin == true)
-                        {
-                            <a asp-action="InventoryAdmin" class="btn btn-blue">Back to Inventory</a>
-                        }
-                        else
-                        {
-                            <a asp-action="Inventory" class="btn btn-blue">Back to Inventory</a>
-                        }
-                    </div>>
-                </form>
-            </div>
+                        <a asp-action="Inventory" class="btn btn-blue">Back to Inventory</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="form-card">
+                    <form>
+                        <div class="form-group full-width">
+                            <label>Book Title</label>
+                            <input type="text" value="@Model.BookTitle" readonly>
+                        </div>
+
+                        <div class="form-grid-row">
+                            <div class="form-group">
+                                <label>Author</label>
+                                <input type="text" value="@(Model.Author ?? "")" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Pages</label>
+                                <input type="text" value="@(Model.Pages?.ToString() ?? "")" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-row">
+                            <div class="form-group">
+                                <label>Edition</label>
+                                <input type="text" value="@(Model.Edition ?? "")" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Year</label>
+                                <input type="text" value="@(Model.Year?.ToString("yyyy-MM-dd") ?? "")" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-mixed">
+                            <div class="left-col">
+                                <div class="form-group">
+                                    <label>ISBN</label>
+                                    <input type="text" value="@Model.ISBN" readonly>
+                                </div>
+                                <div class="form-group" style="margin-top: 20px;">
+                                    <label>Publisher</label>
+                                    <input type="text" value="@(Model.Publisher ?? "")" readonly>
+                                </div>
+                            </div>
+                            <div class="right-col">
+                                <div class="form-group h-100">
+                                    <label>Remarks</label>
+                                    <textarea readonly>@(Model.Remarks ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-row">
+                            <div class="form-group">
+                                <label>Source Type</label>
+                                <input type="text" value="@(Model.SourceType ?? "")" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Date Received</label>
+                                <input type="text" value="@(Model.DateReceived?.ToString("yyyy-MM-dd") ?? "")" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-row">
+                            <div class="form-group">
+                                <label>Book Status</label>
+                                <input type="text" value="@(Model.BookStatus ?? "")" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Total Copies</label>
+                                <input type="text" value="@Model.TotalCopies" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>Shelf Location</label>
+                            <input type="text" value="@(Model.ShelfLocation ?? "")" readonly>
+                        </div>
+
+                        <div class="button-area">
+                            @if (ViewBag.FromAdmin == true)
+                            {
+                                <a asp-action="InventoryAdmin" class="btn btn-blue">Back to Inventory</a>
+                            }
+                            else
+                            {
+                                <a asp-action="Inventory" class="btn btn-blue">Back to Inventory</a>
+                            }
+                        </div>
+                    </form>
+                </div>
+            }
         </main>
     </div>
 </body>

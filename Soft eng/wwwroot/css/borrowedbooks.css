@@ -177,31 +177,69 @@ body {
     cursor: pointer;
 }
 
+/* ================= SCROLLABLE TABLE CARD ================= */
 .table-card {
     background: white;
     width: 100%;
     max-width: 1100px;
-    height: 570px;
+    /* Limit height to show approx 7 rows. */
+    max-height: 500px;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    padding: 25px;
+    padding: 0; /* Remove padding to let scrollbar sit at edge */
+    padding-bottom: 10px; /* Slight bottom padding */
     margin: 30px auto;
     margin-top: 30px;
-    display: flex;
-    flex-direction: column;
+    display: block;
+    /* Enables vertical scrolling inside the card */
+    overflow-y: auto;
+    position: relative;
+    /* Scrollbar Styling */
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
+    /* Inner container to hold padding if needed, but for sticky header direct table child is better */
+    .table-card table {
+        width: 100%;
+        /* FIX: 'separate' ensures the borders stick to the header */
+        border-collapse: separate;
+        border-spacing: 0;
+    }
 
+    /* Scrollbar styling inside table card */
+    .table-card::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .table-card::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-card::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+
+        .table-card::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+/* ================= STICKY HEADER FIX ================= */
 th {
     text-align: center;
     padding: 15px;
+    /* Border is applied directly to TH to stick with it */
     border-bottom: 2px solid #333;
     font-weight: 600;
     color: #333;
+    /* Sticky Properties */
+    position: sticky;
+    top: 0;
+    background: white; /* Hides content scrolling behind */
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Optional: slight shadow for depth */
 }
 
 td {
@@ -210,6 +248,9 @@ td {
     border-bottom: 1px solid #ddd;
     vertical-align: middle;
 }
+
+/* Add padding to the first row of cells to compensate for the card padding removal if desired */
+/* Or apply padding to the card wrapper around the table */
 
 .button-area {
     display: flex;
@@ -466,7 +507,7 @@ td {
         transform: translateY(-2px);
     }
 
-/* Details Modal - Updated */
+/* Details Modal */
 .details-modal {
     display: none;
     position: fixed;
@@ -787,9 +828,7 @@ tbody tr {
 
     .table-card {
         padding: 15px;
-        height: auto;
         max-height: 500px;
-        overflow-y: auto;
     }
 
     .search-filter {
@@ -912,29 +951,6 @@ tbody tr {
     }
 }
 
-/* Error message styling */
-.error-message {
-    color: #e74c3c;
-    background-color: #ffebee;
-    border: 1px solid #ffcdd2;
-    padding: 10px;
-    border-radius: 4px;
-    margin: 10px 0;
-    font-size: 14px;
-    text-align: center;
-}
-
-/* Success message styling */
-.success-message {
-    color: #27ae60;
-    background-color: #e8f6ef;
-    border: 1px solid #abebc6;
-    padding: 10px;
-    border-radius: 4px;
-    margin: 10px 0;
-    font-size: 14px;
-    text-align: center;
-}
 /* Validation Styles */
 .error-message {
     color: #e74c3c;

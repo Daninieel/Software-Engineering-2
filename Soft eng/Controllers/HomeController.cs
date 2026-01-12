@@ -13,8 +13,8 @@ namespace Soft_eng.Controllers
 {
     public class ChatRequest
     {
-        public string Message { get; set; }
-        public List<object> History { get; set; }
+        public string? Message { get; set; }
+        public List<object>? History { get; set; }
     }
 
     public class HomeController : Controller
@@ -30,50 +30,138 @@ namespace Soft_eng.Controllers
 
         public IActionResult Login() => View();
         public IActionResult Register() => View();
-        public async Task<IActionResult> AdminDashboard()
+
+        // ==================== DASHBOARD DATA HELPER ====================
+        private async Task<dynamic> GetDashboardViewModel()
         {
             int totalBooks = 0;
+            int totalBorrowed = 0;
+            int totalReturned = 0;
+            int totalOverdue = 0;
+            int totalMissing = 0;
+            int totalDamaged = 0;
+
+            var overdueList = new List<dynamic>();
+            var recentList = new List<dynamic>();
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
 
-                const string sql = "SELECT IFNULL(SUM(TotalCopies), 0) FROM Inventory";
-                using var cmd = new MySqlCommand(sql, _connection);
-                totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                // 1. Total Books (Copies)
+                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(TotalCopies), 0) FROM LogBook", _connection))
+                    totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 2. Total Borrowed (Active Loans)
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE ReturnStatus = 'Not Returned'", _connection))
+                    totalBorrowed = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 3. Total Returned (History)
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE ReturnStatus = 'Returned'", _connection))
+                    totalReturned = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 4. Total Overdue (Active)
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE OverdueStatus = 1 AND ReturnStatus = 'Not Returned'", _connection))
+                    totalOverdue = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 5. Total Missing (Based on LogBook Status)
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Missing'", _connection))
+                    totalMissing = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 6. Total Damaged (Based on LogBook Status)
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Damaged'", _connection))
+                    totalDamaged = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // 7. Overdue History List (Top 5)
+                string overdueSql = @"SELECT l.BorrowerID, b.BorrowerName, l.DateBorrowed 
+                                      FROM Loan l 
+                                      JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
+                                      WHERE l.OverdueStatus = 1 AND l.ReturnStatus = 'Not Returned'
+                                      ORDER BY l.DateBorrowed ASC LIMIT 5";
+
+                using (var cmd = new MySqlCommand(overdueSql, _connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        overdueList.Add(new
+                        {
+                            UserID = reader.GetInt32("BorrowerID"),
+                            Name = reader.GetString("BorrowerName"),
+                            DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy")
+                        });
+                    }
+                }
+
+                // 8. Recent Borrowed Books List (Top 5)
+                string recentSql = @"SELECT lb.BookTitle 
+                                     FROM Loan l 
+                                     JOIN LogBook lb ON l.BookID = lb.BookID 
+                                     WHERE l.ReturnStatus = 'Not Returned' 
+                                     ORDER BY l.DateBorrowed DESC LIMIT 5";
+
+                using (var cmd = new MySqlCommand(recentSql, _connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        recentList.Add(new { Title = reader.GetString("BookTitle") });
+                    }
+                }
             }
             finally
             {
                 await _connection.CloseAsync();
             }
 
-            ViewBag.TotalBooks = totalBooks;
+            return new
+            {
+                TotalBooks = totalBooks,
+                TotalBorrowed = totalBorrowed,
+                TotalReturned = totalReturned,
+                TotalOverdue = totalOverdue,
+                TotalMissing = totalMissing,
+                TotalDamaged = totalDamaged,
+                OverdueList = overdueList,
+                RecentList = recentList
+            };
+        }
+
+        // ==================== DASHBOARD ACTIONS ====================
+
+        public async Task<IActionResult> AdminDashboard()
+        {
+            var data = await GetDashboardViewModel();
+            ViewBag.TotalBooks = data.TotalBooks;
+            ViewBag.TotalBorrowed = data.TotalBorrowed;
+            ViewBag.TotalReturned = data.TotalReturned;
+            ViewBag.TotalOverdue = data.TotalOverdue;
+            ViewBag.TotalMissing = data.TotalMissing;
+            ViewBag.TotalDamaged = data.TotalDamaged;
+            ViewBag.OverdueList = data.OverdueList;
+            ViewBag.RecentList = data.RecentList;
+
+            return View();
+        }
+
+        public async Task<IActionResult> Dashboard()
+        {
+            var data = await GetDashboardViewModel();
+            ViewBag.TotalBooks = data.TotalBooks;
+            ViewBag.TotalBorrowed = data.TotalBorrowed;
+            ViewBag.TotalReturned = data.TotalReturned;
+            ViewBag.TotalOverdue = data.TotalOverdue;
+            ViewBag.TotalMissing = data.TotalMissing;
+            ViewBag.TotalDamaged = data.TotalDamaged;
+            ViewBag.OverdueList = data.OverdueList;
+            ViewBag.RecentList = data.RecentList;
+
             return View();
         }
 
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
-        public async Task<IActionResult> Dashboard()
-        {
-            int totalBooks = 0;
-
-            try
-            {
-                await _connection.OpenAsync();
-
-                const string sql = "SELECT IFNULL(SUM(TotalCopies), 0) FROM Inventory";
-                using var cmd = new MySqlCommand(sql, _connection);
-                totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-            }
-            finally
-            {
-                await _connection.CloseAsync();
-            }
-
-            ViewBag.TotalBooks = totalBooks;
-            return View();
-        }
-
         public IActionResult RequestedBooks() => View();
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
@@ -89,7 +177,7 @@ namespace Soft_eng.Controllers
         public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
         public IActionResult FineAdmin() => View("FineAdmin");
 
-        public IActionResult ResetPasswordAdmin(string token, string email)
+        public IActionResult ResetPasswordAdmin(string? token, string? email)
         {
             ViewBag.Token = token;
             ViewBag.Email = email;
@@ -104,10 +192,10 @@ namespace Soft_eng.Controllers
 
             var payload = new
             {
-                contents = request.History.Append(new
+                contents = (request.History ?? new List<object>()).Append(new
                 {
                     role = "user",
-                    parts = new[] { new { text = "Context: You are the Saint Isidore Academy Library Assistant. " + request.Message } }
+                    parts = new[] { new { text = "Context: You are the Saint Isidore Academy Library Assistant. " + (request.Message ?? "") } }
                 })
             };
 
@@ -129,7 +217,8 @@ namespace Soft_eng.Controllers
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
                 const string existSql = "SELECT COUNT(1) FROM Register WHERE Email = @e";
                 using (var existCmd = new MySqlCommand(existSql, _connection))
                 {
@@ -182,7 +271,7 @@ namespace Soft_eng.Controllers
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 const string sql = "SELECT Password, Role FROM Register WHERE Email = @e LIMIT 1";
                 using var cmd = new MySqlCommand(sql, _connection);
@@ -225,7 +314,7 @@ namespace Soft_eng.Controllers
         {
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 const string sql = "UPDATE Register SET IsLoggedIn = 0 WHERE IsLoggedIn = 1";
                 using var cmd = new MySqlCommand(sql, _connection);
                 await cmd.ExecuteNonQueryAsync();
@@ -246,7 +335,6 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim();
 
-            // admin bypass
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase))
             {
                 return RedirectToAction("ResetPasswordAdmin", new { token = "internal-admin-bypass", email = normalizedEmail });
@@ -254,7 +342,7 @@ namespace Soft_eng.Controllers
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 const string existSql = "SELECT 1 FROM Register WHERE Email = @e LIMIT 1";
                 using (var existCmd = new MySqlCommand(existSql, _connection))
                 {
@@ -269,8 +357,13 @@ namespace Soft_eng.Controllers
 
                 await _connection.CloseAsync();
                 string token = Guid.NewGuid().ToString();
-                string resetLink = Url.Action("ResetPassword", "Home", new { token, email = normalizedEmail }, Request.Scheme);
-                await SendEmail(normalizedEmail, resetLink);
+                string? resetLink = Url.Action("ResetPassword", "Home", new { token, email = normalizedEmail }, Request.Scheme);
+
+                if (!string.IsNullOrEmpty(resetLink))
+                {
+                    await SendEmail(normalizedEmail, resetLink);
+                }
+
                 ViewBag.Message = "Reset link sent.";
                 return View();
             }
@@ -285,7 +378,7 @@ namespace Soft_eng.Controllers
             }
         }
 
-        public IActionResult ResetPassword(string token, string email)
+        public IActionResult ResetPassword(string? token, string? email)
         {
             ViewBag.Token = token;
             ViewBag.Email = email;
@@ -293,7 +386,7 @@ namespace Soft_eng.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ResetPassword(string email, string newPassword, string confirmPassword, string token)
+        public async Task<IActionResult> ResetPassword(string? email, string? newPassword, string? confirmPassword, string? token)
         {
             if (newPassword != confirmPassword)
             {
@@ -303,9 +396,17 @@ namespace Soft_eng.Controllers
                 return View();
             }
 
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword))
+            {
+                ViewBag.Message = "Email and new password are required.";
+                ViewBag.Token = token;
+                ViewBag.Email = email;
+                return View();
+            }
+
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 string hashed = BCrypt.Net.BCrypt.HashPassword(newPassword);
 
@@ -372,10 +473,20 @@ namespace Soft_eng.Controllers
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 string query = reportType switch
                 {
-                    "borrowedbooks" => "SELECT LoanID, BorrowerName, BookTitle, DueDate, DateReturned, OverdueStatus FROM BorrowedBooks ORDER BY LoanID DESC",
+                    "borrowedbooks" => @"SELECT 
+                        l.LoanID, 
+                        b.BorrowerName, 
+                        lb.BookTitle, 
+                        l.DateDue, 
+                        l.DateReturned, 
+                        CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus 
+                    FROM Loan l
+                    JOIN Borrower b ON l.BorrowerID = b.BorrowerID
+                    JOIN LogBook lb ON l.BookID = lb.BookID
+                    ORDER BY l.LoanID DESC",
                     "fine" => "SELECT FineID, LoanID, BorrowerName, BookTitle, PaymentStatus, FineAmount FROM Fines ORDER BY FineID DESC",
                     "requestedbooks" => "SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status FROM Requests ORDER BY RequestID DESC",
                     _ => throw new ArgumentException("Invalid report type")
@@ -567,16 +678,16 @@ namespace Soft_eng.Controllers
 
         public async Task<IActionResult> Inventory(bool fromAdmin = false)
         {
-            List<Inventory> books = new List<Inventory>();
+            List<LogBook> books = new List<LogBook>();
             try
             {
-                await _connection.OpenAsync();
-                const string sql = "SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived FROM Inventory ORDER BY BookID DESC";
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                const string sql = "SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived FROM LogBook ORDER BY BookID DESC";
                 using var cmd = new MySqlCommand(sql, _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    books.Add(new Inventory
+                    books.Add(new LogBook
                     {
                         BookID = reader.GetInt32("BookID"),
                         BookTitle = reader.GetString("BookTitle"),
@@ -595,16 +706,16 @@ namespace Soft_eng.Controllers
 
         public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
         {
-            Inventory book = null;
+            LogBook? book = null;
             try
             {
-                await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT * FROM Inventory WHERE BookID = @id", _connection);
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                using var cmd = new MySqlCommand("SELECT * FROM LogBook WHERE BookID = @id", _connection);
                 cmd.Parameters.AddWithValue("@id", id);
                 using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
-                    book = new Inventory
+                    book = new LogBook
                     {
                         BookID = reader.GetInt32("BookID"),
                         ISBN = reader.GetString("ISBN"),
@@ -631,9 +742,8 @@ namespace Soft_eng.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> EditBook(Inventory book, bool isAdmin = false)
+        public async Task<IActionResult> EditBook(LogBook book, bool isAdmin = false)
         {
-            // Custom cross-field validation
             if (!book.IsDateValid())
             {
                 ModelState.AddModelError("DateReceived",
@@ -648,9 +758,9 @@ namespace Soft_eng.Controllers
 
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                const string sql = @"UPDATE Inventory SET 
+                const string sql = @"UPDATE LogBook SET 
             ISBN=@isbn,
             SourceType=@source,
             BookTitle=@title,
@@ -668,19 +778,19 @@ namespace Soft_eng.Controllers
 
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@id", book.BookID);
-                cmd.Parameters.AddWithValue("@isbn", book.ISBN);
-                cmd.Parameters.AddWithValue("@source", book.SourceType);
-                cmd.Parameters.AddWithValue("@title", book.BookTitle);
-                cmd.Parameters.AddWithValue("@received", book.DateReceived);
-                cmd.Parameters.AddWithValue("@author", book.Author);
-                cmd.Parameters.AddWithValue("@pages", book.Pages);
-                cmd.Parameters.AddWithValue("@edition", book.Edition);
-                cmd.Parameters.AddWithValue("@pub", book.Publisher);
+                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
+                cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                cmd.Parameters.AddWithValue("@pub", book.Publisher ?? "");
                 cmd.Parameters.AddWithValue("@year", book.Year);
-                cmd.Parameters.AddWithValue("@rem", book.Remarks);
-                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation);
+                cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
+                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                 cmd.Parameters.AddWithValue("@copies", book.TotalCopies);
-                cmd.Parameters.AddWithValue("@status", book.BookStatus);
+                cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -695,30 +805,30 @@ namespace Soft_eng.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddBooks(Inventory book, bool isAdmin = false)
+        public async Task<IActionResult> AddBooks(LogBook book, bool isAdmin = false)
         {
             try
             {
-                await _connection.OpenAsync();
-                const string sql = @"INSERT INTO Inventory 
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                const string sql = @"INSERT INTO LogBook 
                     (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) 
                     VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)";
 
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
-                cmd.Parameters.AddWithValue("@source", book.SourceType);
-                cmd.Parameters.AddWithValue("@title", book.BookTitle);
+                cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
                 cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
-                cmd.Parameters.AddWithValue("@author", book.Author);
+                cmd.Parameters.AddWithValue("@author", book.Author ?? "");
                 cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
-                cmd.Parameters.AddWithValue("@edition", book.Edition);
-                cmd.Parameters.AddWithValue("@pub", book.Publisher);
+                cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                cmd.Parameters.AddWithValue("@pub", book.Publisher ?? "");
                 cmd.Parameters.AddWithValue("@year", book.Year);
-                cmd.Parameters.AddWithValue("@rem", book.Remarks);
-                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation);
+                cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
+                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                 cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
                 cmd.Parameters.AddWithValue("@copies", book.TotalCopies);
-                cmd.Parameters.AddWithValue("@status", book.BookStatus);
+                cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -733,16 +843,16 @@ namespace Soft_eng.Controllers
 
         public async Task<IActionResult> BookDetails(int id, bool fromAdmin = false)
         {
-            Inventory book = null;
+            LogBook? book = null;
             try
             {
-                await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT * FROM Inventory WHERE BookID = @id", _connection);
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                using var cmd = new MySqlCommand("SELECT * FROM LogBook WHERE BookID = @id", _connection);
                 cmd.Parameters.AddWithValue("@id", id);
                 using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
-                    book = new Inventory
+                    book = new LogBook
                     {
                         BookID = reader.GetInt32("BookID"),
                         ISBN = reader.GetString("ISBN"),
@@ -770,40 +880,57 @@ namespace Soft_eng.Controllers
 
         // ==================== BORROWED BOOKS FUNCTIONALITY ====================
 
-        // Get all borrowed books (now includes BorrowDate)
         [HttpGet]
         public async Task<IActionResult> GetBorrowedBooks(bool fromAdmin = false)
         {
             List<object> borrowedBooks = new List<object>();
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                // Include BorrowDate in the query
-                string selectColumns = "LoanID, BorrowerName, BookTitle, BorrowDate, DueDate, DateReturned, OverdueStatus";
+                // UPDATED: Now fetches BookStatus for display in the mini pop-up
+                const string sql = @"SELECT 
+                    l.LoanID,
+                    l.BookID,
+                    l.BorrowerID,
+                    b.BorrowerName,
+                    lb.BookTitle,
+                    l.DateBorrowed,
+                    l.DateDue,
+                    l.DateReturned,
+                    CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus,
+                    l.ReturnStatus,
+                    l.BookStatus,
+                    lb.BookStatus as CurrentBookStatus
+                FROM Loan l
+                JOIN Borrower b ON l.BorrowerID = b.BorrowerID
+                JOIN LogBook lb ON l.BookID = lb.BookID
+                ORDER BY l.LoanID DESC";
 
-                const string sql = "SELECT {0} FROM BorrowedBooks ORDER BY LoanID DESC";
-                string finalSql = string.Format(sql, selectColumns);
-
-                using var cmd = new MySqlCommand(finalSql, _connection);
+                using var cmd = new MySqlCommand(sql, _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
                     borrowedBooks.Add(new
                     {
                         LoanID = reader.GetInt32("LoanID"),
+                        BookID = reader.GetInt32("BookID"),
+                        BorrowerID = reader.GetInt32("BorrowerID"),
                         BorrowerName = reader.GetString("BorrowerName"),
                         BookTitle = reader.GetString("BookTitle"),
-                        BorrowDate = reader.GetDateTime("BorrowDate").ToString("MM/dd/yyyy"),
-                        DueDate = reader.GetDateTime("DueDate").ToString("MM/dd/yyyy"),
+                        DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"),
+                        BorrowDate = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"),
+                        DueDate = reader.GetDateTime("DateDue").ToString("MM/dd/yyyy"),
                         DateReturned = reader.IsDBNull("DateReturned") ? "-" : reader.GetDateTime("DateReturned").ToString("MM/dd/yyyy"),
-                        OverdueStatus = reader.GetString("OverdueStatus")
+                        OverdueStatus = reader.GetString("OverdueStatus"),
+                        ReturnStatus = reader.IsDBNull("ReturnStatus") ? "Not Returned" : reader.GetString("ReturnStatus"),
+                        // Prefer LogBook status for current state, otherwise Loan status
+                        BookStatus = reader.IsDBNull("CurrentBookStatus") ? (reader.IsDBNull("BookStatus") ? "Good" : reader.GetString("BookStatus")) : reader.GetString("CurrentBookStatus")
                     });
                 }
             }
             catch (Exception ex)
             {
-                // Log the error and return empty list
                 Console.WriteLine($"Error in GetBorrowedBooks: {ex.Message}");
                 return Json(new List<object>());
             }
@@ -815,36 +942,57 @@ namespace Soft_eng.Controllers
             return Json(borrowedBooks);
         }
 
-        // Add a new borrowed book
         [HttpPost]
         public async Task<IActionResult> AddBorrowedBook(string borrowerName, string bookTitle, DateTime borrowDate)
         {
             try
             {
-                // Calculate due date (next Thursday)
-                int daysUntilThursday = ((int)DayOfWeek.Thursday - (int)borrowDate.DayOfWeek + 7) % 7;
-                if (daysUntilThursday == 0) daysUntilThursday = 7; // If today is Thursday, get next Thursday
-                DateTime dueDate = borrowDate.AddDays(daysUntilThursday);
+                int borrowerId = await GetOrCreateBorrower(borrowerName);
+                int bookId = await GetBookIdByTitle(bookTitle);
 
-                await _connection.OpenAsync();
+                if (bookId == 0)
+                {
+                    return Json(new { success = false, error = "Book not available or not found." });
+                }
 
-                const string sql = @"INSERT INTO BorrowedBooks (BorrowerName, BookTitle, BorrowDate, DueDate, OverdueStatus) 
-                                   VALUES (@borrower, @title, @borrowDate, @dueDate, 'No')";
+                DateTime dueDate = borrowDate.AddDays(4);
 
-                using var cmd = new MySqlCommand(sql, _connection);
-                cmd.Parameters.AddWithValue("@borrower", borrowerName);
-                cmd.Parameters.AddWithValue("@title", bookTitle);
-                cmd.Parameters.AddWithValue("@borrowDate", borrowDate);
-                cmd.Parameters.AddWithValue("@dueDate", dueDate);
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                await cmd.ExecuteNonQueryAsync();
+                // 1. Insert Loan
+                const string sql = @"INSERT INTO Loan (BookID, BorrowerID, DateBorrowed, DateDue, ReturnStatus, OverdueStatus, BookStatus) 
+                                   VALUES (@bookId, @borrowerId, @dateBorrowed, @dateDue, 'Not Returned', FALSE, 'Borrowed')";
 
-                // Get the last inserted ID
+                using (var cmd = new MySqlCommand(sql, _connection))
+                {
+                    cmd.Parameters.AddWithValue("@bookId", bookId);
+                    cmd.Parameters.AddWithValue("@borrowerId", borrowerId);
+                    cmd.Parameters.AddWithValue("@dateBorrowed", borrowDate);
+                    cmd.Parameters.AddWithValue("@dateDue", dueDate);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 2. Update LogBook Availability to 'Borrowed'
+                const string updateBookSql = "UPDATE LogBook SET Availability = 'Borrowed' WHERE BookID = @bookId";
+                using (var updateCmd = new MySqlCommand(updateBookSql, _connection))
+                {
+                    updateCmd.Parameters.AddWithValue("@bookId", bookId);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
+                // Get ID
                 const string getLastIdSql = "SELECT LAST_INSERT_ID()";
                 using var idCmd = new MySqlCommand(getLastIdSql, _connection);
                 var loanId = await idCmd.ExecuteScalarAsync();
 
-                return Json(new { success = true, loanId = loanId, dueDate = dueDate.ToString("MM/dd/yyyy") });
+                return Json(new
+                {
+                    success = true,
+                    loanId = loanId,
+                    dueDate = dueDate.ToString("MM/dd/yyyy"),
+                    borrowerId = borrowerId,
+                    bookId = bookId
+                });
             }
             catch (Exception ex)
             {
@@ -856,36 +1004,126 @@ namespace Soft_eng.Controllers
             }
         }
 
-        // Update borrowed book (for editing basic info)
+        private async Task<int> GetOrCreateBorrower(string borrowerName)
+        {
+            bool closeConnection = false;
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                {
+                    await _connection.OpenAsync();
+                    closeConnection = true;
+                }
+
+                const string findSql = "SELECT BorrowerID FROM Borrower WHERE BorrowerName = @name";
+                using var findCmd = new MySqlCommand(findSql, _connection);
+                findCmd.Parameters.AddWithValue("@name", borrowerName);
+                var result = await findCmd.ExecuteScalarAsync();
+
+                if (result != null) return Convert.ToInt32(result);
+
+                const string insertSql = "INSERT INTO Borrower (BorrowerName, BorrowerType) VALUES (@name, 'Student')";
+                using var insertCmd = new MySqlCommand(insertSql, _connection);
+                insertCmd.Parameters.AddWithValue("@name", borrowerName);
+                await insertCmd.ExecuteNonQueryAsync();
+
+                return (int)insertCmd.LastInsertedId;
+            }
+            finally
+            {
+                if (closeConnection) await _connection.CloseAsync();
+            }
+        }
+
+        private async Task<int> GetBookIdByTitle(string bookTitle)
+        {
+            bool closeConnection = false;
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                {
+                    await _connection.OpenAsync();
+                    closeConnection = true;
+                }
+                // Only get books that are Available
+                const string sql = "SELECT BookID FROM LogBook WHERE BookTitle = @title AND Availability = 'Available' LIMIT 1";
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@title", bookTitle);
+                var result = await cmd.ExecuteScalarAsync();
+
+                if (result != null) return Convert.ToInt32(result);
+                return 0;
+            }
+            finally
+            {
+                if (closeConnection) await _connection.CloseAsync();
+            }
+        }
+
+        // ***** UPDATED METHOD TO HANDLE BOOK STATUS *****
         [HttpPost]
-        public async Task<IActionResult> UpdateBorrowedBook(int loanId, string borrowerName, string bookTitle, DateTime borrowDate)
+        public async Task<IActionResult> UpdateBorrowedBook(int loanId, string borrowerName, string bookTitle, DateTime borrowDate, string bookStatus)
         {
             try
             {
-                // Calculate due date (next Thursday)
-                int daysUntilThursday = ((int)DayOfWeek.Thursday - (int)borrowDate.DayOfWeek + 7) % 7;
-                if (daysUntilThursday == 0) daysUntilThursday = 7;
-                DateTime dueDate = borrowDate.AddDays(daysUntilThursday);
+                // Note: GetOrCreateBorrower properly handles connection state now.
+                int borrowerId = await GetOrCreateBorrower(borrowerName);
 
-                await _connection.OpenAsync();
+                // Ensure connection is open for the rest of the method
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                const string sql = @"UPDATE BorrowedBooks SET 
-                                   BorrowerName = @borrower,
-                                   BookTitle = @title,
-                                   BorrowDate = @borrowDate,
-                                   DueDate = @dueDate
+                // For updates, we just check existence, not availability
+                const string getBookSql = "SELECT BookID FROM LogBook WHERE BookTitle = @title LIMIT 1";
+                using var bookCmd = new MySqlCommand(getBookSql, _connection);
+                bookCmd.Parameters.AddWithValue("@title", bookTitle);
+                var result = await bookCmd.ExecuteScalarAsync();
+
+                if (result == null) return Json(new { success = false, error = "Book not found." });
+                int bookId = Convert.ToInt32(result);
+
+                DateTime dueDate = borrowDate.AddDays(4);
+
+                // 1. Update Loan Table
+                const string sql = @"UPDATE Loan SET 
+                                   BookID = @bookId,
+                                   BorrowerID = @borrowerId,
+                                   DateBorrowed = @dateBorrowed,
+                                   DateDue = @dateDue,
+                                   BookStatus = @bookStatus
                                    WHERE LoanID = @loanId";
 
                 using var cmd = new MySqlCommand(sql, _connection);
-                cmd.Parameters.AddWithValue("@borrower", borrowerName);
-                cmd.Parameters.AddWithValue("@title", bookTitle);
-                cmd.Parameters.AddWithValue("@borrowDate", borrowDate);
-                cmd.Parameters.AddWithValue("@dueDate", dueDate);
+                cmd.Parameters.AddWithValue("@bookId", bookId);
+                cmd.Parameters.AddWithValue("@borrowerId", borrowerId);
+                cmd.Parameters.AddWithValue("@dateBorrowed", borrowDate);
+                cmd.Parameters.AddWithValue("@dateDue", dueDate);
+                // Ensure there is a value or default to 'Borrowed'
+                cmd.Parameters.AddWithValue("@bookStatus", bookStatus ?? "Borrowed");
                 cmd.Parameters.AddWithValue("@loanId", loanId);
 
                 int rowsAffected = await cmd.ExecuteNonQueryAsync();
 
-                return Json(new { success = rowsAffected > 0, dueDate = dueDate.ToString("MM/dd/yyyy") });
+                // 2. Update LogBook Table so Dashboard reflects counts (Missing/Damaged)
+                // This updates the actual book's condition record
+                if (!string.IsNullOrEmpty(bookStatus))
+                {
+                    const string updateLogBookSql = "UPDATE LogBook SET BookStatus = @status WHERE BookID = @bookId";
+                    using var lbCmd = new MySqlCommand(updateLogBookSql, _connection);
+                    lbCmd.Parameters.AddWithValue("@status", bookStatus);
+                    lbCmd.Parameters.AddWithValue("@bookId", bookId);
+                    await lbCmd.ExecuteNonQueryAsync();
+                }
+
+                // Note: UpdateBorrowerName properly handles connection state now.
+                await UpdateBorrowerName(borrowerId, borrowerName);
+
+                return Json(new
+                {
+                    success = rowsAffected > 0,
+                    dueDate = dueDate.ToString("MM/dd/yyyy"),
+                    borrowerId = borrowerId,
+                    bookId = bookId
+                });
             }
             catch (Exception ex)
             {
@@ -897,127 +1135,196 @@ namespace Soft_eng.Controllers
             }
         }
 
-        // Update overdue status
+        private async Task UpdateBorrowerName(int borrowerId, string borrowerName)
+        {
+            bool closeConnection = false;
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                {
+                    await _connection.OpenAsync();
+                    closeConnection = true;
+                }
+
+                const string sql = "UPDATE Borrower SET BorrowerName = @name WHERE BorrowerID = @id";
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@name", borrowerName);
+                cmd.Parameters.AddWithValue("@id", borrowerId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                if (closeConnection) await _connection.CloseAsync();
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> UpdateOverdueStatus(int loanId, string status)
         {
             try
             {
-                await _connection.OpenAsync();
-
-                const string sql = @"UPDATE BorrowedBooks SET OverdueStatus = @status WHERE LoanID = @loanId";
-
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                bool overdueStatus = status == "Yes";
+                const string sql = @"UPDATE Loan SET OverdueStatus = @status WHERE LoanID = @loanId";
                 using var cmd = new MySqlCommand(sql, _connection);
-                cmd.Parameters.AddWithValue("@status", status);
+                cmd.Parameters.AddWithValue("@status", overdueStatus);
                 cmd.Parameters.AddWithValue("@loanId", loanId);
-
                 int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
                 return Json(new { success = rowsAffected > 0 });
             }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
-            finally
-            {
-                await _connection.CloseAsync();
-            }
+            catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
+            finally { await _connection.CloseAsync(); }
         }
 
-        // Update date returned
         [HttpPost]
         public async Task<IActionResult> UpdateDateReturned(int loanId, string dateReturned)
         {
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                // Get BookID to update availability
+                const string getBookIdSql = "SELECT BookID FROM Loan WHERE LoanID = @loanId";
+                using var getCmd = new MySqlCommand(getBookIdSql, _connection);
+                getCmd.Parameters.AddWithValue("@loanId", loanId);
+                var bookIdObj = await getCmd.ExecuteScalarAsync();
+                int bookId = Convert.ToInt32(bookIdObj);
 
                 string sql;
+                string availStatus;
+
                 if (string.IsNullOrEmpty(dateReturned))
                 {
-                    sql = "UPDATE BorrowedBooks SET DateReturned = NULL WHERE LoanID = @loanId";
+                    sql = "UPDATE Loan SET DateReturned = NULL, ReturnStatus = 'Not Returned' WHERE LoanID = @loanId";
+                    availStatus = "Borrowed";
                 }
                 else
                 {
-                    sql = "UPDATE BorrowedBooks SET DateReturned = @dateReturned WHERE LoanID = @loanId";
+                    sql = "UPDATE Loan SET DateReturned = @dateReturned, ReturnStatus = 'Returned' WHERE LoanID = @loanId";
+                    availStatus = "Available";
                 }
 
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@loanId", loanId);
+                if (!string.IsNullOrEmpty(dateReturned)) cmd.Parameters.AddWithValue("@dateReturned", DateTime.Parse(dateReturned));
+                await cmd.ExecuteNonQueryAsync();
 
-                if (!string.IsNullOrEmpty(dateReturned))
-                {
-                    cmd.Parameters.AddWithValue("@dateReturned", DateTime.Parse(dateReturned));
-                }
+                // Update LogBook
+                const string updateBookSql = "UPDATE LogBook SET Availability = @status WHERE BookID = @bookId";
+                using var upBookCmd = new MySqlCommand(updateBookSql, _connection);
+                upBookCmd.Parameters.AddWithValue("@status", availStatus);
+                upBookCmd.Parameters.AddWithValue("@bookId", bookId);
+                await upBookCmd.ExecuteNonQueryAsync();
 
-                int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
-                return Json(new { success = rowsAffected > 0 });
+                return Json(new { success = true });
             }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
-            finally
-            {
-                await _connection.CloseAsync();
-            }
+            catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
+            finally { await _connection.CloseAsync(); }
         }
 
-        // Mark book as returned (sets current date)
         [HttpPost]
         public async Task<IActionResult> MarkAsReturned(int loanId)
         {
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                const string sql = @"UPDATE BorrowedBooks SET DateReturned = @returnDate WHERE LoanID = @loanId";
+                // Get BookID
+                const string getBookIdSql = "SELECT BookID FROM Loan WHERE LoanID = @loanId";
+                using var getCmd = new MySqlCommand(getBookIdSql, _connection);
+                getCmd.Parameters.AddWithValue("@loanId", loanId);
+                var bookId = Convert.ToInt32(await getCmd.ExecuteScalarAsync());
 
+                // Update Loan
+                const string sql = @"UPDATE Loan SET DateReturned = @returnDate, ReturnStatus = 'Returned' WHERE LoanID = @loanId";
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@returnDate", DateTime.Now);
                 cmd.Parameters.AddWithValue("@loanId", loanId);
+                await cmd.ExecuteNonQueryAsync();
 
-                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+                // Update LogBook
+                const string updateBookSql = "UPDATE LogBook SET Availability = 'Available' WHERE BookID = @bookId";
+                using var upBookCmd = new MySqlCommand(updateBookSql, _connection);
+                upBookCmd.Parameters.AddWithValue("@bookId", bookId);
+                await upBookCmd.ExecuteNonQueryAsync();
 
-                return Json(new { success = rowsAffected > 0 });
+                return Json(new { success = true });
             }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
-            finally
-            {
-                await _connection.CloseAsync();
-            }
+            catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
+            finally { await _connection.CloseAsync(); }
         }
 
-        // Delete borrowed book
         [HttpPost]
         public async Task<IActionResult> DeleteBorrowedBook(int loanId)
         {
             try
             {
-                await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                const string sql = @"DELETE FROM BorrowedBooks WHERE LoanID = @loanId";
+                // Get BookID first to reset it to 'Available' if deleting an active loan
+                const string getBookSql = "SELECT BookID FROM Loan WHERE LoanID = @loanId";
+                using var getCmd = new MySqlCommand(getBookSql, _connection);
+                getCmd.Parameters.AddWithValue("@loanId", loanId);
+                var bookId = await getCmd.ExecuteScalarAsync();
 
+                if (bookId != null)
+                {
+                    // Reset book availability
+                    const string resetBookSql = "UPDATE LogBook SET Availability = 'Available' WHERE BookID = @bookId";
+                    using var resetCmd = new MySqlCommand(resetBookSql, _connection);
+                    resetCmd.Parameters.AddWithValue("@bookId", bookId);
+                    await resetCmd.ExecuteNonQueryAsync();
+                }
+
+                // Delete the loan
+                const string sql = @"DELETE FROM Loan WHERE LoanID = @loanId";
                 using var cmd = new MySqlCommand(sql, _connection);
                 cmd.Parameters.AddWithValue("@loanId", loanId);
-
                 int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
                 return Json(new { success = rowsAffected > 0 });
             }
-            catch (Exception ex)
+            catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
+            finally { await _connection.CloseAsync(); }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBorrowerSuggestions(string query)
+        {
+            try
             {
-                return Json(new { success = false, error = ex.Message });
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                const string sql = "SELECT BorrowerName FROM Borrower WHERE BorrowerName LIKE @query LIMIT 10";
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@query", $"%{query}%");
+                using var reader = await cmd.ExecuteReaderAsync();
+                var suggestions = new List<string>();
+                while (await reader.ReadAsync())
+                {
+                    suggestions.Add(reader.GetString("BorrowerName"));
+                }
+                return Json(suggestions);
             }
-            finally
+            finally { await _connection.CloseAsync(); }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBookTitleSuggestions(string query)
+        {
+            try
             {
-                await _connection.CloseAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                const string sql = "SELECT BookTitle FROM LogBook WHERE BookTitle LIKE @query AND Availability = 'Available' LIMIT 10";
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@query", $"%{query}%");
+                using var reader = await cmd.ExecuteReaderAsync();
+                var suggestions = new List<string>();
+                while (await reader.ReadAsync())
+                {
+                    suggestions.Add(reader.GetString("BookTitle"));
+                }
+                return Json(suggestions);
             }
+            finally { await _connection.CloseAsync(); }
         }
     }
 }

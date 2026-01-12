@@ -1,5 +1,5 @@
 @{
-    ViewBag.Title = "Admin Dashboard";
+    ViewBag.Title = "Dashboard";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Saint Isidore Academy</title>
+    <title>Dashboard - Saint Isidore Academy</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/dashboard.admin.css">
@@ -95,26 +95,26 @@
                 <div class="row-2">
                     <div class="stat-box">
                         <div class="stat-label">Borrowed Books</div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">@ViewBag.TotalBorrowed</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Returned Books</div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">@ViewBag.TotalReturned</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Overdue Books</div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">@ViewBag.TotalOverdue</div>
                     </div>
                 </div>
 
                 <div class="row-3">
                     <div class="stat-box">
                         <div class="stat-label">Missing Books</div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">@ViewBag.TotalMissing</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Damaged Books</div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">@ViewBag.TotalDamaged</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Total Fine</div>
@@ -137,9 +137,25 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td colspan="5" class="no-data">No overdue records</td>
-                                    </tr>
+                                    @if (ViewBag.OverdueList != null && ViewBag.OverdueList.Count > 0)
+                                    {
+                                        foreach (var item in ViewBag.OverdueList)
+                                        {
+                                            <tr>
+                                                <td>@item.UserID</td>
+                                                <td>@item.Name</td>
+                                                <td>@item.DateBorrowed</td>
+                                                <td>-</td>
+                                                <td style="color: #e74c3c; font-weight: 600;">Overdue</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="no-data">No overdue records</td>
+                                        </tr>
+                                    }
                                 </tbody>
                             </table>
                         </div>
@@ -155,9 +171,21 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td class="no-data">No recent borrowed books</td>
-                                    </tr>
+                                    @if (ViewBag.RecentList != null && ViewBag.RecentList.Count > 0)
+                                    {
+                                        foreach (var item in ViewBag.RecentList)
+                                        {
+                                            <tr>
+                                                <td>@item.Title</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td class="no-data">No recent borrowed books</td>
+                                        </tr>
+                                    }
                                 </tbody>
                             </table>
                         </div>

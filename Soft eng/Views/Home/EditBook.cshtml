@@ -1,4 +1,4 @@
-@model Soft_eng.Models.Inventory
+@model Soft_eng.Models.LogBook
 @{
     Layout = null;
 }
@@ -7,6 +7,34 @@
 <head>
     <link rel="stylesheet" href="~/css/addbooks.css">
     <title>Edit Book</title>
+    <style>
+        .validation-summary-errors {
+            color: #e74c3c;
+            background-color: #fdecea;
+            border: 1px solid #e74c3c;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            list-style: none;
+        }
+
+            .validation-summary-errors ul {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+        .field-validation-error {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .input-validation-error {
+            border-color: #e74c3c !important;
+        }
+    </style>
 </head>
 <body>
     <main class="content-area">
@@ -14,28 +42,30 @@
 
         <div class="form-card">
             <form asp-action="EditBook" method="post">
+                <div asp-validation-summary="All" class="validation-summary-errors"></div>
+
                 <input type="hidden" asp-for="BookID" />
                 <input type="hidden" name="isAdmin" value="@((ViewBag.FromAdmin ?? false).ToString().ToLower())" />
 
-                <!-- BOOK TITLE -->
                 <div class="form-group full-width">
                     <label>BOOK TITLE</label>
                     <input asp-for="BookTitle" required />
+                    <span asp-validation-for="BookTitle" class="field-validation-error"></span>
                 </div>
 
-                <!-- Author & Pages -->
                 <div class="form-grid-row">
                     <div class="form-group">
                         <label>AUTHOR</label>
                         <input asp-for="Author" />
+                        <span asp-validation-for="Author" class="field-validation-error"></span>
                     </div>
                     <div class="form-group">
                         <label>PAGES</label>
                         <input asp-for="Pages" type="number" min="1" />
+                        <span asp-validation-for="Pages" class="field-validation-error"></span>
                     </div>
                 </div>
 
-                <!-- Edition & Published Year -->
                 <div class="form-grid-row">
                     <div class="form-group">
                         <label>EDITION</label>
@@ -44,6 +74,7 @@
                                pattern="^\d+(st|nd|rd|th)/\d{4}$"
                                title="Format must be like 2nd/2019"
                                required />
+                        <span asp-validation-for="Edition" class="field-validation-error"></span>
                     </div>
 
                     <div class="form-group">
@@ -52,10 +83,10 @@
                                type="date"
                                id="PublishedYear"
                                required />
+                        <span asp-validation-for="Year" class="field-validation-error"></span>
                     </div>
                 </div>
 
-                <!-- ISBN & Publisher -->
                 <div class="form-grid-mixed">
                     <div class="left-col">
                         <div class="form-group">
@@ -66,24 +97,25 @@
                                    maxlength="13"
                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                    required />
+                            <span asp-validation-for="ISBN" class="field-validation-error"></span>
                         </div>
 
                         <div class="form-group" style="margin-top: 20px;">
                             <label>PUBLISHER</label>
                             <input asp-for="Publisher" />
+                            <span asp-validation-for="Publisher" class="field-validation-error"></span>
                         </div>
                     </div>
 
-                    <!-- Remarks -->
                     <div class="right-col">
                         <div class="form-group h-100">
                             <label>REMARKS</label>
                             <textarea asp-for="Remarks"></textarea>
+                            <span asp-validation-for="Remarks" class="field-validation-error"></span>
                         </div>
                     </div>
                 </div>
 
-                <!-- SOURCE TYPE & DATE RECEIVED -->
                 <div class="form-grid-row">
                     <div class="form-group">
                         <label>SOURCE TYPE</label>
@@ -91,6 +123,7 @@
                             <option value="donation">Donation</option>
                             <option value="purchased">Purchased</option>
                         </select>
+                        <span asp-validation-for="SourceType" class="field-validation-error"></span>
                     </div>
 
                     <div class="form-group">
@@ -99,34 +132,34 @@
                                type="date"
                                id="DateReceived"
                                required />
+                        <span asp-validation-for="DateReceived" class="field-validation-error"></span>
                     </div>
                 </div>
 
-                <!-- BOOK STATUS & TOTAL COPIES (SWAPPED POSITION) -->
                 <div class="form-grid-row">
                     <div class="form-group">
                         <label>BOOK STATUS</label>
                         <select asp-for="BookStatus">
-                            <option value="Available">Available</option>
-                            <option value="Borrowed">Borrowed</option>
-                            <option value="Reserved">Reserved</option>
-                            <option value="Lost">Lost</option>
+                            <option value="Good">Good</option>
+                            <option value="Damaged">Damaged</option>
+                            <option value="Missing">Missing</option>
                         </select>
+                        <span asp-validation-for="BookStatus" class="field-validation-error"></span>
                     </div>
 
                     <div class="form-group">
                         <label>TOTAL COPIES</label>
                         <input asp-for="TotalCopies" type="number" min="1" required />
+                        <span asp-validation-for="TotalCopies" class="field-validation-error"></span>
                     </div>
                 </div>
 
-                <!-- SHELF LOCATION (NOW LAST) -->
                 <div class="form-group full-width">
                     <label>SHELF LOCATION</label>
                     <input asp-for="ShelfLocation" />
+                    <span asp-validation-for="ShelfLocation" class="field-validation-error"></span>
                 </div>
 
-                <!-- Buttons -->
                 <div class="button-area">
                     <button type="submit" class="btn btn-green">Update Book</button>
 
@@ -143,16 +176,27 @@
         </div>
     </main>
 
-    <!-- Date Validation -->
     <script>
         const publishedYear = document.getElementById("PublishedYear");
         const dateReceived = document.getElementById("DateReceived");
 
+        function validateDates() {
+            if (publishedYear.value && dateReceived.value) {
+                if (dateReceived.value < publishedYear.value) {
+                    dateReceived.setCustomValidity("Date Received cannot be earlier than Published Year.");
+                } else {
+                    dateReceived.setCustomValidity("");
+                }
+            }
+        }
+
         publishedYear.addEventListener("change", () => {
             if (publishedYear.value) {
                 dateReceived.min = publishedYear.value;
+                validateDates();
             }
         });
+        dateReceived.addEventListener("change", validateDates);
     </script>
 
     <partial name="_ValidationScriptsPartial" />
