@@ -1,5 +1,5 @@
 CREATE TABLE Inventory (
-    BookID INT PRIMARY KEY IDENTITY(1,1), -- Auto-incrementing primary key
+    BookID INT AUTO_INCREMENT PRIMARY KEY,
     ISBN VARCHAR(50) NOT NULL,
     SourceType VARCHAR(50),               -- e.g., 'Donation', 'Purchased'
     BookTitle VARCHAR(255) NOT NULL,
