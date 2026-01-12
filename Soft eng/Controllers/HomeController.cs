@@ -1,5 +1,6 @@
 using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
 using Soft_eng.Models;
 using System.Data;
@@ -21,11 +22,14 @@ namespace Soft_eng.Controllers
     {
         private readonly MySqlConnection _connection;
         private readonly IConfiguration _configuration;
+        
+
 
         public HomeController(MySqlConnection connection, IConfiguration configuration)
         {
             _connection = connection;
             _configuration = configuration;
+            
         }
 
         public IActionResult Login() => View();
@@ -162,7 +166,115 @@ namespace Soft_eng.Controllers
 
         public IActionResult Addbooks() => View();
         public IActionResult ForgotPassword() => View();
-        public IActionResult RequestedBooks() => View();
+        public async Task<IActionResult> RequestedBooks()
+        {
+            var requests = new List<Request>();
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                string sql = @"SELECT 
+                            RequestID,
+                            RequesterName,
+                            RequestedTitle,
+                            DateRequested,
+                            Status,
+                            Remarks
+                       FROM Request
+                       ORDER BY DateRequested DESC";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    requests.Add(new Request
+                    {
+                        RequestID = reader.GetInt32("RequestID"),
+                        RequesterName = reader.GetString("RequesterName"),
+                        RequestedTitle = reader.GetString("RequestedTitle"),
+                        DateRequested = reader.GetDateTime("DateRequested"),
+                        Status = reader.GetString("Status"),
+                        Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks")
+                    });
+                }
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return View(requests);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddRequest(Request request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return RedirectToAction("RequestedBooks");
+            }
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                string sql = @"INSERT INTO Request 
+                       (RequesterName, RequestedTitle, DateRequested, Status, Remarks)
+                       VALUES 
+                       (@name, @title, @date, 'Pending', @remarks)";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                cmd.Parameters.AddWithValue("@name", request.RequesterName);
+                cmd.Parameters.AddWithValue("@title", request.RequestedTitle);
+                cmd.Parameters.AddWithValue("@date", request.DateRequested);
+                cmd.Parameters.AddWithValue("@remarks", request.Remarks);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            // IMPORTANT: redirect back to list
+            return RedirectToAction("RequestedBooks");
+        }
+
+        
+        [HttpPost]       
+        public IActionResult EditRequest(Request req)
+        {
+            if (_connection.State != System.Data.ConnectionState.Open)
+                _connection.Open();
+
+            string query = @"UPDATE request
+                     SET RequesterName = @name,
+                         RequestedTitle = @title,
+                         DateRequested = @date,
+                         Remarks = @remarks
+                     WHERE RequestID = @id";
+
+            using (MySqlCommand cmd = new MySqlCommand(query, _connection))
+            {
+                cmd.Parameters.AddWithValue("@id", req.RequestID);
+                cmd.Parameters.AddWithValue("@name", req.RequesterName);
+                cmd.Parameters.AddWithValue("@title", req.RequestedTitle);
+                cmd.Parameters.AddWithValue("@date", req.DateRequested);
+                cmd.Parameters.AddWithValue("@remarks", req.Remarks);
+
+                cmd.ExecuteNonQuery();
+            }
+
+            return RedirectToAction("RequestedBooks");
+        }
+
+
+
+
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
         public IActionResult LoginAdmin() => View("Login.admin");
@@ -703,6 +815,8 @@ namespace Soft_eng.Controllers
             ViewBag.FromAdmin = fromAdmin;
             return fromAdmin ? View("InventoryAdmin", books) : View(books);
         }
+
+
 
         public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
         {
