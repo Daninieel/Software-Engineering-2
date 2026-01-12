@@ -64,7 +64,23 @@
             });
         });
     }
+    const rows = document.querySelectorAll('.book-row');
 
+    rows.forEach(row => {
+        row.addEventListener('click', function (e) {
+            if (e.target.closest('a') || e.target.closest('button')) {
+                return;
+            }
+            rows.forEach(r => r.classList.remove('selected-row'));
+
+            this.classList.add('selected-row');
+
+            const radio = this.querySelector('input[name="selectedBook"]');
+            if (radio) {
+                radio.checked = true;
+            }
+        });
+    });
     const editBtn = document.getElementById('adminEditBtn') || document.getElementById('editBtn');
     if (editBtn) {
         editBtn.addEventListener('click', function () {

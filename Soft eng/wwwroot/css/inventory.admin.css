@@ -1,5 +1,3 @@
-
-
 * {
     margin: 0;
     padding: 0;
@@ -11,7 +9,6 @@ body {
     background-color: #f0f0f0;
 }
 
-/* HEADER */
 .top-header {
     background-color: #c0392b;
     color: white;
@@ -61,6 +58,19 @@ body {
     }
 }
 
+.book-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+    .book-row:hover {
+        background-color: #f1f1f1;
+    }
+
+    .book-row.selected-row {
+        border-left: 4px solid #C0392B;
+    }
+
 .user-area {
     display: flex;
     align-items: center;
@@ -94,13 +104,11 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* LAYOUT */
 .main-layout {
     display: flex;
     min-height: calc(100vh - 100px);
 }
 
-/* SIDEBAR */
 .sidebar {
     width: 280px;
     min-width: 280px;
@@ -148,7 +156,6 @@ body {
                 white-space: nowrap;
             }
 
-/* CONTENT */
 .content-area {
     flex: 1;
     padding: 40px;
@@ -160,7 +167,6 @@ body {
         margin-bottom: 30px;
     }
 
-/* SEARCH */
 .search-filter {
     display: flex;
     gap: 20px;
@@ -184,8 +190,6 @@ body {
     cursor: pointer;
 }
 
-/* TABLE */
-
 .table-card {
     background: white;
     width: 100%;
@@ -196,7 +200,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     padding: 25px;
-    margin: 30px auto; /* makes white square table responsive to zoom ins and outs */
+    margin: 30px auto;
     margin-top: 30px;
     display: flex;
     flex-direction: column;
@@ -219,7 +223,6 @@ td {
     border-bottom: 1px solid #ddd;
 }
 
-/* BUTTONS */
 .button-area {
     display: flex;
     justify-content: center;
@@ -239,7 +242,7 @@ td {
 
 .btn-blue {
     background: #5dade2;
-    text-decoration: none; /* removed the underline on add books*/
+    text-decoration: none;
 }
 
 .btn-green {
@@ -254,11 +257,10 @@ td {
     background: #e74c3c;
 }
 
-/* SEE MORE BUTTON IN TABLE */
 .btn-see-more {
     display: inline-block;
     padding: 8px 20px;
-    background-color: #ddd; /* Light grey to match your "Filter" button */
+    background-color: #ddd;
     color: #333;
     text-decoration: none;
     font-size: 0.85rem;
@@ -270,59 +272,20 @@ td {
 }
 
     .btn-see-more:hover {
-        background-color: #5dade2; /* Changes to blue on hover to match your primary theme */
+        background-color: #5dade2;
         color: white;
         box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
         transform: translateY(-1px);
     }
 
-/* READ-ONLY INPUT STYLING (For the BookDetails page) */
 input[readonly],
 textarea[readonly] {
-    background-color: #f9f9f9 !important; /* Slightly darker background to show it's disabled */
+    background-color: #f9f9f9 !important;
     border: 1px solid #ddd !important;
     color: #666 !important;
     cursor: default;
     outline: none;
 }
-
-/* Ensure table cells align the button correctly */
-td:last-child {
-    text-align: center;
-}
-
-
-.btn-see-more {
-    display: inline-block;
-    padding: 8px 20px;
-    background-color: #ddd; 
-    color: #333;
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-}
-
-    .btn-see-more:hover {
-        background-color: #5dade2; 
-        color: white;
-        box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
-        transform: translateY(-1px);
-    }
-
-
-input[readonly],
-textarea[readonly] {
-    background-color: #f9f9f9 !important; 
-    border: 1px solid #ddd !important;
-    color: #666 !important;
-    cursor: default;
-    outline: none;
-}
-
 
 td:last-child {
     text-align: center;

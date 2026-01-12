@@ -57,6 +57,18 @@ body {
         display: block;
     }
 }
+.book-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+    .book-row:hover {
+        background-color: #f1f1f1;
+    }
+
+    .book-row.selected-row {
+        border-left: 4px solid #C0392B;
+    }
 
 .user-area {
     display: flex;

@@ -69,7 +69,6 @@
                 <table id="inventoryTable">
                     <thead>
                         <tr>
-                            <th>Select</th>
                             <th>Book ID</th>
                             <th>Title</th>
                             <th>Author</th>
@@ -78,17 +77,20 @@
                             <th>Action</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            <tr class="book-row" data-status="@item.Availability">
-                                <td><input type="radio" name="selectedBook" value="@item.BookID"></td>
-                                <td>@item.BookID</td>
+                            <tr class="book-row">
+                                <td>
+                                    <input type="radio" name="selectedBook" value="@item.BookID" hidden>
+                                    @item.BookID
+                                </td>
                                 <td class="title-cell">@item.BookTitle</td>
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="true" class="btn-see-more">See more</a></td>
+                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">See more</a></td>
                             </tr>
                         }
                     </tbody>
