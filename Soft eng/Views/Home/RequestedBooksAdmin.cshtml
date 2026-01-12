@@ -1,5 +1,7 @@
-﻿@{
-    ViewBag.Title = "RequestedBooks";
+﻿@model IEnumerable<Soft_eng.Models.Request>
+
+@{
+    ViewBag.Title = "RequestedBooksAdmin";
     Layout = null;
 }
 
@@ -8,9 +10,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System - Add Book</title>
+    <title>Library Management System - Requested Books</title>
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <link rel="stylesheet" href="~/css/requestedbooks.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
@@ -27,19 +31,19 @@
         </div>
 
         <div class="user-area">
-            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm">
                 <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
                     <span class="logout-text">Log Out</span>
                 </a>
             </form>
-            <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>
         </div>
     </header>
 
     <div class="main-layout">
-        <aside class="sidebar admin">
+        <aside class="sidebar">
             <nav>
                 <ul>
                     <li><a asp-action="AdminDashboard">Dashboard</a></li>
@@ -54,7 +58,7 @@
         </aside>
 
         <main class="content-area">
-            <h2>Requested Books</h2>
+            <h2>Admin Requested Books</h2>
 
             <div class="search-filter">
                 <input type="text" placeholder="Search by Title, Borrower, etc.">
@@ -85,41 +89,259 @@
                             <th>Requested Title</th>
                             <th>Date Requested</th>
                             <th>Status</th>
+                            <th>Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var req in Model)
+                            {
+                                <tr class="request-row"
+                                    data-id="@req.RequestID"
+                                    data-name="@req.RequesterName"
+                                    data-title="@req.RequestedTitle"
+                                    data-date="@req.DateRequested.ToString("yyyy-MM-dd")"
+                                    data-status="@req.Status"
+                                    data-remarks="@(req.Remarks ?? "")">
+                                    <td>@req.RequestID</td>
+                                    <td><span class="ellipsis">@req.RequesterName</span></td>
+                                    <td><span class="ellipsis">@req.RequestedTitle</span></td>
+                                    <td>@req.DateRequested.ToString("yyyy-MM-dd")</td>
+                                    <td>@req.Status</td>
+                                    <td>
+                                        <button class="btn-see-more"
+                                                onclick='openViewRequestModal(
+                                                    @req.RequestID,
+                                                    @Html.Raw(Json.Serialize(req.RequesterName)),
+                                                    @Html.Raw(Json.Serialize(req.RequestedTitle)),
+                                                    "@req.DateRequested.ToString("yyyy-MM-dd")",
+                                                    @Html.Raw(Json.Serialize(req.Status)),
+                                                    @Html.Raw(Json.Serialize(req.Remarks ?? "None"))
+                                                )'>
+                                            See More
+                                        </button>
+                                    </td>
+                                </tr>
+
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6">No requests found.</td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
 
             <div class="button-area">
-                <button class="btn btn-blue">Add Request</button>
+                <button class="btn btn-blue" id="addRequestBtn">Add Request</button>
                 <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
-                <button class="btn btn-orange">Print</button>
-                <button class="btn btn-red">Edit Request</button>
+                <button class="btn btn-red" onclick="openEditRequest()">Edit Request</button>
             </div>
         </main>
-
     </div>
 
-    <div id="reportModal" class="report-modal">
-        <div class="report-modal-content">
-            <button id="closeReportModal" class="close-report-modal">&times;</button>
-            <h2>Select Report Format</h2>
-            <p>Choose the format for your report:</p>
-            <div class="report-format-buttons">
-                <button class="report-format-btn pdf" data-format="pdf">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-                <button class="report-format-btn csv" data-format="csv">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
+    <!-- Add Request Modal -->
+    <div id="addRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>New Book Request</h2>
+            <p>Input the details of the book requested</p>
+
+            <form asp-action="AddRequest" asp-controller="Home" method="post">
+                <label>Requester Name</label>
+                <input type="text" name="RequesterName" required>
+
+                <label>Book Title</label>
+                <input type="text" name="RequestedTitle" required>
+
+                <label>Date Requested</label>
+                <input type="date" name="DateRequested" required>
+
+                <label>Remarks</label>
+                <textarea name="Remarks"></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-red" id="cancelRequestBtn">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Request Modal -->
+    <div id="viewRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>Request Details</h2>
+
+            <p><strong>Request ID:</strong> <span id="viewRequestID"></span></p>
+            <p><strong>Requester Name:</strong> <span id="viewRequesterName"></span></p>
+            <p><strong>Requested Title:</strong> <span id="viewRequestedTitle"></span></p>
+            <p><strong>Date Requested:</strong> <span id="viewDateRequested"></span></p>
+            <p><strong>Status:</strong> <span id="viewStatus"></span></p>
+
+            <label><strong>Remarks</strong></label>
+            <textarea id="viewRemarks" readonly></textarea>
+
+            <div class="modal-actions">
+                <button class="btn btn-red" onclick="closeViewRequestModal()">Close</button>
             </div>
         </div>
     </div>
 
+    <!-- Edit Request Modal (Admin Version) -->
+    <div id="editRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Request</h2>
+
+            <form asp-action="EditRequestAdmin" asp-controller="Home" method="post">
+                <input type="hidden" name="RequestID" id="editRequestID" />
+
+                <label>Requester Name</label>
+                <input type="text" name="RequesterName" id="editRequesterName" required />
+
+                <label>Requested Title</label>
+                <input type="text" name="RequestedTitle" id="editRequestedTitle" required />
+
+                <label>Date Requested</label>
+                <input type="date" name="DateRequested" id="editDateRequested" required />
+
+                <label>Status</label>
+                <select name="Status" id="editStatus" required>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Denied">Denied</option>
+                    <option value="Evaluating">Evaluating</option>
+                </select>
+
+                <label>Remarks</label>
+                <textarea name="Remarks" id="editRemarks"></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-red" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditRequest() {
+            if (!selectedRequest) {
+                alert("Please select a request first.");
+                return;
+            }
+
+            document.getElementById("editRequestID").value = selectedRequest.id;
+            document.getElementById("editRequesterName").value = selectedRequest.name;
+            document.getElementById("editRequestedTitle").value = selectedRequest.title;
+            document.getElementById("editDateRequested").value = selectedRequest.date;
+            document.getElementById("editStatus").value = selectedRequest.status;
+            document.getElementById("editRemarks").value = selectedRequest.remarks;
+
+            document.getElementById("editRequestModal").style.display = "block";
+        }
+
+        function closeEditModal() {
+            document.getElementById("editRequestModal").style.display = "none";
+        }
+    </script>
+
+
+
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
+
+    <script>
+        const addRequestBtn = document.getElementById("addRequestBtn");
+        const addRequestModal = document.getElementById("addRequestModal");
+        const cancelRequestBtn = document.getElementById("cancelRequestBtn");
+
+        addRequestBtn.onclick = () => addRequestModal.style.display = "block";
+        cancelRequestBtn.onclick = () => addRequestModal.style.display = "none";
+
+        window.onclick = (event) => {
+            if (event.target === addRequestModal) {
+                addRequestModal.style.display = "none";
+            }
+        };
+    </script>
+
+    <script>
+        function openViewRequestModal(id, name, title, date, status, remarks) {
+            document.getElementById("viewRequestID").innerText = id;
+            document.getElementById("viewRequesterName").innerText = name;
+            document.getElementById("viewRequestedTitle").innerText = title;
+            document.getElementById("viewDateRequested").innerText = date;
+            document.getElementById("viewStatus").innerText = status;
+            document.getElementById("viewRemarks").value = remarks;
+
+            document.getElementById("viewRequestModal").style.display = "block";
+        }
+
+        function closeViewRequestModal() {
+            document.getElementById("viewRequestModal").style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            const modal = document.getElementById("viewRequestModal");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        };
+    </script>
+
+    <script>
+        let selectedRequest = null;
+
+        document.querySelectorAll(".request-row").forEach(row => {
+            row.addEventListener("click", function () {
+
+                document.querySelectorAll(".request-row")
+                    .forEach(r => r.classList.remove("selected"));
+
+                this.classList.add("selected");
+
+                selectedRequest = {
+                    id: this.dataset.id,
+                    name: this.dataset.name,
+                    title: this.dataset.title,
+                    date: this.dataset.date,
+                    status: this.dataset.status,
+                    remarks: this.dataset.remarks
+                };
+            });
+        });
+    </script>
+
+    <script>
+        function openEditRequest() {
+            if (!selectedRequest) {
+                alert("Please select a request first.");
+                return;
+            }
+
+            document.getElementById("editRequestID").value = selectedRequest.id;
+            document.getElementById("editRequesterName").value = selectedRequest.name;
+            document.getElementById("editRequestedTitle").value = selectedRequest.title;
+            document.getElementById("editDateRequested").value = selectedRequest.date;
+            document.getElementById("editStatus").value = selectedRequest.status;
+            document.getElementById("editRemarks").value = selectedRequest.remarks;
+
+            document.getElementById("editRequestModal").style.display = "block";
+        }
+
+        function closeEditModal() {
+            document.getElementById("editRequestModal").style.display = "none";
+        }
+    </script>
+
+
+
+
 </body>
 </html>

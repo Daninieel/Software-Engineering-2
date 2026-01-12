@@ -209,6 +209,48 @@ namespace Soft_eng.Controllers
             return View(requests);
         }
 
+        public async Task<IActionResult> RequestedBooksAdmin()
+        {
+            var requests = new List<Request>();
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                string sql = @"SELECT 
+                    RequestID,
+                    RequesterName,
+                    RequestedTitle,
+                    DateRequested,
+                    Status,
+                    Remarks
+               FROM Request
+               ORDER BY DateRequested DESC";
+
+                using var cmd = new MySqlCommand(sql, _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    requests.Add(new Request
+                    {
+                        RequestID = reader.GetInt32("RequestID"),
+                        RequesterName = reader.GetString("RequesterName"),
+                        RequestedTitle = reader.GetString("RequestedTitle"),
+                        DateRequested = reader.GetDateTime("DateRequested"),
+                        Status = reader.GetString("Status"),
+                        Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks")
+                    });
+                }
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return View(requests);
+        }
+
         [HttpPost]
         public async Task<IActionResult> AddRequest(Request request)
         {
@@ -272,9 +314,33 @@ namespace Soft_eng.Controllers
             return RedirectToAction("RequestedBooks");
         }
 
+        [HttpPost]
+        public IActionResult EditRequestAdmin(Request req)
+        {
+            if (_connection.State != System.Data.ConnectionState.Open)
+                _connection.Open();
 
+            string query = @"UPDATE request
+             SET RequesterName = @name,
+                 RequestedTitle = @title,
+                 DateRequested = @date,
+                 Status = @status,
+                 Remarks = @remarks
+             WHERE RequestID = @id";
 
+            using (MySqlCommand cmd = new MySqlCommand(query, _connection))
+            {
+                cmd.Parameters.AddWithValue("@id", req.RequestID);
+                cmd.Parameters.AddWithValue("@name", req.RequesterName);
+                cmd.Parameters.AddWithValue("@title", req.RequestedTitle);
+                cmd.Parameters.AddWithValue("@date", req.DateRequested);
+                cmd.Parameters.AddWithValue("@status", req.Status);
+                cmd.Parameters.AddWithValue("@remarks", req.Remarks);
+                cmd.ExecuteNonQuery();
+            }
 
+            return RedirectToAction("RequestedBooksAdmin");
+        }
         public IActionResult BorrowedBooks() => View();
         public IActionResult Fine() => View();
         public IActionResult LoginAdmin() => View("Login.admin");
@@ -285,7 +351,6 @@ namespace Soft_eng.Controllers
         }
         public IActionResult AddBooksAdmin() => View("AddBooksAdmin");
         public IActionResult ForgotPasswordAdmin() => View("ForgotPasswordAdmin");
-        public IActionResult RequestedBooksAdmin() => View("RequestedBooksAdmin");
         public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
         public IActionResult FineAdmin() => View("FineAdmin");
 

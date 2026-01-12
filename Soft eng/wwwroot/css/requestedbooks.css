@@ -380,4 +380,46 @@ td {
     }
 
 
+.table-card {
+    background: white;
+    width: 100%;
+    max-width: 1100px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    padding: 25px;
+    margin: 30px auto;
+    /* Scrollable properties */
+    max-height: 570px; /* Adjust this height as needed */
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+    /* Style the scrollbar */
+    .table-card::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-card::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-card::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+        .table-card::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+    /* Prevent table collapse */
+    .table-card table {
+        width: 100%;
+        min-width: 800px;
+    }
+
+    
+
 
