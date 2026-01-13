@@ -1,3 +1,4 @@
+Use `Soft Eng 2`;
 CREATE TABLE borrower (
     BorrowerID INT PRIMARY KEY AUTO_INCREMENT,
     BorrowerName VARCHAR(50) NOT NULL,
