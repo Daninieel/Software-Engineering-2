@@ -1,4 +1,4 @@
-use Soft Eng 2;
+Use `Soft Eng 2`;
 
 -- 1. Turn off safe updates temporarily
 SET SQL_SAFE_UPDATES = 0;
