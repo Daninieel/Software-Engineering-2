@@ -112,18 +112,17 @@
                                     <td>
                                         <button class="btn-see-more"
                                                 onclick='openViewRequestModal(
-                                                    @req.RequestID,
-                                                    @Html.Raw(Json.Serialize(req.RequesterName)),
-                                                    @Html.Raw(Json.Serialize(req.RequestedTitle)),
-                                                    "@req.DateRequested.ToString("yyyy-MM-dd")",
-                                                    @Html.Raw(Json.Serialize(req.Status)),
-                                                    @Html.Raw(Json.Serialize(req.Remarks ?? "None"))
-                                                )'>
+                                                            @req.RequestID,
+                                                            @Html.Raw(Json.Serialize(req.RequesterName)),
+                                                            @Html.Raw(Json.Serialize(req.RequestedTitle)),
+                                                            "@req.DateRequested.ToString("yyyy-MM-dd")",
+                                                            @Html.Raw(Json.Serialize(req.Status)),
+                                                            @Html.Raw(Json.Serialize(req.Remarks ?? "None"))
+                                                        )'>
                                             See More
                                         </button>
                                     </td>
                                 </tr>
-
                             }
                         }
                         else
@@ -144,25 +143,19 @@
         </main>
     </div>
 
-    <!-- Add Request Modal -->
     <div id="addRequestModal" class="modal">
         <div class="modal-content">
             <h2>New Book Request</h2>
             <p>Input the details of the book requested</p>
-
             <form asp-action="AddRequest" asp-controller="Home" method="post">
                 <label>Requester Name</label>
                 <input type="text" name="RequesterName" required>
-
                 <label>Book Title</label>
                 <input type="text" name="RequestedTitle" required>
-
                 <label>Date Requested</label>
                 <input type="date" name="DateRequested" required>
-
                 <label>Remarks</label>
                 <textarea name="Remarks"></textarea>
-
                 <div class="modal-actions">
                     <button type="button" class="btn btn-red" id="cancelRequestBtn">Cancel</button>
                     <button type="submit" class="btn btn-blue">Add</button>
@@ -171,50 +164,37 @@
         </div>
     </div>
 
-    <!-- View Request Modal -->
     <div id="viewRequestModal" class="modal">
         <div class="modal-content">
             <h2>Request Details</h2>
-
             <p><strong>Request ID:</strong> <span id="viewRequestID"></span></p>
             <p><strong>Requester Name:</strong> <span id="viewRequesterName"></span></p>
             <p><strong>Requested Title:</strong> <span id="viewRequestedTitle"></span></p>
             <p><strong>Date Requested:</strong> <span id="viewDateRequested"></span></p>
             <p><strong>Status:</strong> <span id="viewStatus"></span></p>
-
             <label><strong>Remarks</strong></label>
             <textarea id="viewRemarks" readonly></textarea>
-
             <div class="modal-actions">
                 <button class="btn btn-red" onclick="closeViewRequestModal()">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- Edit Request Modal -->
-
     <div id="editRequestModal" class="modal">
         <div class="modal-content">
             <h2>Edit Request</h2>
-
             <form asp-action="EditRequest" asp-controller="Home" method="post">
                 <input type="hidden" name="RequestID" id="editRequestID" />
-
                 <label>Requester Name</label>
                 <input type="text" name="RequesterName" id="editRequesterName" required />
-
                 <label>Requested Title</label>
                 <input type="text" name="RequestedTitle" id="editRequestedTitle" required />
-
                 <label>Date Requested</label>
                 <input type="date" name="DateRequested" id="editDateRequested" required />
-
                 <label>Status</label>
-                <input type="text" id="editStatus" readonly />
-
+                <input type="text" id="editStatus" readonly style="background-color: #f0f0f0;" />
                 <label>Remarks</label>
                 <textarea name="Remarks" id="editRemarks"></textarea>
-
                 <div class="modal-actions">
                     <button type="button" class="btn btn-red" onclick="closeEditModal()">Cancel</button>
                     <button type="submit" class="btn btn-blue">Save Changes</button>
@@ -223,62 +203,54 @@
         </div>
     </div>
 
-
+    <div id="reportModal" class="report-modal" style="display:none;">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
 
     <script>
-        const addRequestBtn = document.getElementById("addRequestBtn");
-        const addRequestModal = document.getElementById("addRequestModal");
-        const cancelRequestBtn = document.getElementById("cancelRequestBtn");
-
-        addRequestBtn.onclick = () => addRequestModal.style.display = "block";
-        cancelRequestBtn.onclick = () => addRequestModal.style.display = "none";
-
-        window.onclick = (event) => {
-            if (event.target === addRequestModal) {
-                addRequestModal.style.display = "none";
-            }
+        // REPORT MODAL LOGIC
+        document.getElementById("generateReportBtn").onclick = function() {
+            document.getElementById("reportModal").style.display = "block";
         };
-    </script>
 
-    <script>
-        function openViewRequestModal(id, name, title, date, status, remarks) {
-            document.getElementById("viewRequestID").innerText = id;
-            document.getElementById("viewRequesterName").innerText = name;
-            document.getElementById("viewRequestedTitle").innerText = title;
-            document.getElementById("viewDateRequested").innerText = date;
-            document.getElementById("viewStatus").innerText = status;
-            document.getElementById("viewRemarks").value = remarks;
-
-            document.getElementById("viewRequestModal").style.display = "block";
-        }
-
-        function closeViewRequestModal() {
-            document.getElementById("viewRequestModal").style.display = "none";
-        }
-
-        window.onclick = function (event) {
-            const modal = document.getElementById("viewRequestModal");
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
+        document.getElementById("closeReportModal").onclick = function() {
+            document.getElementById("reportModal").style.display = "none";
         };
-    </script>
 
-    <script>
+        window.onclick = function(event) {
+            const rModal = document.getElementById('reportModal');
+            const aModal = document.getElementById('addRequestModal');
+            const vModal = document.getElementById('viewRequestModal');
+            const eModal = document.getElementById('editRequestModal');
+
+            if (event.target == rModal) rModal.style.display = "none";
+            if (event.target == aModal) aModal.style.display = "none";
+            if (event.target == vModal) vModal.style.display = "none";
+            if (event.target == eModal) eModal.style.display = "none";
+        };
+
+        // REQUEST SELECTION AND UI LOGIC
         let selectedRequest = null;
-
         document.querySelectorAll(".request-row").forEach(row => {
             row.addEventListener("click", function () {
-
-                document.querySelectorAll(".request-row")
-                    .forEach(r => r.classList.remove("selected"));
-
+                document.querySelectorAll(".request-row").forEach(r => r.classList.remove("selected"));
                 this.classList.add("selected");
-
                 selectedRequest = {
                     id: this.dataset.id,
                     name: this.dataset.name,
@@ -289,22 +261,39 @@
                 };
             });
         });
-    </script>
 
-    <script>
+        const addRequestBtn = document.getElementById("addRequestBtn");
+        const addRequestModal = document.getElementById("addRequestModal");
+        const cancelRequestBtn = document.getElementById("cancelRequestBtn");
+
+        addRequestBtn.onclick = () => addRequestModal.style.display = "block";
+        cancelRequestBtn.onclick = () => addRequestModal.style.display = "none";
+
+        function openViewRequestModal(id, name, title, date, status, remarks) {
+            document.getElementById("viewRequestID").innerText = id;
+            document.getElementById("viewRequesterName").innerText = name;
+            document.getElementById("viewRequestedTitle").innerText = title;
+            document.getElementById("viewDateRequested").innerText = date;
+            document.getElementById("viewStatus").innerText = status;
+            document.getElementById("viewRemarks").value = remarks;
+            document.getElementById("viewRequestModal").style.display = "block";
+        }
+
+        function closeViewRequestModal() {
+            document.getElementById("viewRequestModal").style.display = "none";
+        }
+
         function openEditRequest() {
             if (!selectedRequest) {
                 alert("Please select a request first.");
                 return;
             }
-
             document.getElementById("editRequestID").value = selectedRequest.id;
             document.getElementById("editRequesterName").value = selectedRequest.name;
             document.getElementById("editRequestedTitle").value = selectedRequest.title;
             document.getElementById("editDateRequested").value = selectedRequest.date;
             document.getElementById("editStatus").value = selectedRequest.status;
             document.getElementById("editRemarks").value = selectedRequest.remarks;
-
             document.getElementById("editRequestModal").style.display = "block";
         }
 
@@ -312,9 +301,5 @@
             document.getElementById("editRequestModal").style.display = "none";
         }
     </script>
-
-
-
-
 </body>
 </html>

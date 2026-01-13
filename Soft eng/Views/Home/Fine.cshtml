@@ -31,14 +31,14 @@
                     <span class="logout-text">Log Out</span>
                 </a>
             </form>
-            <div class="user-avatar">
+            <div class="user-avatar admin-avatar">
                 <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>
         </div>
     </header>
 
-    <div class="main-layout">
 
+    <div class="main-layout">
         <aside class="sidebar">
             <nav>
                 <ul>
@@ -48,14 +48,12 @@
                     <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooks">Requested Books</a></li>
                     <li class="active"><a asp-action="Fine">Fine</a></li>
-                    <li><a href="#">AI Chatbot</a></li>
                 </ul>
             </nav>
         </aside>
 
         <main class="content-area">
             <h2>Fine</h2>
-
             <div class="search-filter">
                 <input type="text" placeholder="Search by Title, Borrower, etc.">
                 <div class="filter-dropdown">
@@ -77,52 +75,98 @@
             </div>
 
             <div class="table-card">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fine ID</th>
-                            <th>Loan ID</th>
-                            <th>Borrower Name</th>
-                            <th>Payment Status</th>
-                            <th>Fine Amount</th>
-                            <th>Date Paid</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fine ID</th>
+                                <th>Loan ID</th>
+                                <th>Borrower Name</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Date Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fineTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="total-container mb-3">
+                <h4>Grand Total of All Fines: <span id="grandTotalDisplay">₱0.00</span></h4>
+            </div>
+
+            <div id="reportModal" class="report-modal" style="display:none;">
+                <div class="report-modal-content">
+                    <button id="closeReportModal" class="close-report-modal">&times;</button>
+                    <h2>Select Report Format</h2>
+                    <p>Choose the format for your report:</p>
+                    <div class="report-format-buttons">
+                        <button class="report-format-btn pdf" data-format="pdf">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button class="report-format-btn csv" data-format="csv">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="button-area">
                 <button class="btn btn-green" id="openReportModal">Generate Report</button>
-                <button class="btn btn-red">Edit Fine</button>
+                <button class="btn btn-red" id="editFineBtn">Edit Fine</button>
             </div>
 
-            <div class="total-fine">
-                Total Fine:
+            <div id="fineDetailsModal" class="report-modal">
+                <div class="report-modal-content" style="max-width: 600px; text-align: left;">
+                    <span class="close-report-modal" onclick="closeFineModal()">&times;</span>
+                    <h2 style="text-align: center; margin-bottom: 20px;">Fine Details</h2>
+
+                    <form id="editFineForm">
+                        <input type="hidden" id="detailFineID" name="FineID">
+
+                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div class="detail-group" style="flex: 1;">
+                                <label class="detail-label">Borrower Name</label>
+                                <input type="text" id="detailBorrowerName" class="detail-input" disabled>
+                            </div>
+                            <div class="detail-group" style="flex: 1;">
+                                <label class="detail-label">Loan ID</label>
+                                <input type="text" id="detailLoanID" class="detail-input" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div class="detail-group" style="flex: 1;">
+                                <label class="detail-label">Payment Status</label>
+                                <select id="detailPaymentStatus" name="PaymentStatus" class="detail-select" disabled>
+                                    <option value="Unpaid">Unpaid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+                            <div class="detail-group" style="flex: 1;">
+                                <label class="detail-label">Daily Fine</label>
+                                <input type="number" id="detailFineAmount" name="FineAmount" step="0.01" class="detail-input" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom: 25px;">
+                            <div class="detail-group" style="width: 100%;">
+                                <label class="detail-label">Date Paid</label>
+                                <input type="date" id="detailDatePaid" name="DatePaid" class="detail-input" disabled>
+                            </div>
+                        </div>
+
+                        <div class="button-area" style="display: flex; justify-content: center; gap: 15px;">
+                            <button type="button" class="btn btn-blue" id="btnEditToggle">Edit</button>
+                            <button type="button" class="btn btn-red" onclick="closeFineModal()">Back</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </main>
 
-    </div>
-
-    <div id="reportModal" class="report-modal">
-        <div class="report-modal-content">
-            <button id="closeReportModal" class="close-report-modal">&times;</button>
-            <h2>Select Report Format</h2>
-            <p>Choose the format for your report:</p>
-            <div class="report-format-buttons">
-                <button class="report-format-btn pdf" data-format="pdf">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-                <button class="report-format-btn csv" data-format="csv">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script src="~/js/dashboard.js"></script>
-    <script src="~/js/reportGeneration.js"></script>
-    <script src="~/js/chatbot.js"></script>
+            <script src="~/js/dashboard.js"></script>
+            <script src="~/js/reportGeneration.js"></script>
+            <script src="~/js/chatbot.js"></script>
+            <script src="~/js/fine.js"></script>
 </body>
 </html>
