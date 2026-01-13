@@ -1,4 +1,5 @@
-CREATE TABLE Inventory (
+Use `Soft Eng 2`;
+CREATE TABLE Logbook (
     BookID INT AUTO_INCREMENT PRIMARY KEY,
     ISBN VARCHAR(50) NOT NULL,
     SourceType VARCHAR(50),               -- e.g., 'Donation', 'Purchased'
