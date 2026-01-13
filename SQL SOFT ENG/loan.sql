@@ -1,3 +1,4 @@
+Use `Soft Eng 2`;
 CREATE TABLE loan (
     LoanID INT PRIMARY KEY AUTO_INCREMENT,
     BookID INT NOT NULL,
