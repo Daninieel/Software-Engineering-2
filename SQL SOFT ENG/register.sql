@@ -1,3 +1,4 @@
+Use `Soft Eng 2`;
 CREATE TABLE IF NOT EXISTS Register (
 
     UserID INT AUTO_INCREMENT PRIMARY KEY,
