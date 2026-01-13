@@ -1,4 +1,3 @@
-This revised README.md uses clean Markdown formatting, including headers, horizontal rules, and distinct lists to ensure the documentation is organized and professional.
 
 📚 Saint Isidore Academy Library Management System
 The Saint Isidore Academy Library Management System is a robust web-based application designed to modernize library operations. Built with ASP.NET Core 9.0 and MySQL, it provides a secure environment for librarians and administrators to manage collections, track loans, and support students through AI integration.
