@@ -7,7 +7,7 @@ The Saint Isidore Academy Library Management System is a robust web-based applic
 
 Framework: ASP.NET Core 9.0 (MVC).
 
-Database: MySQL Server for reliable data persistence.
+Database: MySQL Workbench for reliable data persistence.
 
 Security: Password security implemented via BCrypt hashing.
 
