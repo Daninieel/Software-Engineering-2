@@ -38,9 +38,10 @@
                 <label>Password</label>
                 <div class="password-wrap" style="display:flex;align-items:center;gap:8px;">
                     <input type="password"
-                           name="password"
+                           id="password" name="password"
                            class="@(ViewBag.ErrorMessage != null ? "input-error" : "")"
                            required />
+
 
                     <button type="button" class="toggle-password" data-target="password"
                             aria-label="Toggle password visibility"

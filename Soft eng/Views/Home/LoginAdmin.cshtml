@@ -1,5 +1,5 @@
 @{
-    ViewBag.Title = "Login (Admin)";
+    ViewBag.Title = "Login";
     Layout = null;
 }
 
@@ -7,17 +7,14 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Login - Saint Isidore Academy</title>
-    <link rel="stylesheet" href="~/css/login.admin.css" />
+    <title>Login - Saint Isidore Academy</title>
+    <link rel="stylesheet" href="~/css/login.css" />
 </head>
 <body>
 
     <div class="login-card">
         <div class="logo-container">
-            <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Logo" />
-            <h3 style="color:white;margin-top:12px; text-align:center;">
-                SAINT ISIDORE ACADEMY - ADMIN
-            </h3>
+            <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
         </div>
 
         <form id="loginForm" asp-action="Login" asp-controller="Home" method="post">
@@ -41,9 +38,10 @@
                 <label>Password</label>
                 <div class="password-wrap" style="display:flex;align-items:center;gap:8px;">
                     <input type="password"
-                           name="password"
+                           id="password" name="password"
                            class="@(ViewBag.ErrorMessage != null ? "input-error" : "")"
                            required />
+
 
                     <button type="button" class="toggle-password" data-target="password"
                             aria-label="Toggle password visibility"
@@ -65,7 +63,7 @@
                     </button>
                 </div>
 
-                <a href="@Url.Action("ForgotPasswordAdmin", "Home")" class="forgot-password">
+                <a href="@Url.Action("ForgotPassword", "Home")" class="forgot-password">
                     Forgot Password?
                 </a>
             </div>
@@ -74,13 +72,13 @@
 
             <div class="footer-text">
                 <span>Don't have an account?</span>
-                <a href="@Url.Action("RegisterAdmin", "Home")">Create Account</a>
+                <a href="@Url.Action("Register", "Home")">Create Account</a>
             </div>
 
         </form>
     </div>
 
-    <script src="~/js/login.admin.js"></script>
+    <script src="~/js/login.js"></script>
     <script src="~/js/passwordToggle.js"></script>
 </body>
 </html>
