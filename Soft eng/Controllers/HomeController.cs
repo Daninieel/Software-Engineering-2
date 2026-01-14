@@ -560,9 +560,59 @@ namespace Soft_eng.Controllers
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@copies, BookStatus=@status WHERE BookID=@id", _connection);
-                cmd.Parameters.AddWithValue("@id", book.BookID); cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? ""); cmd.Parameters.AddWithValue("@source", book.SourceType ?? ""); cmd.Parameters.AddWithValue("@title", book.BookTitle ?? ""); cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now); cmd.Parameters.AddWithValue("@author", book.Author ?? ""); cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0); cmd.Parameters.AddWithValue("@edition", book.Edition ?? ""); cmd.Parameters.AddWithValue("@pub", book.Publisher ?? ""); cmd.Parameters.AddWithValue("@year", book.Year); cmd.Parameters.AddWithValue("@rem", book.Remarks ?? ""); cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? ""); cmd.Parameters.AddWithValue("@copies", book.TotalCopies); cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
-                await cmd.ExecuteNonQueryAsync();
+
+                // 1. Update the EXISTING book (The one you clicked 'Edit' on)
+                // We force TotalCopies = 1 for this row to ensure it represents a single copy in the database.
+                using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=1, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", book.BookID);
+                    cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                    cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                    cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                    cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                    cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                    cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                    cmd.Parameters.AddWithValue("@pub", book.Publisher ?? "");
+                    cmd.Parameters.AddWithValue("@year", book.Year);
+                    cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+
+                    // Availability often mirrors BookStatus in your system (e.g. "Available", "Damaged")
+                    cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
+                    cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 2. Add NEW copies if the user increased the Total Copies count
+                // If the user entered "3", and we have 1 existing row, we need to add 2 more.
+                int copiesToAdd = book.TotalCopies - 1;
+
+                if (copiesToAdd > 0)
+                {
+                    for (int i = 0; i < copiesToAdd; i++)
+                    {
+                        using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, 1, @status)", _connection);
+
+                        cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                        cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                        cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                        cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
+                        cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                        cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                        cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                        cmd.Parameters.AddWithValue("@pub", book.Publisher ?? "");
+                        cmd.Parameters.AddWithValue("@year", book.Year);
+                        cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
+                        cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                        cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
+                        cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
                 return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
             }
             finally { await _connection.CloseAsync(); }
@@ -574,9 +624,33 @@ namespace Soft_eng.Controllers
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
-                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? ""); cmd.Parameters.AddWithValue("@source", book.SourceType ?? ""); cmd.Parameters.AddWithValue("@title", book.BookTitle ?? ""); cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now); cmd.Parameters.AddWithValue("@author", book.Author ?? ""); cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0); cmd.Parameters.AddWithValue("@edition", book.Edition ?? ""); cmd.Parameters.AddWithValue("@pub", book.Publisher ?? ""); cmd.Parameters.AddWithValue("@year", book.Year); cmd.Parameters.AddWithValue("@rem", book.Remarks ?? ""); cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? ""); cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available"); cmd.Parameters.AddWithValue("@copies", book.TotalCopies); cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
-                await cmd.ExecuteNonQueryAsync();
+
+                // Determine copies to add (at least 1)
+                int copies = book.TotalCopies > 0 ? book.TotalCopies : 1;
+
+                // Loop to insert each copy as a distinct row
+                for (int i = 0; i < copies; i++)
+                {
+                    using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
+                    cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                    cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                    cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                    cmd.Parameters.AddWithValue("@received", book.DateReceived ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                    cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                    cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                    cmd.Parameters.AddWithValue("@pub", book.Publisher ?? "");
+                    cmd.Parameters.AddWithValue("@year", book.Year);
+                    cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                    cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
+                    // Set TotalCopies to 1 for this individual row so SUM() works correctly in dashboards
+                    cmd.Parameters.AddWithValue("@copies", 1);
+                    cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
                 return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
             }
             finally { await _connection.CloseAsync(); }
@@ -612,19 +686,60 @@ namespace Soft_eng.Controllers
             return Json(borrowed);
         }
 
+        // MODIFIED: Updated to accept borrowerType
         [HttpPost]
-        public async Task<IActionResult> AddBorrowedBook(string borrowerName, string bookTitle, DateTime borrowDate)
+        // In Software-Engineering-2/Soft eng/Controllers/HomeController.cs
+
+        [HttpPost]
+        public async Task<IActionResult> AddBorrowedBook(string borrowerName, string borrowerType, string bookTitle, DateTime borrowDate)
         {
             try
             {
-                int bId = await GetOrCreateBorrower(borrowerName);
+                int bId = await GetOrCreateBorrower(borrowerName, borrowerType);
+
+                // Try to get an AVAILABLE book ID
                 int bkId = await GetBookIdByTitle(bookTitle);
-                if (bkId == 0) return Json(new { success = false, error = "Book not found." });
+
+                if (bkId == 0)
+                {
+                    // If 0, it means no available copy was found.
+                    // We must now check if the book exists at all to give the correct error message.
+                    if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                    using var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookTitle = @t", _connection);
+                    checkCmd.Parameters.AddWithValue("@t", bookTitle);
+                    long count = Convert.ToInt64(await checkCmd.ExecuteScalarAsync());
+
+                    if (count > 0)
+                    {
+                        // The book exists in the inventory, but no copies are available.
+                        return Json(new { success = false, error = "Limit reached. Book is unavailable for borrow." });
+                    }
+                    else
+                    {
+                        // The book does not exist in the inventory at all.
+                        return Json(new { success = false, error = "Book not found." });
+                    }
+                }
+
                 DateTime due = borrowDate.AddDays(4);
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
                 using (var cmd = new MySqlCommand("INSERT INTO Loan (BookID, BorrowerID, DateBorrowed, DateDue, ReturnStatus, OverdueStatus, BookStatus) VALUES (@bkId, @bId, @db, @dd, 'Not Returned', FALSE, 'Borrowed')", _connection))
-                { cmd.Parameters.AddWithValue("@bkId", bkId); cmd.Parameters.AddWithValue("@bId", bId); cmd.Parameters.AddWithValue("@db", borrowDate); cmd.Parameters.AddWithValue("@dd", due); await cmd.ExecuteNonQueryAsync(); }
-                using (var updateCmd = new MySqlCommand("UPDATE LogBook SET Availability = 'Borrowed' WHERE BookID = @bkId", _connection)) { updateCmd.Parameters.AddWithValue("@bkId", bkId); await updateCmd.ExecuteNonQueryAsync(); }
+                {
+                    cmd.Parameters.AddWithValue("@bkId", bkId);
+                    cmd.Parameters.AddWithValue("@bId", bId);
+                    cmd.Parameters.AddWithValue("@db", borrowDate);
+                    cmd.Parameters.AddWithValue("@dd", due);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                using (var updateCmd = new MySqlCommand("UPDATE LogBook SET Availability = 'Borrowed' WHERE BookID = @bkId", _connection))
+                {
+                    updateCmd.Parameters.AddWithValue("@bkId", bkId);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
                 using var idCmd = new MySqlCommand("SELECT LAST_INSERT_ID()", _connection);
                 return Json(new { success = true, loanId = await idCmd.ExecuteScalarAsync(), dueDate = due.ToString("MM/dd/yyyy"), borrowerId = bId, bookId = bkId });
             }
@@ -632,14 +747,20 @@ namespace Soft_eng.Controllers
             finally { await _connection.CloseAsync(); }
         }
 
-        private async Task<int> GetOrCreateBorrower(string name)
+        // MODIFIED: Updated to save BorrowerType
+        private async Task<int> GetOrCreateBorrower(string name, string type)
         {
             bool close = false; if (_connection.State != ConnectionState.Open) { await _connection.OpenAsync(); close = true; }
             try
             {
                 using var find = new MySqlCommand("SELECT BorrowerID FROM Borrower WHERE BorrowerName = @n", _connection); find.Parameters.AddWithValue("@n", name);
                 var res = await find.ExecuteScalarAsync(); if (res != null) return Convert.ToInt32(res);
-                using var ins = new MySqlCommand("INSERT INTO Borrower (BorrowerName, BorrowerType) VALUES (@n, 'Student')", _connection); ins.Parameters.AddWithValue("@n", name); await ins.ExecuteNonQueryAsync();
+
+                // MODIFIED: Use the passed 'type' instead of hardcoded value
+                using var ins = new MySqlCommand("INSERT INTO Borrower (BorrowerName, BorrowerType) VALUES (@n, @t)", _connection);
+                ins.Parameters.AddWithValue("@n", name);
+                ins.Parameters.AddWithValue("@t", type);
+                await ins.ExecuteNonQueryAsync();
                 return (int)ins.LastInsertedId;
             }
             finally { if (close) await _connection.CloseAsync(); }
@@ -661,7 +782,7 @@ namespace Soft_eng.Controllers
         {
             try
             {
-                int bId = await GetOrCreateBorrower(borrowerName);
+                int bId = await GetOrCreateBorrower(borrowerName, "Student");
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 using var findBk = new MySqlCommand("SELECT BookID FROM LogBook WHERE BookTitle = @t LIMIT 1", _connection);

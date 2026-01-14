@@ -177,37 +177,30 @@ body {
     cursor: pointer;
 }
 
-/* ================= SCROLLABLE TABLE CARD ================= */
+/* ================= SCROLLABLE TABLE CARD (UPDATED) ================= */
 .table-card {
     background: white;
     width: 100%;
     max-width: 1100px;
-    /* Limit height to show approx 7 rows. */
-    max-height: 500px;
+    max-height: 500px; /* Limits height to approx 7 rows */
+    overflow-y: auto; /* Enables vertical scroll */
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    padding: 0; /* Remove padding to let scrollbar sit at edge */
-    padding-bottom: 10px; /* Slight bottom padding */
+    padding: 0;
+    padding-bottom: 10px;
     margin: 30px auto;
-    margin-top: 30px;
     display: block;
-    /* Enables vertical scrolling inside the card */
-    overflow-y: auto;
     position: relative;
-    /* Scrollbar Styling */
     scrollbar-width: thin;
     scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
-    /* Inner container to hold padding if needed, but for sticky header direct table child is better */
     .table-card table {
         width: 100%;
-        /* FIX: 'separate' ensures the borders stick to the header */
         border-collapse: separate;
         border-spacing: 0;
     }
 
-    /* Scrollbar styling inside table card */
     .table-card::-webkit-scrollbar {
         width: 8px;
     }
@@ -226,20 +219,17 @@ body {
             background: #a8a8a8;
         }
 
-/* ================= STICKY HEADER FIX ================= */
 th {
     text-align: center;
     padding: 15px;
-    /* Border is applied directly to TH to stick with it */
     border-bottom: 2px solid #333;
     font-weight: 600;
     color: #333;
-    /* Sticky Properties */
-    position: sticky;
+    position: sticky; /* Sticky header */
     top: 0;
-    background: white; /* Hides content scrolling behind */
+    background: white;
     z-index: 10;
-    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Optional: slight shadow for depth */
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 td {
@@ -248,9 +238,6 @@ td {
     border-bottom: 1px solid #ddd;
     vertical-align: middle;
 }
-
-/* Add padding to the first row of cells to compensate for the card padding removal if desired */
-/* Or apply padding to the card wrapper around the table */
 
 .button-area {
     display: flex;
@@ -306,7 +293,6 @@ td {
         transform: translateY(-2px);
     }
 
-/* Modal Styles */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -372,10 +358,11 @@ td {
             border-color: #5dade2;
         }
 
-        /* Date input specific styling */
         .form-group input[type="date"] {
             font-family: 'Poppins', sans-serif;
             color: #333;
+            position: relative;
+            padding-right: 40px;
         }
 
             .form-group input[type="date"]::-webkit-calendar-picker-indicator {
@@ -391,10 +378,6 @@ td {
                 width: auto;
             }
 
-        .form-group input[type="date"] {
-            position: relative;
-        }
-
             .form-group input[type="date"]::after {
                 content: "📅";
                 position: absolute;
@@ -404,11 +387,6 @@ td {
                 pointer-events: none;
                 font-size: 18px;
             }
-
-        /* For Firefox */
-        .form-group input[type="date"] {
-            padding-right: 40px;
-        }
 
 .modal-footer {
     display: flex;
@@ -462,7 +440,6 @@ td {
         color: #333;
     }
 
-/* Overdue Status Button */
 .overdue-btn {
     padding: 8px 20px;
     border: none;
@@ -489,7 +466,6 @@ td {
     transform: translateY(-1px);
 }
 
-/* See More Button */
 .see-more-btn {
     padding: 8px 20px;
     background: #3498db;
@@ -507,7 +483,6 @@ td {
         transform: translateY(-2px);
     }
 
-/* Details Modal */
 .details-modal {
     display: none;
     position: fixed;
@@ -553,7 +528,6 @@ td {
         font-size: 16px;
     }
 
-/* Single column form layout */
 .details-form {
     display: flex;
     flex-direction: column;
@@ -611,7 +585,6 @@ td {
         color: #999;
     }
 
-/* Read-only fields */
 .read-only-field {
     background: #f8f9fa;
     color: #333;
@@ -624,7 +597,6 @@ td {
     align-items: center;
 }
 
-/* Select styling */
 .detail-select {
     appearance: none;
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
@@ -635,7 +607,6 @@ td {
     cursor: pointer;
 }
 
-/* Modal footer with buttons on right */
 .details-modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -724,10 +695,10 @@ td {
         background-color: #f5f5f5;
     }
 
-/* Date input styling */
 .detail-input[type="date"] {
     position: relative;
     font-family: 'Poppins', sans-serif;
+    padding-right: 45px;
 }
 
     .detail-input[type="date"]::-webkit-calendar-picker-indicator {
@@ -753,11 +724,6 @@ td {
         font-size: 16px;
     }
 
-.detail-input[type="date"] {
-    padding-right: 45px;
-}
-
-/* Scrollbar styling */
 .details-modal-content::-webkit-scrollbar {
     width: 6px;
 }
@@ -776,12 +742,10 @@ td {
         background: #a8a8a8;
     }
 
-/* Spacing for new Action column */
 th:nth-child(7), td:nth-child(7) {
     text-align: center;
 }
 
-/* Table row hover effect */
 tbody tr {
     transition: all 0.3s ease;
 }
@@ -790,7 +754,6 @@ tbody tr {
         background-color: #f9f9f9;
     }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
     .details-modal-content {
         padding: 25px;
@@ -921,7 +884,6 @@ tbody tr {
         }
 }
 
-/* Loading state */
 .loading {
     position: relative;
     opacity: 0.7;
@@ -951,7 +913,6 @@ tbody tr {
     }
 }
 
-/* Validation Styles */
 .error-message {
     color: #e74c3c;
     font-size: 12px;
@@ -966,7 +927,6 @@ tbody tr {
     display: block;
 }
 
-/* Validation states for inputs */
 .detail-input.valid {
     border-color: #2ecc71 !important;
     box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2) !important;

@@ -8,11 +8,9 @@ let isEditing = false;
 let issueBookBtn, issueBookModal, closeModalBtn, cancelBtn, issueBookForm;
 let borrowedBooksTable, borrowDateInput, detailsModal, closeDetailsBtn, btnBack, btnEdit;
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeBorrowedBooks);
 
 function initializeBorrowedBooks() {
-    // Initialize common DOM elements
     issueBookBtn = document.getElementById('issueBookBtn');
     issueBookModal = document.getElementById('issueBookModal');
     if (issueBookModal) {
@@ -28,7 +26,6 @@ function initializeBorrowedBooks() {
 
     borrowDateInput = document.getElementById('borrowDate');
 
-    // Details Modal Elements
     detailsModal = document.getElementById('detailsModal');
     if (detailsModal) {
         closeDetailsBtn = detailsModal.querySelector('.close-details-modal');
@@ -41,32 +38,25 @@ function initializeBorrowedBooks() {
 }
 
 function setupEventListeners() {
-    // Issue Book Modal Listeners
     if (issueBookBtn) issueBookBtn.addEventListener('click', openIssueBookModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeIssueBookModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeIssueBookModal);
     if (issueBookForm) issueBookForm.addEventListener('submit', handleIssueBookSubmit);
 
-    // Details Modal Listeners
     if (closeDetailsBtn) closeDetailsBtn.addEventListener('click', closeDetailsModal);
     if (btnBack) btnBack.addEventListener('click', closeDetailsModal);
 
-    // Edit/Save Button Listener
     if (btnEdit) {
         btnEdit.addEventListener('click', handleEditClick);
     }
 
-    // Close modals when clicking outside
     window.onclick = function (event) {
         if (event.target === issueBookModal) closeIssueBookModal();
         if (event.target === detailsModal) closeDetailsModal();
     };
 
-    // Initialize autocomplete (if endpoints exist)
     setupAutocomplete();
 }
-
-// ================ Load Data ================
 
 async function loadBorrowedBooks() {
     try {
@@ -111,12 +101,9 @@ async function loadBorrowedBooks() {
     }
 }
 
-// ================ Issue Book Functions ================
-
 function openIssueBookModal() {
     if (issueBookModal) {
         issueBookModal.style.display = 'flex';
-        // Set default date to today
         if (borrowDateInput) {
             const today = new Date().toISOString().split('T')[0];
             borrowDateInput.value = today;
@@ -137,6 +124,7 @@ async function handleIssueBookSubmit(e) {
 
     const formData = new URLSearchParams({
         borrowerName: document.getElementById('borrowerName').value.trim(),
+        borrowerType: document.getElementById('borrowerType').value,
         bookTitle: document.getElementById('bookTitle').value.trim(),
         borrowDate: document.getElementById('borrowDate').value
     });
@@ -156,7 +144,7 @@ async function handleIssueBookSubmit(e) {
         if (result.success) {
             alert('Book issued successfully!');
             closeIssueBookModal();
-            loadBorrowedBooks(); // Refresh the table
+            loadBorrowedBooks();
         } else {
             alert('Error: ' + result.error);
         }
@@ -169,43 +157,54 @@ async function handleIssueBookSubmit(e) {
     }
 }
 
-// ================ Details & Editing Functions ================
-
+// === THIS FUNCTION HANDLES THE PLACEHOLDER LOGIC ===
 function showBookDetails(loanId, button) {
     const row = button.closest('tr');
     const bookData = JSON.parse(row.dataset.bookData);
     currentBookData = bookData;
     isEditing = false;
 
-    // 1. Populate Read-Only Fields (Divs)
-    document.getElementById('detailLoanId').textContent = bookData.loanID;
-    document.getElementById('detailBorrowerId').textContent = bookData.borrowerID;
-    document.getElementById('detailBookId').textContent = bookData.bookID;
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const setValue = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
-    // 2. Populate Editable Inputs
-    document.getElementById('detailBorrowerName').value = bookData.borrowerName;
-    document.getElementById('detailBookTitle').value = bookData.bookTitle;
+    setText('detailLoanId', bookData.loanID);
+    setValue('detailBorrowerName', bookData.borrowerName);
+    setValue('detailBookTitle', bookData.bookTitle);
 
-    document.getElementById('detailDateBorrowed').value = bookData.borrowDate || bookData.dateBorrowed;
-
-    const returnedVal = bookData.dateReturned === '-' ? '' : formatDateForInput(bookData.dateReturned);
-    document.getElementById('detailDateReturned').value = returnedVal;
-
-    // 3. Populate Selects
-    document.getElementById('detailOverdueStatus').value = bookData.overdueStatus;
-    document.getElementById('detailReturnStatus').value = bookData.returnStatus;
-
-    // Set Book Status
-    const statusSelect = document.getElementById('detailBookStatus');
-    if (statusSelect) {
-        // Default to 'Borrowed' if empty or match DB
-        statusSelect.value = bookData.bookStatus || 'Borrowed';
+    let borrowDateEl = document.getElementById('detailBorrowDate');
+    if (borrowDateEl) {
+        borrowDateEl.value = bookData.borrowDate || bookData.dateBorrowed;
     }
 
-    // Reset UI state
-    setInputsEnabled(false);
+    const returnedVal = bookData.dateReturned === '-' ? '' : formatDateForInput(bookData.dateReturned);
+    setValue('detailDateReturned', returnedVal);
+    setValue('detailOverdueStatus', bookData.overdueStatus);
 
-    // Show Modal
+    // --- UPDATED LOGIC FOR BOOK STATUS PLACEHOLDER ---
+    // If the book is not yet returned (active loan), we force the "Select" placeholder (value = "")
+    // regardless of whether the DB says "Good" or "Borrowed".
+    const statusSelect = document.getElementById('detailBookStatus');
+    if (statusSelect) {
+        if (bookData.returnStatus === 'Not Returned' || !bookData.returnStatus || bookData.bookStatus === 'Borrowed') {
+            statusSelect.value = ""; // Forces the "Select" placeholder to appear
+        } else {
+            statusSelect.value = bookData.bookStatus;
+        }
+    }
+
+    // --- LOGIC FOR RETURN STATUS PLACEHOLDER ---
+    const returnSelect = document.getElementById('detailReturnStatus');
+    if (returnSelect) {
+        if (bookData.returnStatus === 'Not Returned' || !bookData.returnStatus) {
+            returnSelect.value = ""; // Forces the "Select" placeholder to appear
+        } else {
+            returnSelect.value = bookData.returnStatus;
+        }
+    }
+
+    setValue('detailFineAmount', bookData.fineAmount || '-');
+
+    setInputsEnabled(false);
     detailsModal.style.display = 'flex';
 }
 
@@ -228,11 +227,12 @@ function setInputsEnabled(enabled) {
     const editableIds = [
         'detailBorrowerName',
         'detailBookTitle',
-        'detailDateBorrowed',
+        'detailBorrowDate',
         'detailDateReturned',
         'detailOverdueStatus',
         'detailReturnStatus',
-        'detailBookStatus' // Added to enabled list
+        'detailBookStatus',
+        'detailFineAmount'
     ];
 
     editableIds.forEach(id => {
@@ -250,7 +250,7 @@ function setInputsEnabled(enabled) {
     }
 
     if (btnBack) {
-        btnBack.textContent = enabled ? 'Cancel' : 'Close';
+        btnBack.textContent = enabled ? 'Cancel' : 'Back';
     }
 }
 
@@ -258,11 +258,11 @@ async function saveBookChanges() {
     const loanId = document.getElementById('detailLoanId').textContent;
     const borrowerName = document.getElementById('detailBorrowerName').value.trim();
     const bookTitle = document.getElementById('detailBookTitle').value.trim();
-    const borrowDate = document.getElementById('detailDateBorrowed').value;
-    const bookStatus = document.getElementById('detailBookStatus').value; // Get Status
+    const borrowDate = document.getElementById('detailBorrowDate').value;
+    const bookStatus = document.getElementById('detailBookStatus').value;
 
     if (!borrowerName || !bookTitle || !borrowDate) {
-        alert("Please fill in all required fields (Name, Title, Date Borrowed).");
+        alert("Please fill in all required fields.");
         return;
     }
 
@@ -270,13 +270,12 @@ async function saveBookChanges() {
         btnEdit.disabled = true;
         btnEdit.textContent = 'Saving...';
 
-        // 1. Update Basic Info & Book Status
         const params = new URLSearchParams({
             loanId: loanId,
             borrowerName: borrowerName,
             bookTitle: bookTitle,
             borrowDate: borrowDate,
-            bookStatus: bookStatus // Send Status
+            bookStatus: bookStatus
         });
 
         const response = await fetch('/Home/UpdateBorrowedBook', {
@@ -289,10 +288,10 @@ async function saveBookChanges() {
 
         if (result.success) {
             const newOverdue = document.getElementById('detailOverdueStatus').value;
-            await updateOverdueStatus(loanId, newOverdue);
+            if (newOverdue) await updateOverdueStatus(loanId, newOverdue);
 
             const newDateReturned = document.getElementById('detailDateReturned').value;
-            await updateDateReturned(loanId, newDateReturned);
+            if (newDateReturned) await updateDateReturned(loanId, newDateReturned);
 
             alert('Changes saved successfully!');
 
@@ -306,14 +305,12 @@ async function saveBookChanges() {
 
     } catch (error) {
         console.error(error);
-        alert('Failed to save changes. Check console for details.');
+        alert('Failed to save changes.');
     } finally {
         btnEdit.disabled = false;
         if (isEditing) btnEdit.textContent = 'Save';
     }
 }
-
-// ================ Helper Functions ================
 
 function showLoadingState() {
     if (borrowedBooksTable) {
@@ -378,7 +375,6 @@ function setupAutocomplete() {
     if (borrowerInput) {
         borrowerInput.addEventListener('input', debounce(async (e) => {
             const query = e.target.value;
-            if (query.length < 2) return;
         }, 300));
     }
 }

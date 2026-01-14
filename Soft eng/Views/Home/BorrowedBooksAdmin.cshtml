@@ -14,6 +14,17 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <style>
+        /* Add specific style for the new select dropdown to match inputs */
+        #issueBookForm select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+        }
+    </style>
 </head>
 <body>
 
@@ -48,7 +59,6 @@
                     <li class="active"><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
                     <li><a asp-action="FineAdmin">Fine</a></li>
-
                 </ul>
             </nav>
         </aside>
@@ -115,6 +125,14 @@
                     <label for="borrowerName">Borrower Name</label>
                     <input type="text" id="borrowerName" name="borrowerName" placeholder="Enter borrower name" required>
                 </div>
+
+                <div class="form-group">
+                    <label for="borrowerType">Borrower Type</label>
+                    <select id="borrowerType" name="borrowerType" required>
+                        <option value="Student">Student</option>
+                        <option value="Teacher">Teacher</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label for="bookTitle">Book Title</label>
                     <input type="text" id="bookTitle" name="bookTitle" placeholder="Enter book title" required>
@@ -165,7 +183,7 @@
                 <div class="form-row">
                     <div class="detail-group">
                         <div class="detail-label">Date Borrowed</div>
-                        <input type="text" class="detail-input" id="detailDateBorrowed" disabled>
+                        <input type="text" class="detail-input" id="detailBorrowDate" disabled>
                     </div>
                     <div class="detail-group">
                         <div class="detail-label">Date Returned</div>
@@ -184,6 +202,7 @@
                     <div class="detail-group">
                         <div class="detail-label">Return Status</div>
                         <select class="detail-select" id="detailReturnStatus" disabled>
+                            <option value="" disabled selected>Select</option>
                             <option value="Not Returned">Not Returned</option>
                             <option value="Returned">Returned</option>
                         </select>
@@ -194,10 +213,15 @@
                     <div class="detail-group">
                         <div class="detail-label">Book Status</div>
                         <select class="detail-select" id="detailBookStatus" disabled>
+                            <option value="" disabled selected>Select</option>
                             <option value="Good">Good</option>
                             <option value="Damaged">Damaged</option>
                             <option value="Missing">Missing</option>
                         </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" disabled>
                     </div>
                 </div>
 

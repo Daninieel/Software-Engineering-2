@@ -14,6 +14,43 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <style>
+        /* Custom Dropdown Styling */
+        #issueBookForm select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+            color: #333;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+            padding-right: 40px;
+        }
+
+            #issueBookForm select:focus {
+                border-color: #3498db;
+            }
+
+        /* Placeholder styling for details modal selects */
+        .detail-select option[disabled] {
+            color: #999;
+            display: none;
+        }
+
+        /* Make the select look like a placeholder when the empty value is selected */
+        .detail-select:has(option[value=""]:checked) {
+            color: #757575;
+        }
+    </style>
 </head>
 <body>
 
@@ -48,7 +85,7 @@
                     <li class="active"><a asp-action="BorrowedBooks">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooks">Requested Books</a></li>
                     <li><a asp-action="Fine">Fine</a></li>
-      
+                    <li><a href="#">AI Chatbot</a></li>
                 </ul>
             </nav>
         </aside>
@@ -97,7 +134,7 @@
             <div class="button-area">
                 <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
                 <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
-                <button class="btn btn-red" id="editIssueBookBtn" style="display:none;">Edit Issue Book</button>
+                <button class="btn btn-red" id="editIssueBookBtn">Edit Issue Book</button>
             </div>
         </main>
 
@@ -115,6 +152,15 @@
                     <label for="borrowerName">Borrower Name</label>
                     <input type="text" id="borrowerName" name="borrowerName" placeholder="Enter borrower name" required>
                 </div>
+
+                <div class="form-group">
+                    <label for="borrowerType">Borrower Type</label>
+                    <select id="borrowerType" name="borrowerType" required>
+                        <option value="Student">Student</option>
+                        <option value="Teacher">Teacher</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="bookTitle">Book Title</label>
                     <input type="text" id="bookTitle" name="bookTitle" placeholder="Enter book title" required>
@@ -135,8 +181,8 @@
         <div class="details-modal-content">
             <button class="close-details-modal">&times;</button>
             <div class="details-modal-header">
-                <h2>Loan Details</h2>
-                <p>View and edit loan information</p>
+                <h2>Details</h2>
+                <p>View and edit borrowed book information</p>
             </div>
 
             <div class="details-form">
@@ -146,73 +192,71 @@
                         <div class="read-only-field" id="detailLoanId">-</div>
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Borrower ID</div>
-                        <div class="read-only-field" id="detailBorrowerId">-</div>
+                        <div class="detail-label">Due Date</div>
+                        <input type="date" class="detail-input" id="detailDueDate">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="detail-group">
                         <div class="detail-label">Borrower Name</div>
-                        <input type="text" class="detail-input" id="detailBorrowerName" disabled>
+                        <input type="text" class="detail-input" id="detailBorrowerName" placeholder="Enter borrower name">
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Book Title</div>
-                        <input type="text" class="detail-input" id="detailBookTitle" disabled>
+                        <div class="detail-label">Date Returned</div>
+                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="detail-group">
-                        <div class="detail-label">Date Borrowed</div>
-                        <input type="text" class="detail-input" id="detailDateBorrowed" disabled>
+                        <div class="detail-label">Book Title</div>
+                        <input type="text" class="detail-input" id="detailBookTitle" placeholder="Enter book title">
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Date Returned</div>
-                        <input type="date" class="detail-input" id="detailDateReturned" disabled>
+                        <div class="detail-label">Date Borrowed</div>
+                        <input type="date" class="detail-input" id="detailBorrowDate">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="detail-group">
                         <div class="detail-label">Overdue Status</div>
-                        <select class="detail-select" id="detailOverdueStatus" disabled>
-                            <option value="No">No</option>
+                        <select class="detail-select" id="detailOverdueStatus">
+                            <option value="" disabled selected>Select</option>
                             <option value="Yes">Yes</option>
+                            <option value="No">No</option>
                         </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Book Status</div>
+                        <select class="detail-select" id="detailBookStatus">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Good">Good</option>
+                            <option value="Damage">Damage</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
                     </div>
                     <div class="detail-group">
                         <div class="detail-label">Return Status</div>
-                        <select class="detail-select" id="detailReturnStatus" disabled>
-                            <option value="Not Returned">Not Returned</option>
+                        <select class="detail-select" id="detailReturnStatus">
+                            <option value="" disabled selected>Select</option>
                             <option value="Returned">Returned</option>
+                            <option value="Unreturned">Unreturned</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="detail-group">
-                        <div class="detail-label">Book Status</div>
-                        <select class="detail-select" id="detailBookStatus" disabled>
-                            <option value="Good">Good</option>
-                            <option value="Damaged">Damaged</option>
-                            <option value="Missing">Missing</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="detail-group full-width">
-                        <div class="detail-label">Book ID</div>
-                        <div class="read-only-field" id="detailBookId">-</div>
-                    </div>
-                </div>
-
             </div>
 
             <div class="details-modal-footer">
                 <div class="footer-buttons">
-                    <button type="button" class="btn-back" id="btnBack">Close</button>
+                    <button type="button" class="btn-back" id="btnBack">Back</button>
                     <button type="button" class="btn-edit" id="btnEdit">Edit</button>
                 </div>
             </div>
