@@ -39,12 +39,19 @@ namespace Soft_eng.Controllers
         private async Task<dynamic> GetDashboardViewModel()
         {
             int totalBooks = 0, totalBorrowed = 0, totalReturned = 0, totalOverdue = 0, totalMissing = 0, totalDamaged = 0;
+            decimal totalFineSum = 0;
             var overdueList = new List<dynamic>();
             var recentList = new List<dynamic>();
 
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                string updateOverdueSql = "UPDATE Loan SET OverdueStatus = 1 WHERE DateDue < CURDATE() AND ReturnStatus = 'Not Returned'";
+                using (var updateCmd = new MySqlCommand(updateOverdueSql, _connection))
+                {
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
 
                 using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(TotalCopies), 0) FROM LogBook", _connection))
                     totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -58,14 +65,19 @@ namespace Soft_eng.Controllers
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE OverdueStatus = 1 AND ReturnStatus = 'Not Returned'", _connection))
                     totalOverdue = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
+                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(FineAmount), 0) FROM Fine WHERE PaymentStatus = 'Unpaid'", _connection))
+                    totalFineSum = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
+
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Missing'", _connection))
                     totalMissing = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Damaged'", _connection))
                     totalDamaged = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                string overdueSql = @"SELECT l.BorrowerID, b.BorrowerName, l.DateBorrowed FROM Loan l 
+                string overdueSql = @"SELECT l.BorrowerID, b.BorrowerName, l.DateBorrowed, IFNULL(f.FineAmount, 0) as FineAmount 
+                                      FROM Loan l 
                                       JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
+                                      LEFT JOIN Fine f ON l.LoanID = f.LoanID
                                       WHERE l.OverdueStatus = 1 AND l.ReturnStatus = 'Not Returned'
                                       ORDER BY l.DateBorrowed ASC LIMIT 5";
 
@@ -74,7 +86,13 @@ namespace Soft_eng.Controllers
                 {
                     while (await reader.ReadAsync())
                     {
-                        overdueList.Add(new { UserID = reader.GetInt32("BorrowerID"), Name = reader.GetString("BorrowerName"), DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy") });
+                        overdueList.Add(new
+                        {
+                            UserID = reader.GetInt32("BorrowerID"),
+                            Name = reader.GetString("BorrowerName"),
+                            DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"),
+                            Fine = reader.GetDecimal("FineAmount").ToString("N2")
+                        });
                     }
                 }
 
@@ -92,20 +110,47 @@ namespace Soft_eng.Controllers
             }
             finally { await _connection.CloseAsync(); }
 
-            return new { TotalBooks = totalBooks, TotalBorrowed = totalBorrowed, TotalReturned = totalReturned, TotalOverdue = totalOverdue, TotalMissing = totalMissing, TotalDamaged = totalDamaged, OverdueList = overdueList, RecentList = recentList };
+            return new
+            {
+                TotalBooks = totalBooks,
+                TotalBorrowed = totalBorrowed,
+                TotalReturned = totalReturned,
+                TotalOverdue = totalOverdue,
+                TotalMissing = totalMissing,
+                TotalDamaged = totalDamaged,
+                TotalFine = totalFineSum.ToString("N2"),
+                OverdueList = overdueList,
+                RecentList = recentList
+            };
         }
 
         public async Task<IActionResult> AdminDashboard()
         {
             var data = await GetDashboardViewModel();
-            ViewBag.TotalBooks = data.TotalBooks; ViewBag.TotalBorrowed = data.TotalBorrowed; ViewBag.TotalReturned = data.TotalReturned; ViewBag.TotalOverdue = data.TotalOverdue; ViewBag.TotalMissing = data.TotalMissing; ViewBag.TotalDamaged = data.TotalDamaged; ViewBag.OverdueList = data.OverdueList; ViewBag.RecentList = data.RecentList;
+            ViewBag.TotalBooks = data.TotalBooks;
+            ViewBag.TotalBorrowed = data.TotalBorrowed;
+            ViewBag.TotalReturned = data.TotalReturned;
+            ViewBag.TotalOverdue = data.TotalOverdue;
+            ViewBag.TotalMissing = data.TotalMissing;
+            ViewBag.TotalDamaged = data.TotalDamaged;
+            ViewBag.OverdueList = data.OverdueList;
+            ViewBag.RecentList = data.RecentList;
+            ViewBag.TotalFine = data.TotalFine;
             return View();
         }
 
         public async Task<IActionResult> Dashboard()
         {
             var data = await GetDashboardViewModel();
-            ViewBag.TotalBooks = data.TotalBooks; ViewBag.TotalBorrowed = data.TotalBorrowed; ViewBag.TotalReturned = data.TotalReturned; ViewBag.TotalOverdue = data.TotalOverdue; ViewBag.TotalMissing = data.TotalMissing; ViewBag.TotalDamaged = data.TotalDamaged; ViewBag.OverdueList = data.OverdueList; ViewBag.RecentList = data.RecentList;
+            ViewBag.TotalBooks = data.TotalBooks;
+            ViewBag.TotalBorrowed = data.TotalBorrowed;
+            ViewBag.TotalReturned = data.TotalReturned;
+            ViewBag.TotalOverdue = data.TotalOverdue;
+            ViewBag.TotalMissing = data.TotalMissing;
+            ViewBag.TotalDamaged = data.TotalDamaged;
+            ViewBag.OverdueList = data.OverdueList;
+            ViewBag.RecentList = data.RecentList;
+            ViewBag.TotalFine = data.TotalFine;
             return View();
         }
 
@@ -348,7 +393,6 @@ namespace Soft_eng.Controllers
                 cmd.Parameters.AddWithValue("@amount", fine.FineAmount);
                 cmd.Parameters.AddWithValue("@total", fine.totalFineAmount);
 
-                // FIX: Check if date is actually selected. If not, send DBNull.Value
                 if (fine.DatePaid.HasValue && fine.DatePaid != DateTime.MinValue)
                     cmd.Parameters.AddWithValue("@date", fine.DatePaid.Value);
                 else
@@ -372,7 +416,6 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 bool isOverdue = (status == "Yes");
 
-                // 1. Update the Loan table status
                 using (var cmd = new MySqlCommand("UPDATE Loan SET OverdueStatus = @status WHERE LoanID = @loanId", _connection))
                 {
                     cmd.Parameters.AddWithValue("@status", isOverdue);
@@ -629,7 +672,6 @@ namespace Soft_eng.Controllers
                 int bkId = Convert.ToInt32(res);
                 DateTime due = borrowDate.AddDays(4);
 
-                // Update Loan
                 using (var cmd = new MySqlCommand("UPDATE Loan SET BookID=@bk, BorrowerID=@br, DateBorrowed=@db, DateDue=@dd, BookStatus=@bs WHERE LoanID=@id", _connection))
                 {
                     cmd.Parameters.AddWithValue("@bk", bkId);
@@ -641,7 +683,6 @@ namespace Soft_eng.Controllers
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Sync LogBook
                 if (!string.IsNullOrEmpty(bookStatus))
                 {
                     using var lb = new MySqlCommand("UPDATE LogBook SET BookStatus=@s WHERE BookID=@bk", _connection);
@@ -650,8 +691,6 @@ namespace Soft_eng.Controllers
                     await lb.ExecuteNonQueryAsync();
                 }
 
-                // Re-check
-                // status to maintain dynamic fine link
                 using var checkOverdue = new MySqlCommand("SELECT OverdueStatus FROM Loan WHERE LoanID = @id", _connection);
                 checkOverdue.Parameters.AddWithValue("@id", loanId);
                 if (Convert.ToBoolean(await checkOverdue.ExecuteScalarAsync()))
