@@ -27,13 +27,49 @@ document.addEventListener('DOMContentLoaded', function () {
     if (prevBtn) prevBtn.addEventListener('click', e => { e.preventDefault(); changePage(currentPage - 1); });
     if (nextBtn) nextBtn.addEventListener('click', e => { e.preventDefault(); changePage(currentPage + 1); });
     if (gotoInput) gotoInput.addEventListener('change', function () { const pageNum = parseInt(this.value); if (!isNaN(pageNum)) changePage(pageNum); this.value = ''; });
-    if (reportBtn) reportBtn.addEventListener('click', () => { window.location.href = `/Home/GenerateReport?reportType=fine&format=pdf`; });
+
+    if (reportBtn) {
+        reportBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelector('.report-modal').style.display = 'flex';
+        });
+    }
+
+    const pdfBtn = document.querySelector('.report-format-btn.pdf');
+    const csvBtn = document.querySelector('.report-format-btn.csv');
+    const closeReportBtn = document.querySelector('.close-report-modal');
+
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', () => {
+            window.location.href = `/Home/GenerateReport?reportType=fine&format=pdf`;
+            closeReportModal();
+        });
+    }
+
+    if (csvBtn) {
+        csvBtn.addEventListener('click', () => {
+            window.location.href = `/Home/GenerateReport?reportType=fine&format=csv`;
+            closeReportModal();
+        });
+    }
+
+    if (closeReportBtn) closeReportBtn.addEventListener('click', closeReportModal);
+
+    window.addEventListener('click', (e) => {
+        const modal = document.querySelector('.report-modal');
+        if (e.target === modal) closeReportModal();
+    });
+
     if (editFineBtn) editFineBtn.addEventListener('click', () => { if (!selectedFine) { alert("Please select a fine row from the table first."); return; } openFineDetails(selectedFine); });
     if (btnEditToggle) btnEditToggle.addEventListener('click', handleEditToggle);
     if (searchInput) searchInput.addEventListener('input', handleSearch);
 
     loadFines();
 });
+
+function closeReportModal() {
+    document.querySelector('.report-modal').style.display = 'none';
+}
 
 async function loadFines() {
     try {
