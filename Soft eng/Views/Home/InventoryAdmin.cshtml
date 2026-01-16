@@ -48,7 +48,12 @@
         </aside>
 
         <main class="content-area">
-            <h2>Admin Inventory</h2>
+            <h2>Admin Inventory
+            @if (ViewBag.SearchQuery != null)
+            {
+                <span style="font-size: 0.8em; font-weight: normal; color: #e74c3c;"> - Search Results for "@ViewBag.SearchQuery"</span>
+            }
+            </h2>
             <div class="search-filter">
                 <input type="text" id="searchInput" placeholder="Search by Title, Author, etc." />
             </div>

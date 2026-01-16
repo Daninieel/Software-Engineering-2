@@ -3,6 +3,7 @@ let isEditing = false;
 let allBorrowedBooks = []; 
 let currentPage = 1;
 const rowsPerPage = 10;
+let allFilteredBooks = [];
 
 
 let issueBookBtn, issueBookModal, closeModalBtn, cancelBtn, issueBookForm;
@@ -10,18 +11,6 @@ let borrowedBooksTable, borrowDateInput, detailsModal, closeDetailsBtn, btnBack,
 let pageList, gotoInput, prevBtn, nextBtn;
 
 document.addEventListener('DOMContentLoaded', initializeBorrowedBooks);
-
-const searchInput = document.getElementById('searchInput');
-
-if (searchInput) {
-    searchInput.addEventListener('keyup', function () {
-        const query = this.value.toLowerCase();
-        document.querySelectorAll('.book-row').forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(query) ? '' : 'none';
-        });
-    });
-}
 
 function initializeBorrowedBooks() {
     issueBookBtn = document.getElementById('issueBookBtn');
@@ -53,7 +42,38 @@ function initializeBorrowedBooks() {
     nextBtn = document.getElementById('nextBtn');
 
     setupEventListeners();
+    setupSearchListener();
     loadBorrowedBooks(); 
+}
+
+function setupSearchListener() {
+    const searchInputs = document.querySelectorAll('input[placeholder*="Search"], input[placeholder*="search"]');
+    searchInputs.forEach(input => {
+        input.addEventListener('keyup', function () {
+            filterBorrowedBooks(this.value.toLowerCase());
+        });
+    });
+}
+
+function filterBorrowedBooks(query) {
+    if (!query) {
+        allFilteredBooks = [...allBorrowedBooks];
+    } else {
+        allFilteredBooks = allBorrowedBooks.filter(book => {
+            const loanId = book.loanID.toString().toLowerCase();
+            const borrowerName = (book.borrowerName || '').toLowerCase();
+            const bookTitle = (book.bookTitle || '').toLowerCase();
+            const bookId = book.bookID.toString().toLowerCase();
+            
+            return loanId.includes(query) || 
+                   borrowerName.includes(query) || 
+                   bookTitle.includes(query) || 
+                   bookId.includes(query);
+        });
+    }
+    currentPage = 1;
+    renderTableRows();
+    updatePaginationUI();
 }
 
 function setupEventListeners() {
@@ -112,10 +132,12 @@ async function loadBorrowedBooks() {
 
         if (books && books.length > 0) {
             allBorrowedBooks = books.sort((a, b) => a.loanID - b.loanID);
+            allFilteredBooks = [...allBorrowedBooks];
 
             changePage(1);
         } else {
             allBorrowedBooks = [];
+            allFilteredBooks = [];
             borrowedBooksTable.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px;">No borrowed books found.</td></tr>`;
             updatePaginationUI();
         }
@@ -127,7 +149,7 @@ async function loadBorrowedBooks() {
 }
 
 function changePage(page) {
-    const totalPages = Math.ceil(allBorrowedBooks.length / rowsPerPage);
+    const totalPages = Math.ceil(allFilteredBooks.length / rowsPerPage);
 
     if (page < 1) page = 1;
     if (page > totalPages && totalPages > 0) page = totalPages;
@@ -142,7 +164,7 @@ function renderTableRows() {
 
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
-    const booksToShow = allBorrowedBooks.slice(start, end);
+    const booksToShow = allFilteredBooks.slice(start, end);
 
     if (booksToShow.length === 0) return;
 

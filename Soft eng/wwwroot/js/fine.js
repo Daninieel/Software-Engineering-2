@@ -7,7 +7,9 @@ let isEditMode = false;
 let fineTableBody, pageList, grandTotalDisplay;
 let prevBtn, nextBtn, gotoInput;
 let reportBtn, editFineBtn, btnEditToggle;
-let searchInput;
+
+// Rename searchInput to be more specific
+let fineSearchInput;
 let filteredFines = [];
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -22,7 +24,9 @@ document.addEventListener('DOMContentLoaded', function () {
     reportBtn = document.getElementById('openReportModal');
     editFineBtn = document.getElementById('editFineBtn');
     btnEditToggle = document.getElementById('btnEditToggle');
-    searchInput = document.querySelector('.search-filter input');
+    
+    // Setup search functionality
+    setupFineSearch();
 
     if (prevBtn) prevBtn.addEventListener('click', e => { e.preventDefault(); changePage(currentPage - 1); });
     if (nextBtn) nextBtn.addEventListener('click', e => { e.preventDefault(); changePage(currentPage + 1); });
@@ -62,10 +66,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (editFineBtn) editFineBtn.addEventListener('click', () => { if (!selectedFine) { alert("Please select a fine row from the table first."); return; } openFineDetails(selectedFine); });
     if (btnEditToggle) btnEditToggle.addEventListener('click', handleEditToggle);
-    if (searchInput) searchInput.addEventListener('input', handleSearch);
 
     loadFines();
 });
+
+// Refactor search setup to be more generic and reusable
+function setupFineSearch() {
+    const searchInputs = document.querySelectorAll('input[placeholder*="Search"], input[placeholder*="search"]');
+    searchInputs.forEach(input => {
+        input.addEventListener('keyup', function () {
+            filterFines(this.value.toLowerCase());
+        });
+    });
+}
+
+// Generic filter function for fines
+function filterFines(query) {
+    if (!query) {
+        filteredFines = [...allFines];
+    } else {
+        filteredFines = allFines.filter(fine => {
+            const fineId = fine.fineID.toString().toLowerCase();
+            const loanId = fine.loanID.toString().toLowerCase();
+            const borrowerName = (fine.borrowerName || '').toLowerCase();
+            
+            return fineId.includes(query) || 
+                   loanId.includes(query) || 
+                   borrowerName.includes(query);
+        });
+    }
+    
+    currentPage = 1;
+    calculateGrandTotal(filteredFines);
+    changePage(1);
+}
 
 function closeReportModal() {
     document.querySelector('.report-modal').style.display = 'none';
@@ -124,18 +158,6 @@ function renderTableRows() {
         return;
     }
     itemsToShow.forEach(fine => createRow(fine));
-}
-
-function handleSearch() {
-    const query = searchInput.value.toLowerCase();
-    filteredFines = allFines.filter(f =>
-        (f.fineID?.toString().toLowerCase().includes(query)) ||
-        (f.loanID?.toString().toLowerCase().includes(query)) ||
-        (f.borrowerName?.toLowerCase().includes(query)) ||
-        (f.paymentStatus?.toLowerCase().includes(query))
-    );
-    calculateGrandTotal(filteredFines);
-    changePage(1);
 }
 
 function createRow(fine) {

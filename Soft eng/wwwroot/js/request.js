@@ -1,4 +1,6 @@
 ﻿let selectedRequest = null;
+let allRequests = [];
+let filteredRequests = [];
 
 function openViewRequestModal(id, name, title, date, status, remarks) {
     document.getElementById("viewRequestID").innerText = id;
@@ -34,9 +36,62 @@ function closeEditModal() {
     document.getElementById("editRequestModal").style.display = "none";
 }
 
+function initializeRequests() {
+    const table = document.getElementById("requestsTable");
+    if (table) {
+        const rows = table.querySelectorAll("tbody tr.request-row");
+        allRequests = [];
+        rows.forEach(row => {
+            const cells = row.querySelectorAll("td");
+            allRequests.push({
+                id: cells[0].textContent.trim(),
+                name: cells[1].textContent.trim(),
+                title: cells[2].textContent.trim(),
+                date: cells[3].textContent.trim(),
+                status: cells[4].textContent.trim(),
+                remarks: cells[5].textContent.trim(),
+                rowElement: row
+            });
+        });
+        filteredRequests = [...allRequests];
+    }
+    setupRequestSearchListener();
+}
+
+function setupRequestSearchListener() {
+    const searchInputs = document.querySelectorAll('input[placeholder*="Search"], input[placeholder*="search"]');
+    searchInputs.forEach(input => {
+        input.addEventListener('keyup', function () {
+            filterRequests(this.value.toLowerCase());
+        });
+    });
+}
+
+function filterRequests(query) {
+    if (!query) {
+        filteredRequests = [...allRequests];
+    } else {
+        filteredRequests = allRequests.filter(req => {
+            const id = req.id.toLowerCase();
+            const name = req.name.toLowerCase();
+            const title = req.title.toLowerCase();
+            
+            return id.includes(query) || 
+                   name.includes(query) || 
+                   title.includes(query);
+        });
+    }
+    
+    // Hide/show rows based on filter
+    allRequests.forEach(req => {
+        const isInFiltered = filteredRequests.some(f => f.id === req.id);
+        req.rowElement.style.display = isInFiltered ? '' : 'none';
+    });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
 
+    initializeRequests();
 
     const genReportBtn = document.getElementById("generateReportBtn");
     const reportModal = document.getElementById("reportModal");

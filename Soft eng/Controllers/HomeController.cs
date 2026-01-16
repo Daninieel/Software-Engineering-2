@@ -42,7 +42,7 @@ namespace Soft_eng.Controllers
 
             try
             {
-                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open)  await _connection.OpenAsync();
 
                 string updateOverdueSql = "UPDATE Loan SET OverdueStatus = 1 WHERE DateDue < CURDATE() AND ReturnStatus = 'Not Returned'";
                 using (var updateCmd = new MySqlCommand(updateOverdueSql, _connection))
@@ -523,6 +523,50 @@ namespace Soft_eng.Controllers
             return fromAdmin ? View("InventoryAdmin", books) : View(books);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> SearchBooks(string query, bool fromAdmin = false)
+        {
+            List<LogBook> results = new List<LogBook>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(query))
+                    return RedirectToAction("Inventory", new { fromAdmin });
+
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                string sqlQuery = @"SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived 
+                                   FROM LogBook 
+                                   WHERE BookID LIKE @q 
+                                      OR BookTitle LIKE @q 
+                                      OR Author LIKE @q 
+                                      OR ShelfLocation LIKE @q 
+                                      OR ISBN LIKE @q 
+                                      OR Publisher LIKE @q
+                                   ORDER BY BookID DESC";
+
+                using var cmd = new MySqlCommand(sqlQuery, _connection);
+                cmd.Parameters.AddWithValue("@q", $"%{query}%");
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    results.Add(new LogBook
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability"),
+                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived")
+                    });
+                }
+            }
+            finally { await _connection.CloseAsync(); }
+
+            ViewBag.SearchQuery = query;
+            ViewBag.FromAdmin = fromAdmin;
+            return fromAdmin ? View("InventoryAdmin", results) : View("Inventory", results);
+        }
+
         public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
         {
             LogBook? book = null;
@@ -548,8 +592,8 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 // 1. Update the EXISTING book (The one you clicked 'Edit' on)
-                // We force TotalCopies = 1 for this row to ensure it represents a single copy in the database.
-                using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=1, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
+                // Set TotalCopies to the user's input so all copies reflect the same total
+                using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@total, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
                 {
                     cmd.Parameters.AddWithValue("@id", book.BookID);
                     cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
@@ -563,6 +607,7 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@year", book.Year);
                     cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                    cmd.Parameters.AddWithValue("@total", book.TotalCopies);
 
                     // Availability often mirrors BookStatus in your system (e.g. "Available", "Damaged")
                     cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
@@ -579,7 +624,7 @@ namespace Soft_eng.Controllers
                 {
                     for (int i = 0; i < copiesToAdd; i++)
                     {
-                        using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, 1, @status)", _connection);
+                        using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @total, @status)", _connection);
 
                         cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
                         cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
@@ -593,6 +638,7 @@ namespace Soft_eng.Controllers
                         cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                         cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                         cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
+                        cmd.Parameters.AddWithValue("@total", book.TotalCopies);
                         cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
                         await cmd.ExecuteNonQueryAsync();
@@ -630,8 +676,8 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                     cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
-                    // Set TotalCopies to 1 for this individual row so SUM() works correctly in dashboards
-                    cmd.Parameters.AddWithValue("@copies", 1);
+                    // Set TotalCopies to the user's input so all copies reflect the same total
+                    cmd.Parameters.AddWithValue("@copies", copies);
                     cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
                     await cmd.ExecuteNonQueryAsync();
