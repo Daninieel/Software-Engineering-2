@@ -14,11 +14,6 @@ using DinkToPdf.Contracts;
 
 namespace Soft_eng.Controllers
 {
-    public class ChatRequest
-    {
-        public string? Message { get; set; }
-        public List<object>? History { get; set; }
-    }
 
     public class HomeController : Controller
     {
@@ -35,6 +30,8 @@ namespace Soft_eng.Controllers
 
         public IActionResult Login() => View();
         public IActionResult Register() => View();
+
+     
 
         private async Task<dynamic> GetDashboardViewModel()
         {
@@ -238,17 +235,6 @@ namespace Soft_eng.Controllers
         {
             ViewBag.Token = token; ViewBag.Email = email;
             return View("ResetPasswordAdmin");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Chat([FromBody] ChatRequest request)
-        {
-            var apiKey = _configuration["Gemini:ApiKey"];
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
-            var payload = new { contents = (request.History ?? new List<object>()).Append(new { role = "user", parts = new[] { new { text = "Context: You are the Saint Isidore Academy Library Assistant. " + (request.Message ?? "") } } }) };
-            using var client = new HttpClient();
-            var response = await client.PostAsync(url, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-            return Content(await response.Content.ReadAsStringAsync(), "application/json");
         }
 
         [HttpPost]
