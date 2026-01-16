@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
 </head>
 <body>
 
@@ -78,23 +79,21 @@
                     </div>
                 </div>
             </div>
-
             <div class="table-card">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Request ID</th>
-                            <th>Requester Name</th>
-                            <th>Requested Title</th>
-                            <th>Date Requested</th>
-                            <th>Status</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model != null && Model.Any())
-                        {
-                            foreach (var req in Model)
+                <div class="table-wrapper">
+                    <table id="requestsTable">
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Requester Name</th>
+                                <th>Requested Title</th>
+                                <th>Date Requested</th>
+                                <th>Status</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var req in Model)
                             {
                                 <tr class="request-row"
                                     data-id="@req.RequestID"
@@ -103,35 +102,50 @@
                                     data-date="@req.DateRequested.ToString("yyyy-MM-dd")"
                                     data-status="@req.Status"
                                     data-remarks="@(req.Remarks ?? "")">
+
                                     <td>@req.RequestID</td>
-                                    <td><span class="ellipsis">@req.RequesterName</span></td>
-                                    <td><span class="ellipsis">@req.RequestedTitle</span></td>
+                                    <td>@req.RequesterName</td>
+                                    <td>@req.RequestedTitle</td>
                                     <td>@req.DateRequested.ToString("yyyy-MM-dd")</td>
                                     <td>@req.Status</td>
                                     <td>
                                         <button class="btn-see-more"
                                                 onclick='openViewRequestModal(
-                                                            @req.RequestID,
-                                                            @Html.Raw(Json.Serialize(req.RequesterName)),
-                                                            @Html.Raw(Json.Serialize(req.RequestedTitle)),
-                                                            "@req.DateRequested.ToString("yyyy-MM-dd")",
-                                                            @Html.Raw(Json.Serialize(req.Status)),
-                                                            @Html.Raw(Json.Serialize(req.Remarks ?? "None"))
-                                                        )'>
+                                            @req.RequestID,
+                                            @Html.Raw(Json.Serialize(req.RequesterName)),
+                                            @Html.Raw(Json.Serialize(req.RequestedTitle)),
+                                            "@req.DateRequested.ToString("yyyy-MM-dd")",
+                                            @Html.Raw(Json.Serialize(req.Status)),
+                                            @Html.Raw(Json.Serialize(req.Remarks ?? ""))
+                                        )'>
                                             See More
                                         </button>
                                     </td>
                                 </tr>
                             }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="6">No requests found.</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow">&lt;</a>
+
+                    <ul class="page-list">
+                        <li><a href="#" class="page-link active">1</a></li>
+                    </ul>
+
+                    <a href="#" class="nav-arrow">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
             </div>
 
             <div class="button-area">
@@ -221,84 +235,6 @@
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
-
-    <script>
-        // REPORT MODAL LOGIC
-        document.getElementById("generateReportBtn").onclick = function() {
-            document.getElementById("reportModal").style.display = "block";
-        };
-
-        document.getElementById("closeReportModal").onclick = function() {
-            document.getElementById("reportModal").style.display = "none";
-        };
-
-        window.onclick = function(event) {
-            const rModal = document.getElementById('reportModal');
-            const aModal = document.getElementById('addRequestModal');
-            const vModal = document.getElementById('viewRequestModal');
-            const eModal = document.getElementById('editRequestModal');
-
-            if (event.target == rModal) rModal.style.display = "none";
-            if (event.target == aModal) aModal.style.display = "none";
-            if (event.target == vModal) vModal.style.display = "none";
-            if (event.target == eModal) eModal.style.display = "none";
-        };
-
-        // REQUEST SELECTION AND UI LOGIC
-        let selectedRequest = null;
-        document.querySelectorAll(".request-row").forEach(row => {
-            row.addEventListener("click", function () {
-                document.querySelectorAll(".request-row").forEach(r => r.classList.remove("selected"));
-                this.classList.add("selected");
-                selectedRequest = {
-                    id: this.dataset.id,
-                    name: this.dataset.name,
-                    title: this.dataset.title,
-                    date: this.dataset.date,
-                    status: this.dataset.status,
-                    remarks: this.dataset.remarks
-                };
-            });
-        });
-
-        const addRequestBtn = document.getElementById("addRequestBtn");
-        const addRequestModal = document.getElementById("addRequestModal");
-        const cancelRequestBtn = document.getElementById("cancelRequestBtn");
-
-        addRequestBtn.onclick = () => addRequestModal.style.display = "block";
-        cancelRequestBtn.onclick = () => addRequestModal.style.display = "none";
-
-        function openViewRequestModal(id, name, title, date, status, remarks) {
-            document.getElementById("viewRequestID").innerText = id;
-            document.getElementById("viewRequesterName").innerText = name;
-            document.getElementById("viewRequestedTitle").innerText = title;
-            document.getElementById("viewDateRequested").innerText = date;
-            document.getElementById("viewStatus").innerText = status;
-            document.getElementById("viewRemarks").value = remarks;
-            document.getElementById("viewRequestModal").style.display = "block";
-        }
-
-        function closeViewRequestModal() {
-            document.getElementById("viewRequestModal").style.display = "none";
-        }
-
-        function openEditRequest() {
-            if (!selectedRequest) {
-                alert("Please select a request first.");
-                return;
-            }
-            document.getElementById("editRequestID").value = selectedRequest.id;
-            document.getElementById("editRequesterName").value = selectedRequest.name;
-            document.getElementById("editRequestedTitle").value = selectedRequest.title;
-            document.getElementById("editDateRequested").value = selectedRequest.date;
-            document.getElementById("editStatus").value = selectedRequest.status;
-            document.getElementById("editRemarks").value = selectedRequest.remarks;
-            document.getElementById("editRequestModal").style.display = "block";
-        }
-
-        function closeEditModal() {
-            document.getElementById("editRequestModal").style.display = "none";
-        }
-    </script>
+    <script src="~/js/request.js"></script>
 </body>
 </html>

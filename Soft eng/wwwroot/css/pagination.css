@@ -1,0 +1,113 @@
+﻿.pagination-wrapper {
+    background-color: #ffffff;
+    padding: 10px 30px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    /* Changed shadow to a neutral/warm tone to match red */
+    box-shadow: 0 10px 25px rgba(190, 50, 50, 0.15);
+    font-family: 'Poppins', sans-serif;
+}
+
+    /* General Link Styling */
+    .pagination-wrapper a {
+        text-decoration: none;
+    }
+
+/* Navigation Arrows (< >) */
+.nav-arrow {
+    color: #e6b0aa; /* Light Red/Pinkish for inactive state */
+    font-size: 18px;
+    font-weight: 500;
+    padding: 0 10px;
+    transition: color 0.3s;
+    cursor: pointer;
+}
+
+    .nav-arrow:hover {
+        color: #c0392b; /* Strong Red on hover */
+    }
+
+/* Page List Container */
+.page-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Individual Page Links */
+.page-link {
+    color: #c0392b; /* Main Red Text */
+    width: 35px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    font-weight: 500;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+    .page-link:hover {
+        background-color: #f9ebea; /* Very pale red background */
+    }
+
+    /* The Active "1" Circle */
+    .page-link.active {
+        /* RED GRADIENT: From lighter red to the deep red in your image */
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+        width: 45px;
+        height: 45px;
+        /* Red colored shadow */
+        box-shadow: 0 4px 10px rgba(192, 57, 43, 0.4);
+    }
+
+/* The "..." dots */
+.dots {
+    color: #c0392b;
+    font-size: 14px;
+    padding: 0 5px;
+}
+
+/* Go To Section */
+.goto-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 15px;
+    padding-left: 15px;
+    border-left: 1px solid #f0f0f0;
+}
+
+.goto-text {
+    color: #c0392b;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Input Box */
+.goto-input {
+    width: 50px;
+    height: 35px;
+    border: none;
+    border-radius: 8px;
+    background: #c0392b; /* Solid Red background */
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.15);
+    color: white;
+    text-align: center;
+    font-weight: 600;
+    outline: none;
+}
+
+    .goto-input:focus {
+        /* Red glow ring */
+        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25), 0 0 0 2px #fadbd8;
+    }

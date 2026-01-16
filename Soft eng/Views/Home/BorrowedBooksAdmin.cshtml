@@ -14,8 +14,9 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
     <style>
-        /* Add specific style for the new select dropdown to match inputs */
+
         #issueBookForm select {
             width: 100%;
             padding: 10px;
@@ -104,6 +105,23 @@
                 </table>
             </div>
 
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow" id="prevBtn">&lt;</a>
+
+                    <ul class="page-list">
+                    </ul>
+
+                    <a href="#" class="nav-arrow" id="nextBtn">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="button-area">
                 <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
                 <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
@@ -112,6 +130,7 @@
         </main>
 
     </div>
+
 
     <div id="issueBookModal" class="modal-overlay">
         <div class="modal-content">

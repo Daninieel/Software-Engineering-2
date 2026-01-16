@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
 </head>
 <body>
 
@@ -91,6 +92,24 @@
                     </table>
                 </div>
             </div>
+
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow" id="prevBtn">&lt;</a>
+
+                    <ul class="page-list">
+                    </ul>
+
+                    <a href="#" class="nav-arrow" id="nextBtn">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="total-container mb-3">
                 <h4>Grand Total of All Fines: <span id="grandTotalDisplay">₱0.00</span></h4>
             </div>

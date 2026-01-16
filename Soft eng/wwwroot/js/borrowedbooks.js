@@ -1,14 +1,27 @@
-﻿// borrowedbooks.js
-
-// Global variables
-let currentBookData = null;
+﻿let currentBookData = null;
 let isEditing = false;
+let allBorrowedBooks = []; 
+let currentPage = 1;
+const rowsPerPage = 10;
 
-// DOM Elements
+
 let issueBookBtn, issueBookModal, closeModalBtn, cancelBtn, issueBookForm;
 let borrowedBooksTable, borrowDateInput, detailsModal, closeDetailsBtn, btnBack, btnEdit;
+let pageList, gotoInput, prevBtn, nextBtn;
 
 document.addEventListener('DOMContentLoaded', initializeBorrowedBooks);
+
+const searchInput = document.getElementById('searchInput');
+
+if (searchInput) {
+    searchInput.addEventListener('keyup', function () {
+        const query = this.value.toLowerCase();
+        document.querySelectorAll('.book-row').forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    });
+}
 
 function initializeBorrowedBooks() {
     issueBookBtn = document.getElementById('issueBookBtn');
@@ -18,6 +31,7 @@ function initializeBorrowedBooks() {
         cancelBtn = issueBookModal.querySelector('.btn-cancel');
     }
     issueBookForm = document.getElementById('issueBookForm');
+
 
     const tableElement = document.getElementById('borrowedBooksTable');
     if (tableElement) {
@@ -33,11 +47,17 @@ function initializeBorrowedBooks() {
     btnBack = document.getElementById('btnBack');
     btnEdit = document.getElementById('btnEdit');
 
+    pageList = document.querySelector('.page-list');
+    gotoInput = document.querySelector('.goto-input');
+    prevBtn = document.getElementById('prevBtn');
+    nextBtn = document.getElementById('nextBtn');
+
     setupEventListeners();
-    loadBorrowedBooks();
+    loadBorrowedBooks(); 
 }
 
 function setupEventListeners() {
+
     if (issueBookBtn) issueBookBtn.addEventListener('click', openIssueBookModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeIssueBookModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeIssueBookModal);
@@ -56,6 +76,30 @@ function setupEventListeners() {
     };
 
     setupAutocomplete();
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            changePage(currentPage - 1);
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            changePage(currentPage + 1);
+        });
+    }
+
+    if (gotoInput) {
+        gotoInput.addEventListener('change', function () {
+            const pageNum = parseInt(this.value);
+            if (!isNaN(pageNum)) {
+                changePage(pageNum);
+            }
+            this.value = '';
+        });
+    }
 }
 
 async function loadBorrowedBooks() {
@@ -65,41 +109,111 @@ async function loadBorrowedBooks() {
         if (!response.ok) throw new Error('Failed to load data');
 
         const books = await response.json();
-        borrowedBooksTable.innerHTML = '';
 
         if (books && books.length > 0) {
-            books.forEach(book => {
-                const newRow = borrowedBooksTable.insertRow();
-                newRow.dataset.loanId = book.loanID;
-                newRow.dataset.bookData = JSON.stringify(book);
+            allBorrowedBooks = books.sort((a, b) => a.loanID - b.loanID);
 
-                newRow.innerHTML = `
-                    <td>${book.loanID}</td>
-                    <td>${book.borrowerName}</td>
-                    <td>${book.bookTitle}</td>
-                    <td>${book.dueDate}</td>
-                    <td>${book.dateReturned || '-'}</td>
-                    <td>
-                        <button class="overdue-btn ${book.overdueStatus === 'Yes' ? 'overdue-yes' : 'overdue-no'}"
-                                onclick="toggleOverdueStatus(${book.loanID}, this)">
-                            ${book.overdueStatus}
-                        </button>
-                    </td>
-                    <td>
-                        <button class="see-more-btn" onclick="showBookDetails(${book.loanID}, this)">
-                            Select
-                        </button>
-                    </td>
-                `;
-            });
+            changePage(1);
         } else {
+            allBorrowedBooks = [];
             borrowedBooksTable.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px;">No borrowed books found.</td></tr>`;
+            updatePaginationUI();
         }
+
     } catch (error) {
         console.error(error);
         borrowedBooksTable.innerHTML = `<tr><td colspan="7" style="color:red; text-align:center; padding: 20px;">Error loading data: ${error.message}</td></tr>`;
     }
 }
+
+function changePage(page) {
+    const totalPages = Math.ceil(allBorrowedBooks.length / rowsPerPage);
+
+    if (page < 1) page = 1;
+    if (page > totalPages && totalPages > 0) page = totalPages;
+
+    currentPage = page;
+    renderTableRows();
+    updatePaginationUI();
+}
+
+function renderTableRows() {
+    borrowedBooksTable.innerHTML = '';
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const booksToShow = allBorrowedBooks.slice(start, end);
+
+    if (booksToShow.length === 0) return;
+
+    booksToShow.forEach(book => {
+        const newRow = borrowedBooksTable.insertRow();
+        newRow.dataset.loanId = book.loanID;
+        newRow.dataset.bookData = JSON.stringify(book);
+
+        newRow.innerHTML = `
+            <td>${book.loanID}</td>
+            <td>${book.borrowerName}</td>
+            <td>${book.bookTitle}</td>
+            <td>${book.dueDate}</td>
+            <td>${book.dateReturned || '-'}</td>
+            <td>
+                <button class="overdue-btn ${book.overdueStatus === 'Yes' ? 'overdue-yes' : 'overdue-no'}"
+                        onclick="toggleOverdueStatus(${book.loanID}, this)">
+                    ${book.overdueStatus}
+                </button>
+            </td>
+            <td>
+                <button class="see-more-btn" onclick="showBookDetails(${book.loanID}, this)">
+                    Select
+                </button>
+            </td>
+        `;
+    });
+}
+
+function updatePaginationUI() {
+    if (!pageList) return;
+    pageList.innerHTML = '';
+
+    const totalPages = Math.ceil(allBorrowedBooks.length / rowsPerPage);
+    if (totalPages === 0) return;
+
+    let pagesToShow = [];
+
+    if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pagesToShow.push(i);
+    } else {
+        if (currentPage <= 4) {
+            pagesToShow = [1, 2, 3, 4, 5, '...', totalPages];
+        } else if (currentPage >= totalPages - 3) {
+            pagesToShow = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+        } else {
+            pagesToShow = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+        }
+    }
+
+    pagesToShow.forEach(p => {
+        const li = document.createElement('li');
+        if (p === '...') {
+            li.innerHTML = `<span class="dots">...</span>`;
+        } else {
+            const a = document.createElement('a');
+            a.href = "#";
+            a.classList.add('page-link');
+            a.textContent = p;
+            if (p === currentPage) a.classList.add('active');
+
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                changePage(p);
+            });
+            li.appendChild(a);
+        }
+        pageList.appendChild(li);
+    });
+}
+
 
 function openIssueBookModal() {
     if (issueBookModal) {
@@ -144,7 +258,7 @@ async function handleIssueBookSubmit(e) {
         if (result.success) {
             alert('Book issued successfully!');
             closeIssueBookModal();
-            loadBorrowedBooks();
+            loadBorrowedBooks(); 
         } else {
             alert('Error: ' + result.error);
         }
@@ -157,7 +271,7 @@ async function handleIssueBookSubmit(e) {
     }
 }
 
-// === THIS FUNCTION HANDLES THE PLACEHOLDER LOGIC ===
+
 function showBookDetails(loanId, button) {
     const row = button.closest('tr');
     const bookData = JSON.parse(row.dataset.bookData);
@@ -180,23 +294,19 @@ function showBookDetails(loanId, button) {
     setValue('detailDateReturned', returnedVal);
     setValue('detailOverdueStatus', bookData.overdueStatus);
 
-    // --- UPDATED LOGIC FOR BOOK STATUS PLACEHOLDER ---
-    // If the book is not yet returned (active loan), we force the "Select" placeholder (value = "")
-    // regardless of whether the DB says "Good" or "Borrowed".
     const statusSelect = document.getElementById('detailBookStatus');
     if (statusSelect) {
         if (bookData.returnStatus === 'Not Returned' || !bookData.returnStatus || bookData.bookStatus === 'Borrowed') {
-            statusSelect.value = ""; // Forces the "Select" placeholder to appear
+            statusSelect.value = "";
         } else {
             statusSelect.value = bookData.bookStatus;
         }
     }
 
-    // --- LOGIC FOR RETURN STATUS PLACEHOLDER ---
     const returnSelect = document.getElementById('detailReturnStatus');
     if (returnSelect) {
         if (bookData.returnStatus === 'Not Returned' || !bookData.returnStatus) {
-            returnSelect.value = ""; // Forces the "Select" placeholder to appear
+            returnSelect.value = "";
         } else {
             returnSelect.value = bookData.returnStatus;
         }
@@ -225,14 +335,9 @@ async function handleEditClick() {
 
 function setInputsEnabled(enabled) {
     const editableIds = [
-        'detailBorrowerName',
-        'detailBookTitle',
-        'detailBorrowDate',
-        'detailDateReturned',
-        'detailOverdueStatus',
-        'detailReturnStatus',
-        'detailBookStatus',
-        'detailFineAmount'
+        'detailBorrowerName', 'detailBookTitle', 'detailBorrowDate',
+        'detailDateReturned', 'detailOverdueStatus', 'detailReturnStatus',
+        'detailBookStatus', 'detailFineAmount'
     ];
 
     editableIds.forEach(id => {
@@ -298,7 +403,7 @@ async function saveBookChanges() {
             isEditing = false;
             setInputsEnabled(false);
             closeDetailsModal();
-            loadBorrowedBooks();
+            loadBorrowedBooks(); 
         } else {
             alert('Error updating book: ' + result.error);
         }
@@ -341,9 +446,11 @@ window.toggleOverdueStatus = async function (loanId, button) {
 
         const result = await response.json();
         if (result.success) {
-            button.textContent = newStatus;
-            button.className = `overdue-btn ${newStatus === 'Yes' ? 'overdue-yes' : 'overdue-no'}`;
-            loadBorrowedBooks();
+            const bookIndex = allBorrowedBooks.findIndex(b => b.loanID === loanId);
+            if (bookIndex > -1) {
+                allBorrowedBooks[bookIndex].overdueStatus = newStatus;
+            }
+            renderTableRows();
         } else {
             alert('Error updating status: ' + result.error);
         }

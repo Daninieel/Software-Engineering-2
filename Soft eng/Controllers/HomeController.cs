@@ -555,7 +555,7 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> EditBook(LogBook book, bool isAdmin = false)
         {
-            if (!book.IsDateValid()) ModelState.AddModelError("DateReceived", "Invalid date.");
+            if (!book.IsDateValid()) ModelState.AddModelError("DateReceived", "-");
             if (!ModelState.IsValid) { ViewBag.FromAdmin = isAdmin; return View(book); }
             try
             {

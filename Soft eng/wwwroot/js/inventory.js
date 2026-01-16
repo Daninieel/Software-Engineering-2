@@ -19,25 +19,25 @@
         option.addEventListener('click', function () {
             const filterType = this.getAttribute('data-filter');
             const filterValue = this.getAttribute('data-value');
-            const rows = Array.from(document.querySelectorAll('.book-row'));
+            const currentRows = Array.from(document.querySelectorAll('.book-row'));
 
             if (filterType === 'all') {
-                rows.forEach(row => row.style.display = '');
+                currentRows.forEach(row => row.style.display = '');
             }
             else if (filterType === 'status') {
-                rows.forEach(row => {
+                currentRows.forEach(row => {
                     const rowStatus = row.getAttribute('data-status');
                     row.style.display = (rowStatus === filterValue) ? '' : 'none';
                 });
             }
             else if (filterType === 'source') {
-                rows.forEach(row => {
+                currentRows.forEach(row => {
                     const rowSource = row.getAttribute('data-source');
                     row.style.display = (rowSource === filterValue) ? '' : 'none';
                 });
             }
             else if (filterType === 'sort') {
-                rows.sort((a, b) => {
+                currentRows.sort((a, b) => {
                     let cellA = a.querySelector(`.${filterValue}-cell`)?.innerText.toLowerCase().trim() || "";
                     let cellB = b.querySelector(`.${filterValue}-cell`)?.innerText.toLowerCase().trim() || "";
 
@@ -46,7 +46,7 @@
                     }
                     return cellA.localeCompare(cellB);
                 });
-                rows.forEach(row => tableBody.appendChild(row));
+                currentRows.forEach(row => tableBody.appendChild(row));
             }
 
             if (filterOptionsContainer) {
@@ -64,23 +64,22 @@
             });
         });
     }
-    const rows = document.querySelectorAll('.book-row');
 
-    rows.forEach(row => {
-        row.addEventListener('click', function (e) {
-            if (e.target.closest('a') || e.target.closest('button')) {
-                return;
-            }
-            rows.forEach(r => r.classList.remove('selected-row'));
+    tableBody.addEventListener('click', function (e) {
+        const row = e.target.closest('.book-row');
+        if (!row) return;
+        if (e.target.closest('a') || e.target.closest('button')) return;
 
-            this.classList.add('selected-row');
+        document.querySelectorAll('.book-row').forEach(r => r.classList.remove('selected-row'));
 
-            const radio = this.querySelector('input[name="selectedBook"]');
-            if (radio) {
-                radio.checked = true;
-            }
-        });
+        row.classList.add('selected-row');
+
+        const radio = row.querySelector('input[name="selectedBook"]');
+        if (radio) {
+            radio.checked = true;
+        }
     });
+
     const editBtn = document.getElementById('adminEditBtn') || document.getElementById('editBtn');
     if (editBtn) {
         editBtn.addEventListener('click', function () {
@@ -93,5 +92,105 @@
                 alert("Please select a book to edit.");
             }
         });
+    }
+
+    const rowsPerPage = 10;
+    let rows = Array.from(tableBody.querySelectorAll('tr'));
+
+    if (rows.length > 1) {
+        const firstID = parseInt(rows[0].cells[0].innerText.trim());
+        const lastID = parseInt(rows[rows.length - 1].cells[0].innerText.trim());
+
+        if (!isNaN(firstID) && !isNaN(lastID) && firstID > lastID) {
+            rows.reverse();
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+    }
+
+    const pageList = document.querySelector('.page-list');
+    const gotoInput = document.querySelector('.goto-input');
+    const navArrows = document.querySelectorAll('.nav-arrow');
+    const prevBtn = navArrows[0];
+    const nextBtn = navArrows[1];
+
+    let currentPage = 1;
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+    function displayPage(page) {
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+
+        rows.forEach(row => row.style.display = 'none');
+
+        const start = (page - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        rows.slice(start, end).forEach(row => row.style.display = '');
+
+        updatePaginationUI();
+    }
+
+    function updatePaginationUI() {
+        if (!pageList) return;
+        pageList.innerHTML = '';
+
+        let pagesToShow = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pagesToShow.push(i);
+        } else {
+            if (currentPage <= 4) {
+                pagesToShow = [1, 2, 3, 4, 5, '...', totalPages];
+            } else if (currentPage >= totalPages - 3) {
+                pagesToShow = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            } else {
+                pagesToShow = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+            }
+        }
+
+        pagesToShow.forEach(p => {
+            const li = document.createElement('li');
+            if (p === '...') {
+                li.innerHTML = `<span class="dots">...</span>`;
+            } else {
+                const a = document.createElement('a');
+                a.href = "#";
+                a.classList.add('page-link');
+                a.textContent = p;
+                if (p === currentPage) a.classList.add('active');
+
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    displayPage(p);
+                });
+                li.appendChild(a);
+            }
+            pageList.appendChild(li);
+        });
+    }
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentPage > 1) displayPage(currentPage - 1);
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentPage < totalPages) displayPage(currentPage + 1);
+        });
+    }
+
+    if (gotoInput) {
+        gotoInput.addEventListener('change', function () {
+            const pageNum = parseInt(this.value);
+            if (!isNaN(pageNum)) displayPage(pageNum);
+            this.value = '';
+        });
+    }
+
+    if (rows.length > 0) {
+        displayPage(1);
     }
 });

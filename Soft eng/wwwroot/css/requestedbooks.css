@@ -57,6 +57,7 @@ body {
         display: block;
     }
 }
+
 .user-area {
     display: flex;
     align-items: center;
@@ -183,11 +184,11 @@ body {
     background: white;
     width: 100%;
     max-width: 1100px;
-    height: 570px; 
+    height: 570px;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     padding: 25px;
-    margin: 30px auto; 
+    margin: 30px auto;
     margin-top: 30px;
     display: flex;
     flex-direction: column;
@@ -352,8 +353,6 @@ td {
     width: 100%;
     height: 100%;
     background: rgba(0,0,0,0.4);
-    
-    
 }
 
 .modal-content {
@@ -419,7 +418,3 @@ td {
         width: 100%;
         min-width: 800px;
     }
-
-    
-
-

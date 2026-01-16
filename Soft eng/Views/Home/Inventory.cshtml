@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/css/inventory.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
 </head>
 <body>
     <header class="top-header">
@@ -41,7 +42,6 @@
                     <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
                     <li><a asp-action="RequestedBooks">Requested Books</a></li>
                     <li><a asp-action="Fine">Fine</a></li>
-
                 </ul>
             </nav>
         </aside>
@@ -67,7 +67,6 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-
                     <tbody>
                         @foreach (var item in Model)
                         {
@@ -87,6 +86,29 @@
                 </table>
             </div>
 
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow">&lt;</a>
+
+                    <ul class="page-list">
+                        <li><a href="#" class="page-link active">1</a></li>
+                        <li><a href="#" class="page-link">2</a></li>
+                        <li><a href="#" class="page-link">3</a></li>
+                        <li><a href="#" class="page-link">4</a></li>
+                        <li><a href="#" class="page-link">5</a></li>
+                        <li><span class="dots">...</span></li>
+                        <li><a href="#" class="page-link">14</a></li>
+                    </ul>
+
+                    <a href="#" class="nav-arrow">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
             <div class="button-area">
                 <a asp-action="AddBooks" class="btn btn-blue">Add Books</a>
                 <button type="button" id="editBtn" class="btn btn-red">Edit Book</button>
