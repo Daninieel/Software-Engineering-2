@@ -19,12 +19,14 @@ function openEditRequest() {
         alert("Please select a request first.");
         return;
     }
+
     document.getElementById("editRequestID").value = selectedRequest.id;
     document.getElementById("editRequesterName").value = selectedRequest.name;
     document.getElementById("editRequestedTitle").value = selectedRequest.title;
     document.getElementById("editDateRequested").value = selectedRequest.date;
     document.getElementById("editStatus").value = selectedRequest.status;
     document.getElementById("editRemarks").value = selectedRequest.remarks;
+
     document.getElementById("editRequestModal").style.display = "block";
 }
 
@@ -32,7 +34,10 @@ function closeEditModal() {
     document.getElementById("editRequestModal").style.display = "none";
 }
 
+
 document.addEventListener("DOMContentLoaded", function () {
+
+
     const genReportBtn = document.getElementById("generateReportBtn");
     const reportModal = document.getElementById("reportModal");
     const closeReportBtn = document.getElementById("closeReportModal");
@@ -59,36 +64,15 @@ document.addEventListener("DOMContentLoaded", function () {
         if (event.target === eModal) eModal.style.display = "none";
     };
 
-    const searchInput = document.getElementById('searchInput');
-
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function () {
-            const query = this.value.toLowerCase();
-            document.querySelectorAll('.book-row').forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(query) ? '' : 'none';
-            });
-        });
-    }
 
     const tableBody = document.querySelector("#requestsTable tbody");
-    const rows = Array.from(tableBody.querySelectorAll("tr"));
-
-
-    rows.sort((a, b) => {
-        const idA = parseInt(a.cells[0].innerText.trim()) || 0;
-        const idB = parseInt(b.cells[0].innerText.trim()) || 0;
-        return idA - idB;
-    });
-
-    rows.forEach(row => tableBody.appendChild(row));
 
     if (tableBody) {
         tableBody.addEventListener("click", function (e) {
-            const row = e.target.closest(".book-row");
+            const row = e.target.closest(".request-row");
             if (!row || e.target.closest("button")) return;
 
-            document.querySelectorAll(".book-row").forEach(r =>
+            document.querySelectorAll(".request-row").forEach(r =>
                 r.classList.remove("selected")
             );
             row.classList.add("selected");
@@ -104,10 +88,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+
     const rowsPerPage = 10;
+    const rows = Array.from(document.querySelectorAll("#requestsTable tbody tr"));
     const pageList = document.querySelector(".page-list");
     const gotoInput = document.querySelector(".goto-input");
     const navArrows = document.querySelectorAll(".nav-arrow");
+
     const prevBtn = navArrows[0];
     const nextBtn = navArrows[1];
 
@@ -116,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function displayPage(page) {
         selectedRequest = null;
-        document.querySelectorAll(".book-row").forEach(r =>
+        document.querySelectorAll(".request-row").forEach(r =>
             r.classList.remove("selected")
         );
 
@@ -146,9 +133,23 @@ document.addEventListener("DOMContentLoaded", function () {
             if (currentPage <= 4) {
                 pagesToShow = [1, 2, 3, 4, 5, "...", totalPages];
             } else if (currentPage >= totalPages - 3) {
-                pagesToShow = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                pagesToShow = [
+                    1, "...",
+                    totalPages - 4,
+                    totalPages - 3,
+                    totalPages - 2,
+                    totalPages - 1,
+                    totalPages
+                ];
             } else {
-                pagesToShow = [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+                pagesToShow = [
+                    1, "...",
+                    currentPage - 1,
+                    currentPage,
+                    currentPage + 1,
+                    "...",
+                    totalPages
+                ];
             }
         }
 
@@ -171,6 +172,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 li.appendChild(a);
             }
+
             pageList.appendChild(li);
         });
     }

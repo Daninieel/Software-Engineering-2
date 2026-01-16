@@ -4,13 +4,13 @@
         <div id="chatbotModal" class="chatbot-modal" role="dialog">
             <div class="chatbot-header">
                 <div>
-                    <strong style="display:block; font-size:16px; letter-spacing: 0.5px;">AI Library Assistant</strong>
-                    <span style="font-size:11px; opacity:0.8; display: flex; align-items: center; gap: 5px;">
-                        <span style="height: 8px; width: 8px; background: #2ecc71; border-radius: 50%;"></span>
+                    <strong class="chatbot-title">AI Library Assistant</strong>
+                    <span class="chatbot-status">
+                        <span class="status-dot"></span>
                         System Online
                     </span>
                 </div>
-                <button id="closeChatbot" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+                <button id="closeChatbot" class="close-chatbot" aria-label="Close Chat">&times;</button>
             </div>
             <div class="chatbot-messages" id="chatbotMessages">
                 <div class="message-container bot-message">
@@ -50,7 +50,7 @@
 
         wrapper.appendChild(bubble);
         box.appendChild(wrapper);
-        box.scrollTop = box.scrollHeight;
+        box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
     }
 
     function showTypingIndicator() {
@@ -62,7 +62,7 @@
                 <span></span><span></span><span></span>
             </div>`;
         box.appendChild(indicator);
-        box.scrollTop = box.scrollHeight;
+        box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
     }
 
     function sendMessage() {
@@ -71,7 +71,6 @@
 
         input.value = '';
         addMsg(text, 'user');
-
         showTypingIndicator();
 
         setTimeout(() => {
