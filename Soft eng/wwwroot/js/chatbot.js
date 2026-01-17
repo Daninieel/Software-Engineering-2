@@ -15,7 +15,7 @@
                 <div class="header-left">
                     <button id="menuBtn" class="menu-btn">☰</button>
                     <div>
-                        <div class="chatbot-title">Library Assistant</div>
+                        <div class="chatbot-title">Issy</div>
                         <div class="chatbot-subtitle"><span class="status-dot"></span> Online</div>
                     </div>
                 </div>
@@ -110,7 +110,7 @@
         currentSessionId = Date.now().toString();
         chatHistory = [];
         box.innerHTML = '';
-        const welcome = "Hi I'm SIAgent. I can help you find books or check for any unpaid fines. How can I assist you today?";
+        const welcome = "Hi I'm Issy. I can help you find books or check for any unpaid fines. How can I assist you today?";
         addMsg(welcome, 'bot');
         saveSession(welcome, 'bot');
         sidebar.classList.remove('open');
