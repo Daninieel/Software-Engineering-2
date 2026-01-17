@@ -87,7 +87,13 @@
                         <div class="left-col">
                             <div class="form-group">
                                 <label>ISBN</label>
-                                <input type="text" name="ISBN">
+                                <div class="isbn-search-wrapper">
+                                    <input type="text" name="ISBN" id="isbnInput" placeholder="Enter ISBN (10 or 13 digits)">
+                                    <button type="button" id="searchIsbnBtn" class="btn-search-isbn" title="Search by ISBN">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <span id="isbnValidation" class="validation-message"></span>
                             </div>
                             <div class="form-group" style="margin-top: 20px;">
                                 <label>Publisher</label>

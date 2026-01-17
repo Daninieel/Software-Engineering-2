@@ -394,3 +394,93 @@ video {
     width: 100%;
     justify-content: center;
 }
+
+.isbn-search-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+    .isbn-search-wrapper input {
+        flex: 1;
+    }
+
+/* Search ISBN Button */
+.btn-search-isbn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 45px;
+    height: 45px;
+}
+
+    .btn-search-isbn:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-search-isbn:active {
+        transform: translateY(0);
+    }
+
+    .btn-search-isbn:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-search-isbn i {
+        font-size: 18px;
+    }
+
+    /* Loading state */
+    .btn-search-isbn.loading {
+        background: #95a5a6;
+        cursor: wait;
+    }
+
+        .btn-search-isbn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Validation Message */
+.validation-message {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    min-height: 20px;
+}
+
+    .validation-message.success {
+        color: #27ae60;
+        font-weight: 500;
+    }
+
+    .validation-message.error {
+        color: #e74c3c;
+        font-weight: 500;
+    }
+
+    .validation-message.info {
+        color: #3498db;
+        font-weight: 500;
+    }

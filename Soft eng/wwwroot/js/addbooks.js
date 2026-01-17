@@ -8,7 +8,9 @@
     const video = document.getElementById('video');
     const captureBtn = document.getElementById('captureBtn');
     const closeCameraBtn = document.getElementById('closeCameraBtn');
-    const fileUpload = document.getElementById('fileUpload'); // For local file upload
+    const fileUpload = document.getElementById('fileUpload');
+    const searchIsbnBtn = document.getElementById('searchIsbnBtn');
+    const isbnValidation = document.getElementById('isbnValidation');
 
     // Form Inputs
     const isbnInput = document.querySelector('input[name="ISBN"]');
@@ -168,7 +170,10 @@
                 return true;
             }
             return false;
-        } catch (err) { return false; }
+        } catch (err) {
+            console.error('API fetch error:', err);
+            return false;
+        }
     }
 
     function fillForm(t, a, p, pg, d, rem) {
@@ -208,7 +213,9 @@
                 isScanning = true;
                 startAutoScan();
             };
-        } catch (err) { alert("Camera access failed."); }
+        } catch (err) {
+            alert("Camera access failed.");
+        }
     }
 
     scanIsbnBtn.addEventListener('click', () => {
@@ -228,4 +235,108 @@
     };
 
     closeCameraBtn.addEventListener('click', stopCamera);
+
+    // --- 7. MANUAL ISBN SEARCH FUNCTIONALITY ---
+
+    // Validate ISBN format
+    function isValidIsbn(isbn) {
+        // Remove any spaces, hyphens, or special characters
+        const cleaned = isbn.replace(/[^0-9X]/gi, '');
+
+        // Check for valid ISBN-10 or ISBN-13
+        const isbn10Pattern = /^\d{9}[0-9X]$/i;
+        const isbn13Pattern = /^(978|979)\d{10}$/;
+
+        return isbn10Pattern.test(cleaned) || isbn13Pattern.test(cleaned);
+    }
+
+    // Show validation message
+    function showValidation(message, type) {
+        isbnValidation.textContent = message;
+        isbnValidation.className = `validation-message ${type}`;
+
+        // Clear message after 5 seconds for success/info messages
+        if (type === 'success' || type === 'info') {
+            setTimeout(() => {
+                isbnValidation.textContent = '';
+                isbnValidation.className = 'validation-message';
+            }, 5000);
+        }
+    }
+
+    // Search ISBN button click handler
+    searchIsbnBtn.addEventListener('click', async () => {
+        const isbn = isbnInput.value.trim();
+
+        // Clear previous validation
+        isbnValidation.textContent = '';
+        isbnValidation.className = 'validation-message';
+
+        // Validate input
+        if (!isbn) {
+            showValidation('Please enter an ISBN number', 'error');
+            isbnInput.focus();
+            return;
+        }
+
+        if (!isValidIsbn(isbn)) {
+            showValidation('Invalid ISBN format. Please enter a valid 10 or 13 digit ISBN', 'error');
+            isbnInput.focus();
+            return;
+        }
+
+        // Show loading state
+        searchIsbnBtn.disabled = true;
+        searchIsbnBtn.classList.add('loading');
+        showValidation('Searching for book...', 'info');
+
+        try {
+            const cleanedIsbn = isbn.replace(/[^0-9X]/gi, '');
+            const success = await fetchBookData(cleanedIsbn);
+
+            if (success) {
+                showValidation('✓ Book found! Fields auto-populated successfully.', 'success');
+
+                // Optional: Visual feedback on populated fields
+                [titleInput, authorInput, publisherInput, pagesInput, yearInput].forEach(input => {
+                    if (input && input.value) {
+                        input.style.borderColor = '#27ae60';
+                        setTimeout(() => {
+                            input.style.borderColor = '';
+                        }, 2000);
+                    }
+                });
+            } else {
+                showValidation('✗ ISBN not found in library databases. Please enter book details manually.', 'error');
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            showValidation('✗ Search failed. Please check your connection and try again.', 'error');
+        } finally {
+            // Remove loading state
+            searchIsbnBtn.disabled = false;
+            searchIsbnBtn.classList.remove('loading');
+        }
+    });
+
+    // Allow Enter key to trigger search
+    isbnInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchIsbnBtn.click();
+        }
+    });
+
+    // Real-time validation as user types
+    isbnInput.addEventListener('input', (e) => {
+        const value = e.target.value.trim();
+
+        if (value && !isValidIsbn(value)) {
+            isbnValidation.textContent = 'Invalid ISBN format';
+            isbnValidation.className = 'validation-message error';
+        } else {
+            isbnValidation.textContent = '';
+            isbnValidation.className = 'validation-message';
+        }
+    });
 });
