@@ -30,8 +30,8 @@
                     <span class="logout-text">Log Out</span>
                 </a>
             </form>
-            <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>
         </div>
     </header>
@@ -40,22 +40,21 @@
         <aside class="sidebar">
             <nav>
                 <ul>
-                    <li><a asp-action="AdminDashboard">Dashboard</a></li>
-                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
-                    <li class="active"><a asp-action="AddBooksAdmin">Add Books</a></li>
-                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
-                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
-                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li><a asp-action="AdminDashboard">Admin Dashboard</a></li>
+                    <li><a asp-action="InventoryAdmin">Admin Inventory</a></li>
+                    <li class="active"><a asp-action="AddBooksAdmin">Admin Add Books</a></li>
+                    <li><a asp-action="BorrowedBooksAdmin">Admin Borrowed Books</a></li>
+                    <li><a asp-action="RequestedBooksAdmin">Admin Requested Books</a></li>
+                    <li><a asp-action="FineAdmin">Admin Fine</a></li>
                 </ul>
             </nav>
         </aside>
 
         <main class="content-area">
-            <h2>Admin Add Book</h2>
+            <h2>Add Book</h2>
 
             <div class="form-card">
                 <form asp-action="AddBooks" method="post" id="addBookForm">
-                    <input type="hidden" name="isAdmin" value="true" />
 
                     <div class="form-group full-width">
                         <label>Book Title</label>
@@ -80,7 +79,7 @@
                         </div>
                         <div class="form-group">
                             <label>Year</label>
-                            <input type="text" name="Year" placeholder="mm/dd/yyyy" onfocus="(this.type='date')">
+                            <input type="text" name="Year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
                         </div>
                     </div>
 
@@ -88,7 +87,13 @@
                         <div class="left-col">
                             <div class="form-group">
                                 <label>ISBN</label>
-                                <input type="text" name="ISBN">
+                                <div class="isbn-search-wrapper">
+                                    <input type="text" name="ISBN" id="isbnInput" placeholder="Enter ISBN (10 or 13 digits)">
+                                    <button type="button" id="searchIsbnBtn" class="btn-search-isbn" title="Search by ISBN">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <span id="isbnValidation" class="validation-message"></span>
                             </div>
                             <div class="form-group" style="margin-top: 20px;">
                                 <label>Publisher</label>
@@ -116,7 +121,7 @@
                         </div>
                         <div class="form-group">
                             <label>Date Received</label>
-                            <input type="text" name="DateReceived" placeholder="mm/dd/yyyy" onfocus="(this.type='date')">
+                            <input type="text" name="DateReceived" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
                         </div>
                     </div>
 
@@ -152,7 +157,9 @@
                             Upload an image
                         </button>
                         <input type="file" id="fileUpload" accept="image/*" style="display: none;">
+
                     </div>
+
                 </form>
             </div>
         </main>

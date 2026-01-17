@@ -12,6 +12,13 @@
     const searchIsbnBtn = document.getElementById('searchIsbnBtn');
     const isbnValidation = document.getElementById('isbnValidation');
 
+    // Cover Scan Elements
+    const coverScanModal = document.getElementById('coverScanModal');
+    const coverCanvas = document.getElementById('coverCanvas');
+    const detectedTextList = document.getElementById('detectedTextList');
+    const applyFieldsBtn = document.getElementById('applyFieldsBtn');
+    const cancelCoverScanBtn = document.getElementById('cancelCoverScanBtn');
+
     // Form Inputs
     const isbnInput = document.querySelector('input[name="ISBN"]');
     const titleInput = document.querySelector('input[name="BookTitle"]');
@@ -24,6 +31,16 @@
     let stream = null;
     let isScanning = false;
     let scanTimeout = null;
+
+    // Cover scan state
+    let detectedWords = [];
+    let selectedFields = {
+        title: '',
+        author: '',
+        publisher: '',
+        edition: '',
+        year: ''
+    };
 
     // --- 1. CORE OCR LOGIC (Used by both Camera and Upload) ---
     async function processImageAndGetIsbn(imageSource) {
@@ -63,29 +80,42 @@
         });
     }
 
-    // --- 2. IMAGE UPLOAD HANDLER ---
+    // --- 2. IMAGE UPLOAD HANDLER (MODIFIED FOR BOTH ISBN AND COVER) ---
     fileUpload.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Visual feedback
-        const originalBtn = document.querySelector('label[for="fileUpload"]') || document.querySelector('.btn-blue');
-        const originalText = originalBtn.innerText;
-        originalBtn.innerText = "Scanning Image...";
+        // Ask user what type of scan
+        const scanType = confirm('Is this an ISBN barcode?\n\nClick OK for ISBN scan\nClick Cancel for Cover Page scan');
 
-        const foundIsbn = await processImageAndGetIsbn(file);
+        if (scanType) {
+            // ISBN SCAN (existing functionality)
+            const originalBtn = document.querySelector('.btn-blue');
+            const originalText = originalBtn.innerText;
+            originalBtn.innerText = "Scanning ISBN...";
 
-        if (foundIsbn) {
-            isbnInput.value = foundIsbn;
-            const success = await fetchBookData(foundIsbn);
-            if (success) {
-                alert("Book details auto-filled from image!");
+            const foundIsbn = await processImageAndGetIsbn(file);
+
+            if (foundIsbn) {
+                isbnInput.value = foundIsbn;
+                const success = await fetchBookData(foundIsbn);
+                if (success) {
+                    alert("✓ Book details auto-filled from ISBN!");
+                } else {
+                    alert("✗ ISBN found but not in library database.");
+                }
+            } else {
+                alert("✗ No ISBN detected. Try a clearer barcode image.");
             }
+
+            originalBtn.innerText = originalText;
         } else {
-            alert("No ISBN detected in the uploaded image. Please ensure the barcode is clear.");
+            // COVER PAGE SCAN (new functionality)
+            await processCoverImage(file);
         }
 
-        originalBtn.innerText = originalText;
+        // Reset file input
+        fileUpload.value = '';
     });
 
     // --- 3. AUTOMATIC CAMERA SCANNER ---
@@ -339,4 +369,327 @@
             isbnValidation.className = 'validation-message';
         }
     });
+
+    // --- 8. COVER PAGE SCAN WITH MANUAL FIELD SELECTION ---
+
+    // Group words that are close together on the same line
+    function groupNearbyWords(words) {
+        if (words.length === 0) return [];
+
+        const grouped = [];
+        let currentGroup = [words[0]];
+
+        for (let i = 1; i < words.length; i++) {
+            const prevWord = words[i - 1];
+            const currWord = words[i];
+
+            // Calculate vertical and horizontal distance
+            const verticalDistance = Math.abs(currWord.bbox.y0 - prevWord.bbox.y0);
+            const horizontalGap = currWord.bbox.x0 - prevWord.bbox.x1;
+            const avgHeight = (prevWord.bbox.y1 - prevWord.bbox.y0 + currWord.bbox.y1 - currWord.bbox.y0) / 2;
+
+            // Words are on the same line if:
+            // 1. Vertical distance is less than half the average height
+            // 2. Horizontal gap is reasonable (less than 3x average character width)
+            const avgCharWidth = (prevWord.bbox.x1 - prevWord.bbox.x0) / prevWord.text.length;
+            const maxGap = avgCharWidth * 3;
+
+            if (verticalDistance < avgHeight * 0.5 && horizontalGap < maxGap && horizontalGap >= 0) {
+                // Same line - add to current group
+                currentGroup.push(currWord);
+            } else {
+                // Different line or too far - start new group
+                grouped.push(mergeWordGroup(currentGroup));
+                currentGroup = [currWord];
+            }
+        }
+
+        // Don't forget the last group
+        if (currentGroup.length > 0) {
+            grouped.push(mergeWordGroup(currentGroup));
+        }
+
+        // Add suggestions to each group
+        return grouped.map((group, index) => ({
+            ...group,
+            suggestion: suggestFieldType(group.text, group.bbox, index, grouped.length)
+        }));
+    }
+
+    // Merge a group of words into one text item
+    function mergeWordGroup(wordGroup) {
+        if (wordGroup.length === 1) {
+            return {
+                text: wordGroup[0].text.trim(),
+                bbox: wordGroup[0].bbox,
+                confidence: wordGroup[0].confidence
+            };
+        }
+
+        // Combine text with spaces
+        const text = wordGroup.map(w => w.text).join(' ').trim();
+
+        // Calculate merged bounding box
+        const x0 = Math.min(...wordGroup.map(w => w.bbox.x0));
+        const y0 = Math.min(...wordGroup.map(w => w.bbox.y0));
+        const x1 = Math.max(...wordGroup.map(w => w.bbox.x1));
+        const y1 = Math.max(...wordGroup.map(w => w.bbox.y1));
+
+        // Average confidence
+        const confidence = wordGroup.reduce((sum, w) => sum + w.confidence, 0) / wordGroup.length;
+
+        return {
+            text,
+            bbox: { x0, y0, x1, y1 },
+            confidence
+        };
+    }
+
+    // Smart suggestion based on text content and position
+    function suggestFieldType(text, bbox, index, totalWords) {
+        text = text.trim();
+
+        // Year detection (4 digits)
+        if (/^\d{4}$/.test(text)) {
+            return 'year';
+        }
+
+        // Edition detection
+        if (/edition|ed\.|ed$/i.test(text)) {
+            return 'edition';
+        }
+
+        // Author detection (contains "by" or "By")
+        if (/^by$/i.test(text)) {
+            return 'author';
+        }
+
+        // Title is usually at the top (first few items)
+        if (index < 3 && text.length > 3) {
+            return 'title';
+        }
+
+        // Publisher usually at bottom
+        if (index > totalWords - 3 && text.length > 3) {
+            return 'publisher';
+        }
+
+        return 'none';
+    }
+
+    // Process uploaded image for cover scan
+    async function processCoverImage(file) {
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            img.onload = async () => {
+                // Set canvas size to image size
+                coverCanvas.width = img.width;
+                coverCanvas.height = img.height;
+                const ctx = coverCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Show loading state
+                detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Scanning cover page...</div>';
+                coverScanModal.style.display = 'flex';
+
+                try {
+                    // Use Tesseract to get text with bounding boxes
+                    const result = await Tesseract.recognize(
+                        coverCanvas.toDataURL(),
+                        'eng',
+                        {
+                            logger: m => {
+                                if (m.status === 'recognizing text') {
+                                    const percent = Math.round(m.progress * 100);
+                                    detectedTextList.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">Analyzing... ${percent}%</div>`;
+                                }
+                            }
+                        }
+                    );
+
+                    // Filter and process detected words
+                    detectedWords = result.data.words
+                        .filter(word => word.text.trim().length > 0 && word.confidence > 60)
+                        .map((word, index) => ({
+                            text: word.text.trim(),
+                            bbox: word.bbox,
+                            confidence: word.confidence,
+                            suggestion: suggestFieldType(word.text.trim(), word.bbox, index, result.data.words.length)
+                        }));
+
+                    if (detectedWords.length === 0) {
+                        detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">No text detected. Please try a clearer image.</div>';
+                        return;
+                    }
+
+                    // Draw highlights on canvas
+                    drawTextHighlights();
+
+                    // Populate text list
+                    populateDetectedTextList();
+
+                } catch (error) {
+                    console.error('OCR Error:', error);
+                    detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Error scanning image. Please try again.</div>';
+                }
+            };
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    // Draw highlights on canvas (like Snipping Tool)
+    function drawTextHighlights() {
+        const ctx = coverCanvas.getContext('2d');
+        const img = new Image();
+        img.src = coverCanvas.toDataURL();
+
+        img.onload = () => {
+            ctx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            detectedWords.forEach((word, index) => {
+                const { x0, y0, x1, y1 } = word.bbox;
+
+                // Draw highlight box
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+
+                // Semi-transparent fill
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+                ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+                // Add index number
+                ctx.fillStyle = '#3498db';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText(index + 1, x0 + 5, y0 + 15);
+            });
+        };
+    }
+
+    // Populate detected text list with selectors
+    function populateDetectedTextList() {
+        detectedTextList.innerHTML = '';
+
+        detectedWords.forEach((word, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'text-item';
+            itemDiv.dataset.index = index;
+
+            const textContent = document.createElement('div');
+            textContent.className = 'text-content';
+            textContent.textContent = `${index + 1}. ${word.text}`;
+
+            const suggestion = document.createElement('div');
+            suggestion.className = 'text-suggestion';
+            suggestion.textContent = word.suggestion !== 'none'
+                ? `Suggested: ${word.suggestion.charAt(0).toUpperCase() + word.suggestion.slice(1)}`
+                : 'Select field type below';
+
+            const select = document.createElement('select');
+            select.className = 'field-selector';
+            select.innerHTML = `
+                <option value="none">-- Select Field --</option>
+                <option value="title" ${word.suggestion === 'title' ? 'selected' : ''}>Book Title</option>
+                <option value="author" ${word.suggestion === 'author' ? 'selected' : ''}>Author</option>
+                <option value="publisher" ${word.suggestion === 'publisher' ? 'selected' : ''}>Publisher</option>
+                <option value="edition" ${word.suggestion === 'edition' ? 'selected' : ''}>Edition</option>
+                <option value="year" ${word.suggestion === 'year' ? 'selected' : ''}>Year</option>
+            `;
+
+            // Auto-select suggestion if available
+            if (word.suggestion !== 'none') {
+                updateSelectedField(word.suggestion, word.text, index);
+            }
+
+            select.addEventListener('change', (e) => {
+                const fieldType = e.target.value;
+                updateSelectedField(fieldType, word.text, index);
+
+                // Visual feedback
+                if (fieldType !== 'none') {
+                    itemDiv.classList.add('selected');
+                } else {
+                    itemDiv.classList.remove('selected');
+                }
+            });
+
+            itemDiv.appendChild(textContent);
+            itemDiv.appendChild(suggestion);
+            itemDiv.appendChild(select);
+            detectedTextList.appendChild(itemDiv);
+        });
+    }
+
+    // Update selected fields object
+    function updateSelectedField(fieldType, text, index) {
+        // Remove this text from other fields
+        Object.keys(selectedFields).forEach(key => {
+            if (selectedFields[key] === text) {
+                selectedFields[key] = '';
+            }
+        });
+
+        // Set new field
+        if (fieldType !== 'none') {
+            selectedFields[fieldType] = text;
+        }
+    }
+
+    // Apply selected fields to form
+    applyFieldsBtn.addEventListener('click', () => {
+        if (selectedFields.title) titleInput.value = selectedFields.title;
+        if (selectedFields.author) authorInput.value = selectedFields.author;
+        if (selectedFields.publisher) publisherInput.value = selectedFields.publisher;
+        if (selectedFields.edition) {
+            const editionInput = document.querySelector('input[name="Edition"]');
+            if (editionInput) editionInput.value = selectedFields.edition;
+        }
+        if (selectedFields.year) {
+            // Format year to date input format (YYYY-01-01)
+            const year = selectedFields.year.match(/\d{4}/);
+            if (year) {
+                yearInput.value = `${year[0]}-01-01`;
+            }
+        }
+
+        // Visual feedback
+        [titleInput, authorInput, publisherInput].forEach(input => {
+            if (input && input.value) {
+                input.style.borderColor = '#27ae60';
+                setTimeout(() => {
+                    input.style.borderColor = '';
+                }, 2000);
+            }
+        });
+
+        alert('✓ Book information applied to form!');
+        coverScanModal.style.display = 'none';
+        resetCoverScan();
+    });
+
+    // Cancel cover scan
+    cancelCoverScanBtn.addEventListener('click', () => {
+        coverScanModal.style.display = 'none';
+        resetCoverScan();
+    });
+
+    // Reset cover scan state
+    function resetCoverScan() {
+        detectedWords = [];
+        selectedFields = {
+            title: '',
+            author: '',
+            publisher: '',
+            edition: '',
+            year: ''
+        };
+        detectedTextList.innerHTML = '';
+        const ctx = coverCanvas.getContext('2d');
+        ctx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+    }
 });
