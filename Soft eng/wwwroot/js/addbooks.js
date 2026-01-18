@@ -1,7 +1,6 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
     const GOOGLE_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
 
-    // Elements
     const videoSourceSelect = document.getElementById('videoSource');
     const scanIsbnBtn = document.getElementById('scanIsbnBtn');
     const cameraModal = document.getElementById('cameraModal');
@@ -11,15 +10,14 @@
     const fileUpload = document.getElementById('fileUpload');
     const searchIsbnBtn = document.getElementById('searchIsbnBtn');
     const isbnValidation = document.getElementById('isbnValidation');
-
-    // Cover Scan Elements
     const coverScanModal = document.getElementById('coverScanModal');
     const coverCanvas = document.getElementById('coverCanvas');
+    const coverCanvasContainer = document.getElementById('coverImageContainer');
     const detectedTextList = document.getElementById('detectedTextList');
     const applyFieldsBtn = document.getElementById('applyFieldsBtn');
     const cancelCoverScanBtn = document.getElementById('cancelCoverScanBtn');
+    const toggleSideBtn = document.getElementById('toggleSideBtn');
 
-    // Form Inputs
     const isbnInput = document.querySelector('input[name="ISBN"]');
     const titleInput = document.querySelector('input[name="BookTitle"]');
     const authorInput = document.querySelector('input[name="Author"]');
@@ -28,126 +26,591 @@
     const publisherInput = document.querySelector('input[name="Publisher"]');
     const remarksInput = document.querySelector('textarea[name="Remarks"]');
 
+    // State
     let stream = null;
     let isScanning = false;
     let scanTimeout = null;
+    let selectedFields = { title: '', author: '', publisher: '', edition: '', year: '' };
+    let allDetections = [];
+    let currentSide = 'front';
+    let frontImage = null;
+    let backImage = null;
 
-    // Cover scan state
-    let detectedWords = [];
-    let selectedFields = {
-        title: '',
-        author: '',
-        publisher: '',
-        edition: '',
-        year: ''
-    };
+    // Zoom & Pan state 
+    let zoomLevel = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let lastPanX = 0;
+    let lastPanY = 0;
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let tempCanvasRef = null;
 
-    // --- 1. CORE OCR LOGIC (Used by both Camera and Upload) ---
-    async function processImageAndGetIsbn(imageSource) {
+    // Otsu Threshold 
+    function calculateOtsuThreshold(data) {
+        const histogram = new Array(256).fill(0);
+        for (let i = 0; i < data.length; i += 4) {
+            histogram[data[i]]++;
+        }
+        const total = data.length / 4;
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * histogram[i];
+
+        let sumB = 0, wB = 0, maxVariance = 0, threshold = 128;
+        for (let i = 0; i < 256; i++) {
+            wB += histogram[i];
+            if (wB === 0) continue;
+            const wF = total - wB;
+            if (wF === 0) break;
+            sumB += i * histogram[i];
+            const mB = sumB / wB;
+            const mF = (sum - sumB) / wF;
+            const variance = wB * wF * (mB - mF) ** 2;
+            if (variance > maxVariance) {
+                maxVariance = variance;
+                threshold = i;
+            }
+        }
+        return threshold;
+    }
+
+    // OCR Preprocessing
+    function preprocessForBookCoverOCR(sourceCanvas) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Load image to canvas
+        const scale = 3; // higher resolution helps Tesseract significantly
+        canvas.width = sourceCanvas.width * scale;
+        canvas.height = sourceCanvas.height * scale;
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+
+        let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let data = imgData.data;
+
+        // Better grayscale conversion for colored text
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+            // Boost contrast for saturated (colored) text
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const sat = max === 0 ? 0 : (max - min) / max;
+            if (sat > 0.35) gray *= 1.12; // mild boost
+
+            gray = Math.max(0, Math.min(255, Math.round(gray)));
+            data[i] = data[i + 1] = data[i + 2] = gray;
+        }
+
+        // Binarization with Otsu
+        const threshold = calculateOtsuThreshold(data);
+        for (let i = 0; i < data.length; i += 4) {
+            const val = data[i] < threshold ? 0 : 255;
+            data[i] = data[i + 1] = data[i + 2] = val;
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        return canvas;
+    }
+
+    //         ISBN from image (barcode / plain text)
+    async function processImageAndGetIsbn(imageSource) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.src = typeof imageSource === 'string' ? imageSource : URL.createObjectURL(imageSource);
 
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             img.onload = async () => {
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
 
-                // Pre-processing for better detection (Grayscale + Contrast)
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
+                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 for (let i = 0; i < data.length; i += 4) {
                     let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    avg = (avg - 128) * 1.5 + 128;
+                    avg = Math.max(0, Math.min(255, (avg - 128) * 1.4 + 128));
                     data[i] = data[i + 1] = data[i + 2] = avg;
                 }
-                ctx.putImageData(imageData, 0, 0);
+                ctx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
 
                 try {
-                    const result = await Tesseract.recognize(canvas.toDataURL('image/jpeg'), 'eng+fil');
-                    const text = result.data.text.replace(/[^0-9X]/gi, '');
-                    const match = text.match(/(978|979)\d{10}|\d{9}[0-9X]/);
+                    const { data: { text } } = await Tesseract.recognize(
+                        canvas.toDataURL('image/jpeg', 0.92),
+                        'eng',
+                        { tessedit_char_whitelist: '0123456789X' }
+                    );
+                    const cleaned = text.replace(/[^0-9X]/g, '');
+                    const match = cleaned.match(/(978|979)\d{10}|\d{9}[0-9X]/);
                     resolve(match ? match[0] : null);
-                } catch (e) {
-                    console.error("OCR processing error:", e);
+                } catch {
                     resolve(null);
                 }
             };
+            img.onerror = () => resolve(null);
         });
     }
 
-    // --- 2. IMAGE UPLOAD HANDLER (MODIFIED FOR BOTH ISBN AND COVER) ---
-    fileUpload.addEventListener('change', async (e) => {
+    //         Canvas Transform / Redraw
+    function applyTransform() {
+        const ctx = coverCanvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+
+        ctx.save();
+        ctx.translate(panX, panY);
+        ctx.scale(zoomLevel, zoomLevel);
+
+        const img = currentSide === 'front' ? frontImage : backImage;
+        if (img) ctx.drawImage(img, 0, 0);
+
+        // Draw existing detections
+        allDetections.filter(d => d.side === currentSide).forEach((d, i) => {
+            const { x0, y0, x1, y1 } = d.bbox;
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 3 / zoomLevel;
+            ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+            ctx.fillStyle = 'rgba(39,174,96,0.18)';
+            ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+            const radius = 16 / zoomLevel;
+            ctx.fillStyle = '#27ae60';
+            ctx.beginPath();
+            ctx.arc(x0 + 20 / zoomLevel, y0 + 20 / zoomLevel, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = `${16 / zoomLevel}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(i + 1, x0 + 20 / zoomLevel, y0 + 20 / zoomLevel);
+        });
+
+        ctx.restore();
+    }
+
+    function redrawCanvas() {
+        applyTransform();
+    }
+
+    //         Zoom (toward mouse)
+    coverCanvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        if (!coverCanvasContainer) return;
+
+        const rect = coverCanvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / zoomLevel + panX;
+        const mouseY = (e.clientY - rect.top) / zoomLevel + panY;
+
+        const oldZoom = zoomLevel;
+        zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * (e.deltaY > 0 ? 0.88 : 1.13)));
+
+        panX = mouseX - (mouseX - panX) * (zoomLevel / oldZoom);
+        panY = mouseY - (mouseY - panY) * (zoomLevel / oldZoom);
+
+        applyTransform();
+    }, { passive: false });
+
+    //    Panning (Shift + drag)
+    coverCanvas.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+
+        if (e.shiftKey) {
+            isPanning = true;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+            coverCanvas.style.cursor = 'grabbing';
+            return;
+        }
+
+        const rect = coverCanvas.getBoundingClientRect();
+        const scaleX = coverCanvas.width / rect.width;
+        const scaleY = coverCanvas.height / rect.height;
+
+        startX = (e.clientX - rect.left) * scaleX;
+        startY = (e.clientY - rect.top) * scaleY;
+        isDrawing = true;
+
+        tempCanvasRef = document.createElement('canvas');
+        tempCanvasRef.width = coverCanvas.width;
+        tempCanvasRef.height = coverCanvas.height;
+        tempCanvasRef.getContext('2d').drawImage(coverCanvas, 0, 0);
+    });
+
+    coverCanvas.addEventListener('mousemove', e => {
+        if (isPanning) {
+            const dx = e.clientX - lastPanX;
+            const dy = e.clientY - lastPanY;
+            panX += dx / zoomLevel;
+            panY += dy / zoomLevel;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+            applyTransform();
+            return;
+        }
+
+        if (!isDrawing) {
+            coverCanvas.style.cursor = e.shiftKey ? 'grab' : 'crosshair';
+            return;
+        }
+
+        // Live drawing of selection rectangle
+        const rect = coverCanvas.getBoundingClientRect();
+        const scaleX = coverCanvas.width / rect.width;
+        const scaleY = coverCanvas.height / rect.height;
+
+        const currentX = (e.clientX - rect.left) * scaleX;
+        const currentY = (e.clientY - rect.top) * scaleY;
+
+        const ctx = coverCanvas.getContext('2d');
+        ctx.drawImage(tempCanvasRef, 0, 0);
+
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.fillStyle = 'rgba(52,152,219,0.12)';
+        ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.setLineDash([]);
+    });
+
+    coverCanvas.addEventListener('mouseup', async e => {
+        if (isPanning) {
+            isPanning = false;
+            coverCanvas.style.cursor = 'crosshair';
+            return;
+        }
+        if (!isDrawing) return;
+        isDrawing = false;
+
+        const rect = coverCanvas.getBoundingClientRect();
+        const scaleX = coverCanvas.width / rect.width;
+        const scaleY = coverCanvas.height / rect.height;
+
+        const endX = (e.clientX - rect.left) * scaleX;
+        const endY = (e.clientY - rect.top) * scaleY;
+
+        const x = Math.min(startX, endX);
+        const y = Math.min(startY, endY);
+        const w = Math.abs(endX - startX);
+        const h = Math.abs(endY - startY);
+
+        if (w < 20 || h < 12) {
+            redrawCanvas();
+            return;
+        }
+
+        // Crop region
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = w;
+        cropCanvas.height = h;
+        cropCanvas.getContext('2d').drawImage(coverCanvas, x, y, w, h, 0, 0, w, h);
+
+        const loading = document.createElement('div');
+        loading.textContent = `Extracting text ${allDetections.filter(d => d.side === currentSide).length + 1}...`;
+        loading.style.cssText = 'padding:12px; background:#e3f2fd; color:#3498db; border-radius:6px; text-align:center; margin:10px 0;';
+        detectedTextList.appendChild(loading);
+
+        try {
+            const optimized = preprocessForBookCoverOCR(cropCanvas);
+            const { data: { text } } = await Tesseract.recognize(
+                optimized.toDataURL('image/png'),
+                'eng',
+                {
+                    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+                    preserve_interword_spaces: '1',
+                    user_defined_dpi: '300',
+                    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;?!'\"-–()& "
+                }
+            );
+
+            const cleaned = text
+                .replace(/\n+/g, ' ')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+
+            loading.remove();
+
+            if (cleaned) {
+                allDetections.push({
+                    text: cleaned,
+                    bbox: { x0: x, y0: y, x1: x + w, y1: y + h },
+                    side: currentSide
+                });
+                redrawCanvas();
+                populateDetectedTextList();
+            } else {
+                showTempMessage('No text detected', '#e74c3c', 3000);
+                redrawCanvas();
+            }
+        } catch (err) {
+            loading.remove();
+            showTempMessage('OCR failed', '#e74c3c', 4000);
+            redrawCanvas();
+        }
+    });
+
+    function showTempMessage(msg, color, ms) {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        div.style.cssText = `padding:10px; color:white; background:${color}; border-radius:6px; margin:10px 0; text-align:center;`;
+        detectedTextList.appendChild(div);
+        setTimeout(() => div.remove(), ms);
+    }
+    //         Detected Text List & Field Assignment
+    function populateDetectedTextList() {
+        const items = allDetections.filter(d => d.side === currentSide);
+        detectedTextList.innerHTML = '';
+
+        if (items.length === 0) {
+            detectedTextList.innerHTML = `
+                <div style="text-align:center; padding:20px; color:#3498db;">
+                    <b>${currentSide.toUpperCase()} COVER</b><br>
+                    Draw rectangles around text areas
+                </div>`;
+            return;
+        }
+
+        const header = document.createElement('div');
+        header.style.cssText = 'padding:12px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; font-weight:bold; border-radius:8px; text-align:center;';
+        header.textContent = `${currentSide.toUpperCase()} COVER – ${items.length} region${items.length === 1 ? '' : 's'}`;
+        detectedTextList.appendChild(header);
+
+        items.forEach((det, idx) => {
+            const div = document.createElement('div');
+            div.className = 'text-item';
+            div.style.cssText = 'margin:12px 0; padding:12px; border:2px solid #ddd; border-radius:8px; background:#f9f9f9;';
+
+            const content = document.createElement('div');
+            content.innerHTML = `
+                <span style="background:#667eea; color:white; padding:3px 9px; border-radius:5px; margin-right:10px; font-size:13px;">${idx + 1}</span>
+                <span class="editable" contenteditable="true">${det.text}</span>`;
+
+            const editable = content.querySelector('.editable');
+            editable.addEventListener('blur', () => {
+                det.text = editable.textContent.trim();
+            });
+
+            const select = document.createElement('select');
+            select.innerHTML = `
+                <option value="none">-- Assign to field --</option>
+                <option value="title">Book Title</option>
+                <option value="author">Author</option>
+                <option value="publisher">Publisher</option>
+                <option value="edition">Edition</option>
+                <option value="year">Year</option>`;
+            select.addEventListener('change', e => {
+                const val = e.target.value;
+                updateSelectedField(val, det.text);
+                div.style.borderColor = val !== 'none' ? '#27ae60' : '#ddd';
+                div.style.background = val !== 'none' ? '#e8f5e9' : '#f9f9f9';
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.style.cssText = 'margin-top:10px; padding:8px; background:#e74c3c; color:white; border:none; border-radius:6px; cursor:pointer; width:100%;';
+            delBtn.onclick = () => {
+                const i = allDetections.indexOf(det);
+                if (i !== -1) {
+                    allDetections.splice(i, 1);
+                    redrawCanvas();
+                    populateDetectedTextList();
+                }
+            };
+
+            div.append(content, select, delBtn);
+            detectedTextList.appendChild(div);
+        });
+    }
+
+    function updateSelectedField(field, text) {
+        Object.keys(selectedFields).forEach(k => {
+            if (selectedFields[k] === text) selectedFields[k] = '';
+        });
+        if (field !== 'none') selectedFields[field] = text;
+    }
+
+    //    Apply → Form
+    applyFieldsBtn.addEventListener('click', () => {
+        if (selectedFields.title) titleInput.value = selectedFields.title;
+        if (selectedFields.author) authorInput.value = selectedFields.author;
+        if (selectedFields.publisher) publisherInput.value = selectedFields.publisher;
+        if (selectedFields.edition) {
+            const el = document.querySelector('input[name="Edition"]');
+            if (el) el.value = selectedFields.edition;
+        }
+        if (selectedFields.year) {
+            const y = selectedFields.year.match(/\d{4}/);
+            if (y) yearInput.value = `${y[0]}-01-01`;
+        }
+
+        [titleInput, authorInput, publisherInput].forEach(el => {
+            if (el?.value) {
+                const old = el.style.borderColor;
+                el.style.borderColor = '#27ae60';
+                setTimeout(() => el.style.borderColor = old || '', 2200);
+            }
+        });
+
+        alert('Selected fields applied to form!');
+        coverScanModal.style.display = 'none';
+        resetCoverScan();
+    });
+
+    //         Reset / Cleanup
+    function resetCoverScan() {
+        allDetections = [];
+        selectedFields = { title: '', author: '', publisher: '', edition: '', year: '' };
+        zoomLevel = 1;
+        panX = panY = 0;
+        frontImage = backImage = null;
+        detectedTextList.innerHTML = '';
+        coverCanvas.getContext('2d').clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+        if (toggleSideBtn) toggleSideBtn.style.display = 'none';
+    }
+
+    cancelCoverScanBtn.addEventListener('click', () => {
+        coverScanModal.style.display = 'none';
+        resetCoverScan();
+    });
+
+    // ────────────────────────────────────────────────
+    //         Toggle Front / Back
+    // ────────────────────────────────────────────────
+    function updateToggleButton() {
+        if (!toggleSideBtn) return;
+        if (frontImage && backImage) {
+            toggleSideBtn.style.display = 'inline-block';
+            toggleSideBtn.innerText = currentSide === 'front' ? 'Switch to Back Cover' : 'Switch to Front Cover';
+        } else if (frontImage || backImage) {
+            toggleSideBtn.style.display = 'inline-block';
+            toggleSideBtn.innerText = frontImage ? 'Add Back Cover' : 'Add Front Cover';
+        } else {
+            toggleSideBtn.style.display = 'none';
+        }
+    }
+
+    toggleSideBtn?.addEventListener('click', () => {
+        if (frontImage && backImage) {
+            currentSide = currentSide === 'front' ? 'back' : 'front';
+            const img = currentSide === 'front' ? frontImage : backImage;
+            coverCanvas.width = img.width;
+            coverCanvas.height = img.height;
+            zoomLevel = 1; panX = panY = 0;
+            redrawCanvas();
+            populateDetectedTextList();
+            updateToggleButton();
+        } else {
+            fileUpload.click();
+        }
+    });
+
+    async function processCoverImage(file, side) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                if (side === 'front') {
+                    frontImage = img;
+                    currentSide = 'front';
+                } else {
+                    backImage = img;
+                    currentSide = 'back';
+                }
+                coverCanvas.width = img.width;
+                coverCanvas.height = img.height;
+                zoomLevel = 1;
+                panX = panY = 0;
+                redrawCanvas();
+
+                detectedTextList.innerHTML = `
+                    <div style="text-align:center; padding:15px; color:#3498db; background:#e3f2fd; border-radius:8px;">
+                        <b>${side.toUpperCase()} COVER LOADED</b><br>
+                        <small>Draw boxes around text • Scroll = zoom • Shift+drag = pan</small>
+                    </div>`;
+                coverScanModal.style.display = 'flex';
+                updateToggleButton();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    fileUpload.addEventListener('change', async e => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Ask user what type of scan
-        const scanType = confirm('Is this an ISBN barcode?\n\nClick OK for ISBN scan\nClick Cancel for Cover Page scan');
+        while (true) {
+            const isBarcode = confirm(
+                'Is this an ISBN barcode scan?\nOK = Barcode/ISBN\nCancel = Book cover photo'
+            );
 
-        if (scanType) {
-            // ISBN SCAN (existing functionality)
-            const originalBtn = document.querySelector('.btn-blue');
-            const originalText = originalBtn.innerText;
-            originalBtn.innerText = "Scanning ISBN...";
+            if (isBarcode) {
+                // ISBN scan
+                const btn = document.querySelector('.btn-blue') || searchIsbnBtn;
+                const orig = btn.innerText;
 
-            const foundIsbn = await processImageAndGetIsbn(file);
+                btn.innerText = "Scanning...";
+                btn.disabled = true;
 
-            if (foundIsbn) {
-                isbnInput.value = foundIsbn;
-                const success = await fetchBookData(foundIsbn);
-                if (success) {
-                    alert("✓ Book details auto-filled from ISBN!");
+                const isbn = await processImageAndGetIsbn(file);
+
+                if (isbn) {
+                    isbnInput.value = isbn;
+                    const success = await fetchBookData(isbn);
+                    alert(
+                        success
+                            ? "Book details loaded!"
+                            : "ISBN found but no match in database."
+                    );
                 } else {
-                    alert("✗ ISBN found but not in library database.");
+                    alert("No valid ISBN detected.");
                 }
-            } else {
-                alert("✗ No ISBN detected. Try a clearer barcode image.");
-            }
 
-            originalBtn.innerText = originalText;
-        } else {
-            // COVER PAGE SCAN (new functionality)
-            await processCoverImage(file);
+                btn.innerText = orig;
+                btn.disabled = false;
+                break; 
+            } else {
+                // Cover scan
+                const isFront = confirm('OK = Front Cover\nCancel = Exit');
+
+                if (isFront) {
+                    await processCoverImage(file, 'front');
+                    break;
+                } else {
+                    break; 
+                }
+            }
         }
 
-        // Reset file input
         fileUpload.value = '';
     });
 
-    // --- 3. AUTOMATIC CAMERA SCANNER ---
+
+
+    //  Camera / Live ISBN scanning
     async function startAutoScan() {
         if (!isScanning) return;
-
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
-
-        const foundIsbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
-
-        if (foundIsbn) {
-            isbnInput.value = foundIsbn;
-            const success = await fetchBookData(foundIsbn);
-            if (success) {
-                stopCamera(); // Close camera if book found
-                return;
-            }
+        const isbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
+        if (isbn) {
+            isbnInput.value = isbn;
+            const success = await fetchBookData(isbn);
+            if (success) stopCamera();
         }
-
-        // Loop every 1.2 seconds if camera is still open
-        if (isScanning) {
-            scanTimeout = setTimeout(startAutoScan, 1200);
-        }
+        if (isScanning) scanTimeout = setTimeout(startAutoScan, 1500);
     }
 
-    // --- 4. MANUAL CAPTURE BUTTON ---
     captureBtn.addEventListener('click', async () => {
         if (!isScanning) return;
-
         captureBtn.innerText = "Scanning...";
         captureBtn.disabled = true;
 
@@ -156,95 +619,103 @@
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
 
-        const manualIsbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
-
-        if (manualIsbn) {
-            isbnInput.value = manualIsbn;
-            const success = await fetchBookData(manualIsbn);
-            if (success) {
-                stopCamera();
-            } else {
+        const isbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
+        if (isbn) {
+            isbnInput.value = isbn;
+            const success = await fetchBookData(isbn);
+            if (success) stopCamera();
+            else {
                 captureBtn.innerText = "Capture";
                 captureBtn.disabled = false;
             }
         } else {
-            alert("No ISBN detected manually. Try a different angle.");
+            alert("No ISBN detected.");
             captureBtn.innerText = "Capture";
             captureBtn.disabled = false;
         }
     });
 
-    // --- 5. DUAL-API FETCH ---
+    //  Google Books + OpenLibrary
     async function fetchBookData(isbn) {
         const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`;
         const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=details&format=json`;
 
         try {
-            let response = await fetch(googleUrl);
-            let data = await response.json();
-
-            if (data.totalItems > 0 && data.items) {
-                const b = data.items[0].volumeInfo;
-                fillForm(b.title, b.authors?.join(', '), b.publisher, b.pageCount, b.publishedDate, b.description);
+            let res = await fetch(googleUrl);
+            let data = await res.json();
+            if (data.totalItems > 0) {
+                const info = data.items[0].volumeInfo;
+                fillForm(
+                    info.title,
+                    info.authors?.join(', ') || '',
+                    info.publisher || '',
+                    info.pageCount || '',
+                    info.publishedDate || '',
+                    info.description || ''
+                );
                 return true;
             }
 
-            // Fallback for Filipino titles
-            response = await fetch(olUrl);
-            data = await response.json();
+            res = await fetch(olUrl);
+            data = await res.json();
             const key = `ISBN:${isbn}`;
-
             if (data[key]) {
                 const d = data[key].details;
-                fillForm(d.title, d.authors?.map(a => a.name).join(', '), d.publishers?.[0], d.number_of_pages, d.publish_date, "");
+                fillForm(
+                    d.title || '',
+                    d.authors?.map(a => a.name).join(', ') || '',
+                    d.publishers?.[0] || '',
+                    d.number_of_pages || '',
+                    d.publish_date || '',
+                    ''
+                );
                 return true;
             }
             return false;
-        } catch (err) {
-            console.error('API fetch error:', err);
+        } catch {
             return false;
         }
     }
 
-    function fillForm(t, a, p, pg, d, rem) {
-        if (t) titleInput.value = t;
-        if (a) authorInput.value = a;
-        if (p) publisherInput.value = p;
-        if (pg) pagesInput.value = pg;
-        if (d) {
-            const y = d.match(/\d{4}/);
+    function fillForm(title, author, publisher, pages, date, desc) {
+        if (title) titleInput.value = title;
+        if (author) authorInput.value = author;
+        if (publisher) publisherInput.value = publisher;
+        if (pages) pagesInput.value = pages;
+        if (date) {
+            const y = date.match(/\d{4}/);
             if (y) yearInput.value = `${y[0]}-01-01`;
         }
-        if (rem) remarksInput.value = rem.substring(0, 500);
+        if (desc) remarksInput.value = desc.substring(0, 600);
     }
 
-    // --- 6. CAMERA & SELECTOR LOGIC ---
+  
+    //  Camera Controls
+  
     async function getCameras() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         videoSourceSelect.innerHTML = '';
-        devices.filter(d => d.kind === 'videoinput').forEach(device => {
+        devices.filter(d => d.kind === 'videoinput').forEach(d => {
             const opt = document.createElement('option');
-            opt.value = device.deviceId;
-            opt.text = device.label || `Camera ${videoSourceSelect.length + 1}`;
+            opt.value = d.deviceId;
+            opt.text = d.label || `Camera ${videoSourceSelect.length + 1}`;
             videoSourceSelect.appendChild(opt);
         });
     }
 
-    async function startCamera(deviceId) {
+    async function startCamera(deviceId = null) {
         if (stream) stream.getTracks().forEach(t => t.stop());
-        const constraints = { video: { deviceId: deviceId ? { exact: deviceId } : undefined } };
+        const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true };
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
-
             if (videoSourceSelect.options.length === 0) await getCameras();
-
             video.onloadedmetadata = () => {
                 isScanning = true;
                 startAutoScan();
             };
         } catch (err) {
-            alert("Camera access failed.");
+            alert("Camera access denied or unavailable.");
         }
     }
 
@@ -266,27 +737,18 @@
 
     closeCameraBtn.addEventListener('click', stopCamera);
 
-    // --- 7. MANUAL ISBN SEARCH FUNCTIONALITY ---
+    
+    // ISBN Validation & Manual Search
 
-    // Validate ISBN format
-    function isValidIsbn(isbn) {
-        // Remove any spaces, hyphens, or special characters
-        const cleaned = isbn.replace(/[^0-9X]/gi, '');
-
-        // Check for valid ISBN-10 or ISBN-13
-        const isbn10Pattern = /^\d{9}[0-9X]$/i;
-        const isbn13Pattern = /^(978|979)\d{10}$/;
-
-        return isbn10Pattern.test(cleaned) || isbn13Pattern.test(cleaned);
+    function isValidIsbn(val) {
+        const clean = val.replace(/[^0-9X]/gi, '');
+        return (/^\d{9}[0-9X]$/i.test(clean) || /^(978|979)\d{10}$/.test(clean));
     }
 
-    // Show validation message
-    function showValidation(message, type) {
-        isbnValidation.textContent = message;
+    function showValidation(msg, type = 'info') {
+        isbnValidation.textContent = msg;
         isbnValidation.className = `validation-message ${type}`;
-
-        // Clear message after 5 seconds for success/info messages
-        if (type === 'success' || type === 'info') {
+        if (type !== 'error') {
             setTimeout(() => {
                 isbnValidation.textContent = '';
                 isbnValidation.className = 'validation-message';
@@ -294,74 +756,37 @@
         }
     }
 
-    // Search ISBN button click handler
     searchIsbnBtn.addEventListener('click', async () => {
-        const isbn = isbnInput.value.trim();
+        const val = isbnInput.value.trim();
+        if (!val) return showValidation('Enter an ISBN', 'error');
+        if (!isValidIsbn(val)) return showValidation('Invalid ISBN format', 'error');
 
-        // Clear previous validation
-        isbnValidation.textContent = '';
-        isbnValidation.className = 'validation-message';
-
-        // Validate input
-        if (!isbn) {
-            showValidation('Please enter an ISBN number', 'error');
-            isbnInput.focus();
-            return;
-        }
-
-        if (!isValidIsbn(isbn)) {
-            showValidation('Invalid ISBN format. Please enter a valid 10 or 13 digit ISBN', 'error');
-            isbnInput.focus();
-            return;
-        }
-
-        // Show loading state
         searchIsbnBtn.disabled = true;
         searchIsbnBtn.classList.add('loading');
-        showValidation('Searching for book...', 'info');
+        showValidation('Searching...', 'info');
 
-        try {
-            const cleanedIsbn = isbn.replace(/[^0-9X]/gi, '');
-            const success = await fetchBookData(cleanedIsbn);
+        const cleaned = val.replace(/[^0-9X]/gi, '');
+        const success = await fetchBookData(cleaned);
 
-            if (success) {
-                showValidation('✓ Book found! Fields auto-populated successfully.', 'success');
-
-                // Optional: Visual feedback on populated fields
-                [titleInput, authorInput, publisherInput, pagesInput, yearInput].forEach(input => {
-                    if (input && input.value) {
-                        input.style.borderColor = '#27ae60';
-                        setTimeout(() => {
-                            input.style.borderColor = '';
-                        }, 2000);
-                    }
-                });
-            } else {
-                showValidation('✗ ISBN not found in library databases. Please enter book details manually.', 'error');
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            showValidation('✗ Search failed. Please check your connection and try again.', 'error');
-        } finally {
-            // Remove loading state
-            searchIsbnBtn.disabled = false;
-            searchIsbnBtn.classList.remove('loading');
+        if (success) {
+            showValidation('Book found ✓', 'success');
+            [titleInput, authorInput, publisherInput].forEach(el => {
+                if (el?.value) {
+                    el.style.borderColor = '#27ae60';
+                    setTimeout(() => el.style.borderColor = '', 2200);
+                }
+            });
+        } else {
+            showValidation('No book found for this ISBN', 'error');
         }
+
+        searchIsbnBtn.disabled = false;
+        searchIsbnBtn.classList.remove('loading');
     });
 
-    // Allow Enter key to trigger search
-    isbnInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            searchIsbnBtn.click();
-        }
-    });
-
-    // Real-time validation as user types
-    isbnInput.addEventListener('input', (e) => {
-        const value = e.target.value.trim();
-
-        if (value && !isValidIsbn(value)) {
+    isbnInput.addEventListener('input', e => {
+        const v = e.target.value.trim();
+        if (v && !isValidIsbn(v)) {
             isbnValidation.textContent = 'Invalid ISBN format';
             isbnValidation.className = 'validation-message error';
         } else {
@@ -370,326 +795,20 @@
         }
     });
 
-    // --- 8. COVER PAGE SCAN WITH MANUAL FIELD SELECTION ---
-
-    // Group words that are close together on the same line
-    function groupNearbyWords(words) {
-        if (words.length === 0) return [];
-
-        const grouped = [];
-        let currentGroup = [words[0]];
-
-        for (let i = 1; i < words.length; i++) {
-            const prevWord = words[i - 1];
-            const currWord = words[i];
-
-            // Calculate vertical and horizontal distance
-            const verticalDistance = Math.abs(currWord.bbox.y0 - prevWord.bbox.y0);
-            const horizontalGap = currWord.bbox.x0 - prevWord.bbox.x1;
-            const avgHeight = (prevWord.bbox.y1 - prevWord.bbox.y0 + currWord.bbox.y1 - currWord.bbox.y0) / 2;
-
-            // Words are on the same line if:
-            // 1. Vertical distance is less than half the average height
-            // 2. Horizontal gap is reasonable (less than 3x average character width)
-            const avgCharWidth = (prevWord.bbox.x1 - prevWord.bbox.x0) / prevWord.text.length;
-            const maxGap = avgCharWidth * 3;
-
-            if (verticalDistance < avgHeight * 0.5 && horizontalGap < maxGap && horizontalGap >= 0) {
-                // Same line - add to current group
-                currentGroup.push(currWord);
-            } else {
-                // Different line or too far - start new group
-                grouped.push(mergeWordGroup(currentGroup));
-                currentGroup = [currWord];
-            }
-        }
-
-        // Don't forget the last group
-        if (currentGroup.length > 0) {
-            grouped.push(mergeWordGroup(currentGroup));
-        }
-
-        // Add suggestions to each group
-        return grouped.map((group, index) => ({
-            ...group,
-            suggestion: suggestFieldType(group.text, group.bbox, index, grouped.length)
-        }));
-    }
-
-    // Merge a group of words into one text item
-    function mergeWordGroup(wordGroup) {
-        if (wordGroup.length === 1) {
-            return {
-                text: wordGroup[0].text.trim(),
-                bbox: wordGroup[0].bbox,
-                confidence: wordGroup[0].confidence
-            };
-        }
-
-        // Combine text with spaces
-        const text = wordGroup.map(w => w.text).join(' ').trim();
-
-        // Calculate merged bounding box
-        const x0 = Math.min(...wordGroup.map(w => w.bbox.x0));
-        const y0 = Math.min(...wordGroup.map(w => w.bbox.y0));
-        const x1 = Math.max(...wordGroup.map(w => w.bbox.x1));
-        const y1 = Math.max(...wordGroup.map(w => w.bbox.y1));
-
-        // Average confidence
-        const confidence = wordGroup.reduce((sum, w) => sum + w.confidence, 0) / wordGroup.length;
-
-        return {
-            text,
-            bbox: { x0, y0, x1, y1 },
-            confidence
-        };
-    }
-
-    // Smart suggestion based on text content and position
-    function suggestFieldType(text, bbox, index, totalWords) {
-        text = text.trim();
-
-        // Year detection (4 digits)
-        if (/^\d{4}$/.test(text)) {
-            return 'year';
-        }
-
-        // Edition detection
-        if (/edition|ed\.|ed$/i.test(text)) {
-            return 'edition';
-        }
-
-        // Author detection (contains "by" or "By")
-        if (/^by$/i.test(text)) {
-            return 'author';
-        }
-
-        // Title is usually at the top (first few items)
-        if (index < 3 && text.length > 3) {
-            return 'title';
-        }
-
-        // Publisher usually at bottom
-        if (index > totalWords - 3 && text.length > 3) {
-            return 'publisher';
-        }
-
-        return 'none';
-    }
-
-    // Process uploaded image for cover scan
-    async function processCoverImage(file) {
-        const img = new Image();
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            img.src = e.target.result;
-            img.onload = async () => {
-                // Set canvas size to image size
-                coverCanvas.width = img.width;
-                coverCanvas.height = img.height;
-                const ctx = coverCanvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                // Show loading state
-                detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Scanning cover page...</div>';
-                coverScanModal.style.display = 'flex';
-
-                try {
-                    // Use Tesseract to get text with bounding boxes
-                    const result = await Tesseract.recognize(
-                        coverCanvas.toDataURL(),
-                        'eng',
-                        {
-                            logger: m => {
-                                if (m.status === 'recognizing text') {
-                                    const percent = Math.round(m.progress * 100);
-                                    detectedTextList.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">Analyzing... ${percent}%</div>`;
-                                }
-                            }
-                        }
-                    );
-
-                    // Filter and process detected words
-                    detectedWords = result.data.words
-                        .filter(word => word.text.trim().length > 0 && word.confidence > 60)
-                        .map((word, index) => ({
-                            text: word.text.trim(),
-                            bbox: word.bbox,
-                            confidence: word.confidence,
-                            suggestion: suggestFieldType(word.text.trim(), word.bbox, index, result.data.words.length)
-                        }));
-
-                    if (detectedWords.length === 0) {
-                        detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">No text detected. Please try a clearer image.</div>';
-                        return;
-                    }
-
-                    // Draw highlights on canvas
-                    drawTextHighlights();
-
-                    // Populate text list
-                    populateDetectedTextList();
-
-                } catch (error) {
-                    console.error('OCR Error:', error);
-                    detectedTextList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Error scanning image. Please try again.</div>';
-                }
-            };
-        };
-
-        reader.readAsDataURL(file);
-    }
-
-    // Draw highlights on canvas (like Snipping Tool)
-    function drawTextHighlights() {
-        const ctx = coverCanvas.getContext('2d');
-        const img = new Image();
-        img.src = coverCanvas.toDataURL();
-
-        img.onload = () => {
-            ctx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
-            ctx.drawImage(img, 0, 0);
-
-            detectedWords.forEach((word, index) => {
-                const { x0, y0, x1, y1 } = word.bbox;
-
-                // Draw highlight box
-                ctx.strokeStyle = '#3498db';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-
-                // Semi-transparent fill
-                ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
-                ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-
-                // Add index number
-                ctx.fillStyle = '#3498db';
-                ctx.font = 'bold 14px Arial';
-                ctx.fillText(index + 1, x0 + 5, y0 + 15);
-            });
-        };
-    }
-
-    // Populate detected text list with selectors
-    function populateDetectedTextList() {
-        detectedTextList.innerHTML = '';
-
-        detectedWords.forEach((word, index) => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'text-item';
-            itemDiv.dataset.index = index;
-
-            const textContent = document.createElement('div');
-            textContent.className = 'text-content';
-            textContent.textContent = `${index + 1}. ${word.text}`;
-
-            const suggestion = document.createElement('div');
-            suggestion.className = 'text-suggestion';
-            suggestion.textContent = word.suggestion !== 'none'
-                ? `Suggested: ${word.suggestion.charAt(0).toUpperCase() + word.suggestion.slice(1)}`
-                : 'Select field type below';
-
-            const select = document.createElement('select');
-            select.className = 'field-selector';
-            select.innerHTML = `
-                <option value="none">-- Select Field --</option>
-                <option value="title" ${word.suggestion === 'title' ? 'selected' : ''}>Book Title</option>
-                <option value="author" ${word.suggestion === 'author' ? 'selected' : ''}>Author</option>
-                <option value="publisher" ${word.suggestion === 'publisher' ? 'selected' : ''}>Publisher</option>
-                <option value="edition" ${word.suggestion === 'edition' ? 'selected' : ''}>Edition</option>
-                <option value="year" ${word.suggestion === 'year' ? 'selected' : ''}>Year</option>
-            `;
-
-            // Auto-select suggestion if available
-            if (word.suggestion !== 'none') {
-                updateSelectedField(word.suggestion, word.text, index);
-            }
-
-            select.addEventListener('change', (e) => {
-                const fieldType = e.target.value;
-                updateSelectedField(fieldType, word.text, index);
-
-                // Visual feedback
-                if (fieldType !== 'none') {
-                    itemDiv.classList.add('selected');
-                } else {
-                    itemDiv.classList.remove('selected');
-                }
-            });
-
-            itemDiv.appendChild(textContent);
-            itemDiv.appendChild(suggestion);
-            itemDiv.appendChild(select);
-            detectedTextList.appendChild(itemDiv);
-        });
-    }
-
-    // Update selected fields object
-    function updateSelectedField(fieldType, text, index) {
-        // Remove this text from other fields
-        Object.keys(selectedFields).forEach(key => {
-            if (selectedFields[key] === text) {
-                selectedFields[key] = '';
-            }
-        });
-
-        // Set new field
-        if (fieldType !== 'none') {
-            selectedFields[fieldType] = text;
-        }
-    }
-
-    // Apply selected fields to form
-    applyFieldsBtn.addEventListener('click', () => {
-        if (selectedFields.title) titleInput.value = selectedFields.title;
-        if (selectedFields.author) authorInput.value = selectedFields.author;
-        if (selectedFields.publisher) publisherInput.value = selectedFields.publisher;
-        if (selectedFields.edition) {
-            const editionInput = document.querySelector('input[name="Edition"]');
-            if (editionInput) editionInput.value = selectedFields.edition;
-        }
-        if (selectedFields.year) {
-            // Format year to date input format (YYYY-01-01)
-            const year = selectedFields.year.match(/\d{4}/);
-            if (year) {
-                yearInput.value = `${year[0]}-01-01`;
-            }
-        }
-
-        // Visual feedback
-        [titleInput, authorInput, publisherInput].forEach(input => {
-            if (input && input.value) {
-                input.style.borderColor = '#27ae60';
-                setTimeout(() => {
-                    input.style.borderColor = '';
-                }, 2000);
-            }
-        });
-
-        alert('✓ Book information applied to form!');
-        coverScanModal.style.display = 'none';
-        resetCoverScan();
+    isbnInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') searchIsbnBtn.click();
     });
 
-    // Cancel cover scan
-    cancelCoverScanBtn.addEventListener('click', () => {
-        coverScanModal.style.display = 'none';
-        resetCoverScan();
+    // Keyboard cursor hint
+    document.addEventListener('keydown', e => {
+        if (coverScanModal.style.display === 'flex' && e.key === 'Shift') {
+            coverCanvas.style.cursor = 'grab';
+        }
     });
 
-    // Reset cover scan state
-    function resetCoverScan() {
-        detectedWords = [];
-        selectedFields = {
-            title: '',
-            author: '',
-            publisher: '',
-            edition: '',
-            year: ''
-        };
-        detectedTextList.innerHTML = '';
-        const ctx = coverCanvas.getContext('2d');
-        ctx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
-    }
+    document.addEventListener('keyup', e => {
+        if (coverScanModal.style.display === 'flex' && e.key === 'Shift' && !isPanning) {
+            coverCanvas.style.cursor = 'crosshair';
+        }
+    });
 });

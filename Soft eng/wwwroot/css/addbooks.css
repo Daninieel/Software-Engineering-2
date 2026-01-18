@@ -500,6 +500,14 @@ video {
     padding: 20px;
 }
 
+.modal-actions {
+    display: flex;
+    justify-content: center; /* optional */
+    gap: 20px; /* space between buttons */
+    margin-top: 20px;
+}
+
+
 .cover-scan-container {
     background: white;
     border-radius: 12px;
