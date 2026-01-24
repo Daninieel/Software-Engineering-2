@@ -1,23 +1,27 @@
 using DinkToPdf;
 using DinkToPdf.Contracts;
+using Microsoft.AspNetCore.Authentication.Cookies; 
 using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. ADD SERVICES (Before builder.Build())
 builder.Services.AddControllersWithViews();
 
-// Register MySQL
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Home/Login";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    });
+
 builder.Services.AddTransient<MySqlConnection>(_ =>
     new MySqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register DinkToPdf Converter CORRECTLY here
 builder.Services.AddSingleton(typeof(IConverter), new SynchronizedConverter(new PdfTools()));
 
-// 2. BUILD THE APP
 var app = builder.Build();
 
-// 3. CONFIGURE PIPELINE (After builder.Build())
+// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -26,6 +30,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseAuthentication();
+
 
 app.UseAuthorization();
 

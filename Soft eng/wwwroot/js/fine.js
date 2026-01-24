@@ -12,6 +12,8 @@ let reportBtn, editFineBtn, btnEditToggle;
 let fineSearchInput;
 let filteredFines = [];
 
+
+
 document.addEventListener('DOMContentLoaded', function () {
     fineTableBody = document.getElementById('fineTableBody');
     pageList = document.querySelector('.page-list');
@@ -113,7 +115,7 @@ async function loadFines() {
 
         const data = await response.json();
         if (data && data.length > 0) {
-            allFines = data.sort((a, b) => a.fineID - b.fineID);
+            allFines = data.sort((a, b) => b.fineID - a.fineID);
             filteredFines = [...allFines];
             calculateGrandTotal(filteredFines);
             changePage(1);

@@ -185,3 +185,15 @@ input:focus {
         padding-right: 40px;
     }
 }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .cover-scan-content {
+        flex-direction: column;
+    }
+
+    .image-preview-section,
+    .detected-text-section {
+        flex: 1;
+    }
+}

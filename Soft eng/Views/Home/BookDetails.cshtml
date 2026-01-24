@@ -2,7 +2,7 @@
 @{
     ViewBag.Title = "Book Details";
     Layout = null;
-    var backAction = Model?.BookID > 0 ? "Inventory" : "InventoryAdmin";
+    var backAction = Model?.BookID > 0 ? "Logbook" : "InventoryAdmin";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -27,16 +27,41 @@
     </header>
 
     <div class="main-layout">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
-                    <li><a asp-action="Dashboard">Dashboard</a></li>
-                    <li><a asp-action="Inventory">Inventory</a></li>
-                    <li><a asp-action="AddBooks">Add Books</a></li>
-                    <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
-                    <li><a asp-action="RequestedBooks">Requested Books</a></li>
-                    <li><a asp-action="Fine">Fine</a></li>
-   
+                    <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                        <a asp-action="Dashboard">Dashboard</a>
+                    </li>
+                    <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                        <a asp-action="Inventory">Logbook</a>
+                    </li>
+
+                    <li class="dropdown-item">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                            Book Management
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu" id="bookManagementSubmenuLib">
+                            <li><a asp-action="AddBooks">Add Books</a></li>
+                            <li><a asp-action="BorrowedBooks">Borrowed Books</a></li>
+                            <li><a asp-action="RequestedBooks">Requested Books</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                        <a asp-action="Fine">Fine</a>
+                    </li>
+                    <li>
+                        <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                            <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="logout-text">Log Out</span>
+                            </a>
+                        </form>
+                    </li>
+
+
                 </ul>
             </nav>
         </aside>
@@ -49,7 +74,7 @@
                 <div class="form-card">
                     <p>Book not found.</p>
                     <div class="button-area">
-                        <a asp-action="Inventory" class="btn btn-blue">Back to Inventory</a>
+                        <a asp-action="Inventory" class="btn btn-blue">Back to Logbook</a>
                     </div>
                 </div>
             }
@@ -133,7 +158,7 @@
                         <div class="button-area">
                             @if (ViewBag.FromAdmin == true)
                             {
-                                <a asp-action="InventoryAdmin" class="btn btn-blue">Back to Inventory</a>
+                                <a asp-action="InventoryAdmin" class="btn btn-blue">Back to Logbook</a>
                             }
                             else
                             {

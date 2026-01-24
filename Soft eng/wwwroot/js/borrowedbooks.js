@@ -10,6 +10,7 @@ let issueBookBtn, issueBookModal, closeModalBtn, cancelBtn, issueBookForm;
 let borrowedBooksTable, borrowDateInput, detailsModal, closeDetailsBtn, btnBack, btnEdit;
 let pageList, gotoInput, prevBtn, nextBtn;
 
+
 document.addEventListener('DOMContentLoaded', initializeBorrowedBooks);
 
 function initializeBorrowedBooks() {
@@ -131,7 +132,7 @@ async function loadBorrowedBooks() {
         const books = await response.json();
 
         if (books && books.length > 0) {
-            allBorrowedBooks = books.sort((a, b) => a.loanID - b.loanID);
+            allBorrowedBooks = books.sort((a, b) => b.loanID - a.loanID);
             allFilteredBooks = [...allBorrowedBooks];
 
             changePage(1);

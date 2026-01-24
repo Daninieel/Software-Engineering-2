@@ -1,4 +1,5 @@
-﻿document.addEventListener('DOMContentLoaded', function () {
+﻿
+document.addEventListener('DOMContentLoaded', function () {
     const filterBtn = document.querySelector('.filter-btn, .btn-filter');
     const filterOptionsContainer = document.querySelector('.filter-options');
     const tableBody = document.querySelector('#inventoryTable tbody');
@@ -97,14 +98,14 @@
     const rowsPerPage = 10;
     let rows = Array.from(tableBody.querySelectorAll('tr'));
 
-    if (rows.length > 1) {
-        const firstID = parseInt(rows[0].cells[0].innerText.trim());
-        const lastID = parseInt(rows[rows.length - 1].cells[0].innerText.trim());
+    rows.sort((a, b) => {
+        const idA = parseInt(a.cells[0].innerText.trim()) || 0;
+        const idB = parseInt(b.cells[0].innerText.trim()) || 0;
+        return idB - idA;
+    });
 
-        if (!isNaN(firstID) && !isNaN(lastID) && firstID > lastID) {
-            rows.reverse();
-            rows.forEach(row => tableBody.appendChild(row));
-        }
+    rows.forEach(row => tableBody.appendChild(row));
+  }
     }
 
     const pageList = document.querySelector('.page-list');

@@ -30,11 +30,7 @@
         </div>
 
         <div class="user-area">
-            <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
-                <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
-                    <span class="logout-text">Log Out</span>
-                </a>
-            </form>
+            <div class="welcome-text" id="welcomeText"></div>
             <div class="user-avatar admin-avatar">
                 <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
             </div>
@@ -42,15 +38,46 @@
     </header>
 
     <div class="main-layout">
-        <aside class="sidebar admin" id="sidebar">
+        <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
-                    <li class="active"><a asp-action="AdminDashboard">Dashboard</a></li>
-                    <li><a asp-action="InventoryAdmin">Inventory</a></li>
-                    <li><a asp-action="AddBooksAdmin">Add Books</a></li>
-                    <li><a asp-action="BorrowedBooksAdmin">Borrowed Books</a></li>
-                    <li><a asp-action="RequestedBooksAdmin">Requested Books</a></li>
-                    <li><a asp-action="FineAdmin">Fine</a></li>
+                    <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
+                        <a asp-action="AdminDashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Inventory Admin" ? "active" : "")">
+                        <a asp-action="InventoryAdmin">
+                            <i class="fas fa-book"></i> Logbook
+                        </a>
+                    </li>
+
+                    <li class="dropdown-item">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                            <i class="fas fa-layer-group"></i> Book Management
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu" id="bookManagementSubmenuLib">
+                            <li><a asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                        <a asp-action="FineAdmin">
+                            <i class="fas fa-money-bill-wave"></i> Fine
+                        </a>
+                    </li>
+                    <li>
+                        <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
+                            <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="logout-text">Log Out</span>
+                            </a>
+                        </form>
+                    </li>
 
                 </ul>
             </nav>
@@ -194,11 +221,17 @@
             </div>
         </main>
     </div>
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
 
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard-search.js"></script>
+    <script src="~/js/welcome.js"></script>
 
 </body>
 </html>

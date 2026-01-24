@@ -709,6 +709,7 @@
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
+            video.style.transform = "scaleX(-1)";
             if (videoSourceSelect.options.length === 0) await getCameras();
             video.onloadedmetadata = () => {
                 isScanning = true;

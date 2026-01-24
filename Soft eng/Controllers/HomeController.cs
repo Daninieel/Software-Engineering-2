@@ -11,6 +11,9 @@ using System.Text;
 using System.Text.Json;
 using DinkToPdf;
 using DinkToPdf.Contracts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 namespace Soft_eng.Controllers
 {
@@ -262,38 +265,87 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string email, string password)
         {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) { ViewBag.ErrorMessage = "Email and password are required."; return View(); }
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.ErrorMessage = "Email and password are required.";
+                return View();
+            }
+
             string normalizedEmail = email.Trim();
-            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123") return RedirectToAction("AdminDashboard");
+
+            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123")
+            {
+                var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, "Administrator"),
+            new Claim(ClaimTypes.Role, "Admin")
+        };
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+
+                return RedirectToAction("AdminDashboard");
+            }
+
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT Password, Role FROM Register WHERE Email = @e LIMIT 1", _connection);
+
+                using var cmd = new MySqlCommand("SELECT FullName, Password, Role FROM Register WHERE Email = @e LIMIT 1", _connection);
                 cmd.Parameters.AddWithValue("@e", normalizedEmail);
+
                 using var reader = await cmd.ExecuteReaderAsync();
-                if (!await reader.ReadAsync() || !BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password"))) { ViewBag.ErrorMessage = "Invalid email or password."; return View(); }
-                string role = reader.IsDBNull("Role") ? "" : reader.GetString("Role");
+
+                if (!await reader.ReadAsync() || !BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
+                {
+                    ViewBag.ErrorMessage = "Invalid email or password.";
+                    return View();
+                }
+
+                string fullName = reader.GetString("FullName");
+                string role = reader.IsDBNull("Role") ? "Librarian" : reader.GetString("Role");
                 reader.Close();
+
+                var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, fullName),
+            new Claim(ClaimTypes.Role, role)
+        };
+
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+
                 using var updateCmd = new MySqlCommand("UPDATE Register SET IsLoggedIn = 1, LastLoginAt = NOW() WHERE Email = @e", _connection);
                 updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
                 await updateCmd.ExecuteNonQueryAsync();
-                return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase) ? RedirectToAction("AdminDashboard") : RedirectToAction("Inventory");
+
+                return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase) ? RedirectToAction("AdminDashboard") : RedirectToAction("Dashboard");
             }
-            catch { ViewBag.ErrorMessage = "Something went wrong. Please try again."; return View(); }
-            finally { await _connection.CloseAsync(); }
+            catch (Exception ex)
+            {
+                ViewBag.ErrorMessage = "Login failed: " + ex.Message;
+                return View();
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
+
 
         [HttpPost]
         public async Task<IActionResult> Logout()
         {
             try
             {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 using var cmd = new MySqlCommand("UPDATE Register SET IsLoggedIn = 0 WHERE IsLoggedIn = 1", _connection);
                 await cmd.ExecuteNonQueryAsync();
             }
             catch { }
             finally { await _connection.CloseAsync(); }
+
             return RedirectToAction("Login");
         }
 
@@ -591,8 +643,7 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                // 1. Update the EXISTING book (The one you clicked 'Edit' on)
-                // Set TotalCopies to the user's input so all copies reflect the same total
+ 
                 using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@total, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
                 {
                     cmd.Parameters.AddWithValue("@id", book.BookID);
@@ -609,15 +660,12 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                     cmd.Parameters.AddWithValue("@total", book.TotalCopies);
 
-                    // Availability often mirrors BookStatus in your system (e.g. "Available", "Damaged")
                     cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
                     cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                // 2. Add NEW copies if the user increased the Total Copies count
-                // If the user entered "3", and we have 1 existing row, we need to add 2 more.
                 int copiesToAdd = book.TotalCopies - 1;
 
                 if (copiesToAdd > 0)
@@ -657,10 +705,7 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                // Determine copies to add (at least 1)
                 int copies = book.TotalCopies > 0 ? book.TotalCopies : 1;
-
-                // Loop to insert each copy as a distinct row
                 for (int i = 0; i < copies; i++)
                 {
                     using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
@@ -676,7 +721,6 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                     cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
-                    // Set TotalCopies to the user's input so all copies reflect the same total
                     cmd.Parameters.AddWithValue("@copies", copies);
                     cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
 
@@ -718,9 +762,8 @@ namespace Soft_eng.Controllers
             return Json(borrowed);
         }
 
-        // MODIFIED: Updated to accept borrowerType
         [HttpPost]
-        // In Software-Engineering-2/Soft eng/Controllers/HomeController.cs
+
 
         [HttpPost]
         public async Task<IActionResult> AddBorrowedBook(string borrowerName, string borrowerType, string bookTitle, DateTime borrowDate)
@@ -728,14 +771,10 @@ namespace Soft_eng.Controllers
             try
             {
                 int bId = await GetOrCreateBorrower(borrowerName, borrowerType);
-
-                // Try to get an AVAILABLE book ID
                 int bkId = await GetBookIdByTitle(bookTitle);
 
                 if (bkId == 0)
                 {
-                    // If 0, it means no available copy was found.
-                    // We must now check if the book exists at all to give the correct error message.
                     if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                     using var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookTitle = @t", _connection);
@@ -744,12 +783,10 @@ namespace Soft_eng.Controllers
 
                     if (count > 0)
                     {
-                        // The book exists in the inventory, but no copies are available.
                         return Json(new { success = false, error = "Limit reached. Book is unavailable for borrow." });
                     }
                     else
                     {
-                        // The book does not exist in the inventory at all.
                         return Json(new { success = false, error = "Book not found." });
                     }
                 }
@@ -779,7 +816,6 @@ namespace Soft_eng.Controllers
             finally { await _connection.CloseAsync(); }
         }
 
-        // MODIFIED: Updated to save BorrowerType
         private async Task<int> GetOrCreateBorrower(string name, string type)
         {
             bool close = false; if (_connection.State != ConnectionState.Open) { await _connection.OpenAsync(); close = true; }
@@ -788,7 +824,6 @@ namespace Soft_eng.Controllers
                 using var find = new MySqlCommand("SELECT BorrowerID FROM Borrower WHERE BorrowerName = @n", _connection); find.Parameters.AddWithValue("@n", name);
                 var res = await find.ExecuteScalarAsync(); if (res != null) return Convert.ToInt32(res);
 
-                // MODIFIED: Use the passed 'type' instead of hardcoded value
                 using var ins = new MySqlCommand("INSERT INTO Borrower (BorrowerName, BorrowerType) VALUES (@n, @t)", _connection);
                 ins.Parameters.AddWithValue("@n", name);
                 ins.Parameters.AddWithValue("@t", type);

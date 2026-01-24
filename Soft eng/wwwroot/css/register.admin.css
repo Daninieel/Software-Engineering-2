@@ -163,3 +163,15 @@ input[type="email"],
         width: 100%;
     }
 }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .cover-scan-content {
+        flex-direction: column;
+    }
+
+    .image-preview-section,
+    .detected-text-section {
+        flex: 1;
+    }
+}

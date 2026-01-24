@@ -1,4 +1,32 @@
-﻿document.addEventListener('DOMContentLoaded', function() {
+﻿document.addEventListener('DOMContentLoaded', function () {
+
+    // --- Helper function to setup a dropdown ---
+    function setupDropdown(btnId, submenuId) {
+        const btn = document.getElementById(btnId);
+        const submenu = document.getElementById(submenuId);
+
+        if (btn && submenu) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                // Toggle visibility
+                submenu.classList.toggle('show');
+                // Toggle arrow rotation
+                btn.classList.toggle('active');
+            });
+        }
+    }
+
+
+
+    // Initialize Admin Dropdown
+    setupDropdown('bookManagementBtnAdmin', 'bookManagementSubmenuAdmin');
+
+    // Initialize Librarian Dropdown
+    setupDropdown('bookManagementBtnLib', 'bookManagementSubmenuLib');
+
+    // ... existing filter dropdown code ...
+});
+document.addEventListener('DOMContentLoaded', function () {
     // Support multiple filter dropdowns on the page and ensure visual toggle works even if CSS is missing
     // Initialize each .filter-dropdown on the page
     document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
@@ -51,3 +79,4 @@
         });
     });
 });
+

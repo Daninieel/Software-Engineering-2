@@ -2,6 +2,7 @@
 let allRequests = [];
 let filteredRequests = [];
 
+
 function openViewRequestModal(id, name, title, date, status, remarks) {
     document.getElementById("viewRequestID").innerText = id;
     document.getElementById("viewRequesterName").innerText = name;
@@ -82,7 +83,7 @@ function filterRequests(query) {
         });
     }
     
-    // Hide/show rows based on filter
+
     allRequests.forEach(req => {
         const isInFiltered = filteredRequests.some(f => f.id === req.id);
         req.rowElement.style.display = isInFiltered ? '' : 'none';
