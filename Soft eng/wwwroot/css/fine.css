@@ -389,4 +389,11 @@ td {
     .detected-text-section {
         flex: 1;
     }
-}   
+}
+
+.title-cell {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -87,7 +87,7 @@
             </div>
 
             <div class="table-card">
-                <table id="inventoryTable">
+                <table id="inventoryTable" style="border-collapse: collapse; width: 100%;">
                     <thead>
                         <tr>
                             <th>Book ID</th>
@@ -98,24 +98,28 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="inventoryTableBody">
                         @foreach (var item in Model)
                         {
                             <tr class="book-row">
-                                <td>
-                                    <input type="radio" name="selectedBook" value="@item.BookID" hidden>
-                                    @item.BookID
-                                </td>
+                                <td>@item.BookID</td>
                                 <td class="title-cell">@item.BookTitle</td>
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">See more</a></td>
+                                <td>
+                                    <a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">
+                                        See more
+                                    </a>
+                                </td>
+                                <!-- hidden radio outside the table for form submission -->
+                                <input type="radio" name="selectedBook" value="@item.BookID" style="display:none">
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+
 
             <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
                 <div class="pagination-wrapper">
