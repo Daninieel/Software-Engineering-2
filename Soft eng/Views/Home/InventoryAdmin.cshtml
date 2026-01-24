@@ -15,16 +15,23 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
 </head>
 <body>
     <header class="top-header admin">
         <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-circle"><img src="~/images/school_logo.jpg" alt="SIA Logo"></div>
             <span class="school-name">SAINT ISIDORE ACADEMY</span>
         </div>
         <div class="user-area">
             <div class="welcome-text" id="welcomeText"></div>
-            <div class="user-avatar admin-avatar"><img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar"></div>
+            <div class="user-avatar admin-avatar">
+            <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar"></div>
         </div>
     </header>
 
@@ -157,5 +164,8 @@
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
 </body>
 </html>

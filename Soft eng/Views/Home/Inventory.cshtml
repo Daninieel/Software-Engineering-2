@@ -1,6 +1,6 @@
 ﻿@model List<Soft_eng.Models.LogBook>
 @{
-    ViewBag.Title = "Inventory";
+    ViewBag.Title = "Inventory ";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -8,23 +8,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System - Inventory</title>
+    <title>Admin Library Inventory</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="~/css/inventory.css">
+    <link rel="stylesheet" href="~/css/inventory.admin.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
 </head>
 <body>
-    <header class="top-header">
+    <header class="top-header admin">
         <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-circle"><img src="~/images/school_logo.jpg" alt="SIA Logo"></div>
             <span class="school-name">SAINT ISIDORE ACADEMY</span>
         </div>
         <div class="user-area">
             <div class="welcome-text" id="welcomeText"></div>
-            <div class="user-avatar"><img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar"></div>
+            <div class="user-avatar admin-avatar">
+            <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
         </div>
     </header>
 
@@ -76,18 +83,18 @@
         </aside>
 
         <main class="content-area">
-            <h2>Logbook
-            @if (ViewBag.SearchQuery != null)
-            {
-                <span style="font-size: 0.8em; font-weight: normal; color: #e74c3c;"> - Search Results for "@ViewBag.SearchQuery"</span>
-            }
+            <h2>
+                Admin Logbook
+                @if (ViewBag.SearchQuery != null)
+                {
+                    <span style="font-size: 0.8em; font-weight: normal; color: #e74c3c;"> - Search Results for "@ViewBag.SearchQuery"</span>
+                }
             </h2>
             <div class="search-filter">
-                <input type="text" id="searchInput" placeholder="Search by Title, Author, etc.">
+                <input type="text" id="searchInput" placeholder="Search by Title, Author, etc." />
             </div>
-
             <div class="table-card">
-                <table id="inventoryTable" style="border-collapse: collapse; width: 100%;">
+                <table id="inventoryTable">
                     <thead>
                         <tr>
                             <th>Book ID</th>
@@ -98,29 +105,25 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="inventoryTableBody">
+
+                    <tbody>
                         @foreach (var item in Model)
                         {
                             <tr class="book-row">
-                                <td>@item.BookID</td>
+                                <td>
+                                    <input type="radio" name="selectedBook" value="@item.BookID" hidden>
+                                    @item.BookID
+                                </td>
                                 <td class="title-cell">@item.BookTitle</td>
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td>
-                                    <a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">
-                                        See more
-                                    </a>
-                                </td>
-                                <!-- hidden radio outside the table for form submission -->
-                                <input type="radio" name="selectedBook" value="@item.BookID" style="display:none">
+                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">See more</a></td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-
-
             <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
                 <div class="pagination-wrapper">
                     <a href="#" class="nav-arrow">&lt;</a>
@@ -144,9 +147,10 @@
                     </div>
                 </div>
             </div>
+
             <div class="button-area">
-                <a asp-action="AddBooks" class="btn btn-blue">Add Books</a>
-                <button type="button" id="editBtn" class="btn btn-red">Edit Book</button>
+                <a asp-action="AddBooksAdmin" class="btn btn-blue">Add Books</a>
+                <button type="button" id="adminEditBtn" class="btn btn-red">Edit Book</button>
             </div>
         </main>
     </div>
@@ -161,5 +165,8 @@
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
 </body>
 </html>

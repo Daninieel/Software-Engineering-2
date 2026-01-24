@@ -1,0 +1,230 @@
+﻿@media (max-width: 1024px) {
+    .hamburger-btn {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: space-around;
+        width: 30px;
+        height: 25px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        z-index: 1200;
+    }
+
+        .hamburger-btn span {
+            width: 100%;
+            height: 3px;
+            background: white;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
+        }
+
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+    .top-header {
+        padding: 0 20px !important;
+        height: 80px !important;
+    }
+
+    .logo-area .school-name {
+        display: none !important;
+    }
+
+    .logo-circle {
+        width: 55px;
+        height: 55px;
+    }
+
+    .user-area {
+        gap: 15px;
+    }
+
+    .welcome-text {
+        font-size: 0.9rem;
+    }
+
+    .user-avatar img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .main-layout {
+        margin-top: 80px !important;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        left: -280px !important;
+        top: 80px !important;
+        width: 280px !important;
+        height: calc(100vh - 80px) !important;
+        z-index: 1100 !important;
+        transition: left 0.3s ease-in-out !important;
+        background-color: white !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3) !important;
+    }
+
+        .sidebar.active {
+            left: 0 !important;
+        }
+
+    .sidebar-overlay {
+        display: none !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1050;
+    }
+
+    .sidebar.active ~ .sidebar-overlay {
+        display: block !important;
+    }
+
+    .content-area {
+        margin-left: 0 !important;
+        padding: 30px 20px !important;
+    }
+
+    .row-2, .row-3 {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .stat-box {
+        width: 100%;
+        min-height: 120px;
+    }
+
+    .row-4 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .search-filter-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .search-box,
+    .time-filter,
+    .filter-dropdown {
+        max-width: 100%;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .top-header {
+        height: 70px !important;
+        padding: 0 15px !important;
+    }
+
+    .main-layout {
+        margin-top: 70px !important;
+    }
+
+    .sidebar {
+        top: 70px !important;
+        height: calc(100vh - 70px) !important;
+    }
+
+    .welcome-text {
+        display: none !important;
+    }
+
+    .user-avatar img {
+        width: 45px;
+        height: 45px;
+    }
+
+    .logo-circle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .content-area {
+        padding: 20px 15px !important;
+    }
+
+        .content-area h2 {
+            font-size: 20px;
+        }
+
+    .total-books-value {
+        font-size: 36px;
+    }
+
+    .stat-value {
+        font-size: 28px;
+    }
+
+    .stat-label,
+    .total-books-label {
+        font-size: 16px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+        .table-container table {
+            min-width: 500px;
+        }
+}
+
+@media (max-width: 480px) {
+    .top-header {
+        height: 60px !important;
+        padding: 0 10px !important;
+    }
+
+    .main-layout {
+        margin-top: 60px !important;
+    }
+
+    .sidebar {
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
+    }
+
+    .logo-circle {
+        width: 45px;
+        height: 45px;
+    }
+
+    .user-avatar img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .hamburger-btn {
+        width: 25px;
+        height: 20px;
+    }
+
+    .content-area h2 {
+        font-size: 18px;
+    }
+
+    .total-books-value {
+        font-size: 32px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+    }
+}

@@ -20,11 +20,17 @@
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
 </head>
 <body>
 
     <header class="top-header">
         <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-circle">
                 <img src="~/images/school_logo.jpg" alt="SIA Logo">
             </div>
@@ -264,5 +270,7 @@
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/request.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
 </body>
 </html>

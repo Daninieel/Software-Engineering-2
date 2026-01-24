@@ -7,12 +7,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Saint Isidore Academy</title>
+    <title>Dashboard - Saint Isidore Academy</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/dashboard.admin.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
 </head>
 <body>
 
@@ -83,8 +84,10 @@
             </nav>
         </aside>
 
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
         <main class="content-area">
-            <h2>Admin Dashboard</h2>
+            <h2>Dashboard</h2>
 
             <div class="dashboard-header">
                 <div class="search-filter-container">
@@ -221,17 +224,20 @@
             </div>
         </main>
     </div>
+
     <script>
         window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
-
     <script src="~/js/dashboard.js"></script>
-    <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard-search.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
+
 
 </body>
 </html>

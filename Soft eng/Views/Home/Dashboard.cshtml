@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="~/css/dashboard.admin.css">
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
 </head>
 <body>
 
@@ -70,6 +71,7 @@
                             <i class="fas fa-money-bill-wave"></i> Fine
                         </a>
                     </li>
+
                     <li>
                         <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
                             <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
@@ -81,6 +83,8 @@
                 </ul>
             </nav>
         </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <main class="content-area">
             <h2>Dashboard</h2>
@@ -220,16 +224,20 @@
             </div>
         </main>
     </div>
+
     <script>
         window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
     <script src="~/js/dashboard.js"></script>
-    <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard-search.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
+    
 
 </body>
 </html>

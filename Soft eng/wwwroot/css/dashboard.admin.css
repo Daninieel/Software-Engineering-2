@@ -103,7 +103,6 @@ body {
     margin-bottom: 30px;
 }
 
-/* Row 1: Total Books Box - Full width */
 .row-1 {
     display: flex;
     width: 100%;
@@ -130,7 +129,6 @@ body {
     color: #333;
 }
 
-/* Row 2: 3 boxes for Borrowed Books stats - Full width containers */
 .row-2 {
     display: flex;
     width: 100%;
@@ -163,14 +161,12 @@ body {
     color: #333;
 }
 
-/* Row 3: 3 boxes for Missing Books stats - Full width containers */
 .row-3 {
     display: flex;
     width: 100%;
     gap: 25px;
 }
 
-/* Row 4: 2 column box - Decreased height, same width */
 .row-4 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -182,7 +178,7 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    height: 250px; /* Reduced height */
+    height: 250px;
     display: flex;
     flex-direction: column;
 }
@@ -224,7 +220,6 @@ td {
     font-size: 14px;
 }
 
-/* Override existing styles to match design */
 .content-area {
     padding: 20px;
 }
@@ -240,13 +235,11 @@ td {
     min-height: calc(100vh - 100px);
 }
 
-/* Adjust table container to be shorter */
 .table-container {
     flex: 1;
     overflow-y: auto;
 }
 
-    /* Make tables scrollable if needed */
     .table-container table {
         min-height: 100px;
     }
@@ -262,7 +255,6 @@ body {
     background-color: #f0f0f0;
 }
 
-/* HEADER - Updated to fix stray elements */
 .top-header {
     background-color: #c0392b;
     color: white;
@@ -272,7 +264,11 @@ body {
     align-items: center;
     height: 100px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
 }
 
 .logo-area {
@@ -290,7 +286,7 @@ body {
     }
 
 .hamburger-btn {
-    display: none; 
+    display: none;
     background: none;
     border: none;
     cursor: pointer;
@@ -306,7 +302,7 @@ body {
     align-items: center;
     overflow: hidden;
     border: 3px solid rgba(255,255,255,0.3);
-    flex-shrink: 0; 
+    flex-shrink: 0;
 }
 
     .logo-circle img {
@@ -334,12 +330,12 @@ body {
     align-items: center;
     gap: 25px;
 }
+
 .logout {
     display: flex;
     justify-content: center;
     align-items: center;
 }
-
 
 .logout-link {
     text-decoration: none;
@@ -368,13 +364,12 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* LAYOUT */
 .main-layout {
     display: flex;
     min-height: calc(100vh - 100px);
+    margin-top: 100px;
 }
 
-/* SIDEBAR */
 .sidebar {
     width: 280px;
     min-width: 280px;
@@ -384,6 +379,12 @@ body {
     flex-direction: column;
     align-items: center;
     box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+    position: fixed;
+    left: 0;
+    top: 100px;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+    z-index: 800;
 }
 
     .sidebar nav ul {
@@ -415,18 +416,18 @@ body {
             .sidebar nav ul li.active a {
                 background-color: #e74c3c;
                 color: white;
-                padding: 12px 30px;
-                margin: 0 auto;
+                padding: 12px 20px;
+                margin: 0 20px;
                 border-radius: 8px;
                 box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
                 white-space: nowrap;
             }
 
-/* CONTENT */
 .content-area {
     flex: 1;
     padding: 40px;
     background: #f8f9fa;
+    margin-left: 280px;
 }
 
     .content-area h2 {
@@ -434,7 +435,6 @@ body {
         margin-bottom: 30px;
     }
 
-/* SEARCH */
 .search-filter {
     display: flex;
     gap: 20px;
@@ -458,17 +458,15 @@ body {
     cursor: pointer;
 }
 
-/* TABLE */
-
 .table-card {
     background: white;
     width: 100%;
     max-width: 1100px;
-    height: 570px; /* controls square size */
+    height: 570px;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     padding: 25px;
-    margin: 30px auto; /* makes white square table responsive to zoom ins and outs */
+    margin: 30px auto;
     margin-top: 30px;
     display: flex;
     flex-direction: column;
@@ -491,7 +489,6 @@ td {
     border-bottom: 1px solid #ddd;
 }
 
-/* BUTTONS */
 .button-area {
     display: flex;
     justify-content: center;
@@ -550,11 +547,15 @@ td {
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
 }
 
-    .submenu li a {
-        font-size: 0.9rem !important;
-        color: #666 !important;
-        padding: 10px 0 !important;
+    .submenu li {
+        margin-bottom: 10px;
     }
+
+        .submenu li a {
+            font-size: 0.9rem !important;
+            color: #666 !important;
+            padding: 10px 0 !important;
+        }
 
     .submenu.show {
         display: block;
@@ -563,7 +564,11 @@ td {
 .dropdown-toggle.active .arrow-icon {
     transform: rotate(180deg);
 }
-/* Responsive */
+
+.sidebar-overlay {
+    display: none;
+}
+
 @media (max-width: 900px) {
     .cover-scan-content {
         flex-direction: column;

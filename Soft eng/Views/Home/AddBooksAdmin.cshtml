@@ -12,12 +12,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/addbooks.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
     <header class="top-header">
         <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-circle">
                 <img src="~/images/school_logo.jpg" alt="SIA Logo">
             </div>
@@ -76,8 +82,7 @@
                 </ul>
             </nav>
         </aside>
-
-
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <main class="content-area">
             <h2>Add Book</h2>
 
@@ -223,6 +228,7 @@
                     </div>
                 </div>
 
+
                 <!-- Right: Detected Text List -->
                 <div class="detected-text-section">
                     <h3>Detected Text</h3>
@@ -238,7 +244,6 @@
             </div>
         </div>
     </div>
-
     <script>
         window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
@@ -248,5 +253,7 @@
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
 </body>
 </html>

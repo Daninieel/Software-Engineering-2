@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <style>
 
         #issueBookForm select {
@@ -31,6 +32,11 @@
 
     <header class="top-header">
         <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-circle">
                 <img src="~/images/school_logo.jpg" alt="SIA Logo">
             </div>
@@ -97,22 +103,7 @@
 
             <div class="search-filter">
                 <input type="text" placeholder="Search by Title, Borrower, etc.">
-                <div class="filter-dropdown">
-                    <button type="button" class="btn-filter filter-btn">Filter</button>
-                    <div class="filter-options">
-                        <div class="filter-option">Available</div>
-                        <div class="filter-option">Borrowed</div>
-                        <div class="filter-option">Damaged</div>
-                        <div class="filter-option">Missing/Lost</div>
-                        <div class="filter-option">Author</div>
-                        <div class="filter-option">Title</div>
-                        <div class="filter-option">Publisher</div>
-                        <div class="filter-option">Donation</div>
-                        <div class="filter-option">Year</div>
-                        <div class="filter-option">Category</div>
-                        <div class="filter-option">Shelf Location</div>
-                    </div>
-                </div>
+
             </div>
 
             <div class="table-card">
@@ -317,5 +308,8 @@
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/borrowedbooks.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
 </body>
 </html>
