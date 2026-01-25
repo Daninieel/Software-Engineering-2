@@ -8,6 +8,7 @@
 html, body {
     height: 100%;
     width: 100%;
+    overflow-x: hidden;
 }
 
 body {
@@ -36,6 +37,7 @@ body {
     display: flex;
     align-items: center;
     gap: 20px;
+    flex-shrink: 0;
 }
 
 .hamburger-btn {
@@ -43,6 +45,7 @@ body {
     background: none;
     border: none;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .logo-circle {
@@ -55,6 +58,7 @@ body {
     align-items: center;
     overflow: hidden;
     border: 3px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
 }
 
     .logo-circle img {
@@ -71,7 +75,7 @@ body {
     display: none;
 }
 
-@media(min-width: 768px) {
+@media(min-width: 769px) {
     .school-name {
         display: block;
     }
@@ -81,6 +85,7 @@ body {
     display: flex;
     align-items: center;
     gap: 25px;
+    flex-shrink: 0;
 }
 
 .logout {
@@ -101,20 +106,25 @@ body {
     font-size: 1rem;
     padding: 8px 15px;
     border-radius: 5px;
+    white-space: nowrap;
 }
 
 .logout-link:hover .logout-text {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.user-avatar img {
-    width: 55px;
-    height: 55px;
-    border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.6);
-    object-fit: cover;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+.user-avatar {
+    flex-shrink: 0;
 }
+
+    .user-avatar img {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.6);
+        object-fit: cover;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
 
 .main-layout {
     display: flex;
@@ -223,34 +233,40 @@ body {
     padding: 40px;
     background: #f8f9fa;
     margin-left: 280px;
+    width: 100%;
+    overflow-x: hidden;
 }
 
     .content-area h2 {
         text-align: center;
         margin-bottom: 30px;
+        font-size: 1.8rem;
+        word-wrap: break-word;
     }
 
 .search-filter {
     display: flex;
     gap: 20px;
     justify-content: center;
-    margin-bottom: 30px;
+    align-items: center;
+    margin: 0 auto 30px auto;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
     .search-filter input {
-        width: 60%;
+        width: 100%;
+        max-width: 600px;
+        min-width: 250px;
         padding: 14px 18px;
         border-radius: 8px;
         border: none;
         background: #eee;
+        font-size: 1rem;
     }
 
 .btn-filter {
-    padding: 14px 30px;
-    background: #ddd;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
+    display: none;
 }
 
 .table-card {
@@ -289,20 +305,15 @@ body {
             background: #555;
         }
 
-    .table-card table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 800px;
-    }
-
 table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 650px;
 }
 
 th {
     text-align: center;
-    padding: 15px;
+    padding: 15px 10px;
     border-bottom: 2px solid #333;
     font-weight: 600;
     color: #333;
@@ -311,9 +322,10 @@ th {
 
 td {
     text-align: center;
-    padding: 15px;
+    padding: 15px 10px;
     border-bottom: 1px solid #ddd;
     vertical-align: middle;
+    word-wrap: break-word;
 }
 
 .title-cell {
@@ -331,12 +343,14 @@ tbody tr {
         background-color: #f9f9f9;
     }
 
+/* DESKTOP BUTTONS - Default */
 .button-area {
     display: flex;
     justify-content: center;
     gap: 25px;
     margin-top: 40px;
     flex-wrap: wrap;
+    padding: 0 20px;
 }
 
 .btn {
@@ -346,11 +360,14 @@ tbody tr {
     border: none;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
+    font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .btn-blue {
     background: #5dade2;
+    text-decoration: none;
 }
 
     .btn-blue:hover {
@@ -385,6 +402,29 @@ tbody tr {
         transform: translateY(-2px);
     }
 
+/* See More Button - Desktop */
+.btn-see-more {
+    display: inline-block;
+    padding: 8px 20px;
+    background-color: #ddd;
+    color: #333;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-see-more:hover {
+        background-color: #5dade2;
+        color: white;
+        box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
+        transform: translateY(-1px);
+    }
+
 .modal {
     display: none;
     position: fixed;
@@ -398,13 +438,16 @@ tbody tr {
 
 .modal-content {
     background: white;
-    width: 400px;
+    width: 90%;
+    max-width: 400px;
     padding: 25px;
     border-radius: 10px;
     position: absolute;
-    top: 35%;
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
     .modal-content h2 {
@@ -442,6 +485,7 @@ tbody tr {
     justify-content: flex-end;
     gap: 10px;
     margin-top: 20px;
+    flex-wrap: wrap;
 }
 
 .modal-buttons {
@@ -449,6 +493,7 @@ tbody tr {
     justify-content: flex-end;
     gap: 15px;
     margin-top: 20px;
+    flex-wrap: wrap;
 }
 
 .modal textarea {
@@ -458,27 +503,6 @@ tbody tr {
     padding: 10px;
     font-family: Poppins, sans-serif;
 }
-
-.btn-see-more {
-    display: inline-block;
-    padding: 8px 20px;
-    background-color: #ddd;
-    color: #333;
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-}
-
-    .btn-see-more:hover {
-        background-color: #5dade2;
-        color: white;
-        box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
-        transform: translateY(-1px);
-    }
 
 .ellipsis {
     max-width: 220px;
@@ -495,160 +519,56 @@ tbody tr {
 
     .request-row.selected {
         border-left: 4px solid #c62828;
+        background-color: #fdf2f2;
     }
 
+/* TABLET RESPONSIVE - 1024px */
 @media (max-width: 1024px) {
-    .content-area {
-        padding: 30px;
-    }
-
-    .table-card {
-        max-height: 500px;
-        padding: 20px;
-    }
-
-        .table-card table {
-            min-width: 750px;
-        }
-}
-
-@media (max-width: 768px) {
-    .top-header {
-        height: 70px;
-        padding: 0 20px;
-    }
-
-    .logo-circle {
-        width: 50px;
-        height: 50px;
-    }
-
-    .user-avatar img {
-        width: 45px;
-        height: 45px;
-    }
-
-    .logout-text {
-        font-size: 0.85rem;
-    }
-
-    .main-layout {
-        margin-top: 70px;
-        min-height: calc(100vh - 70px);
-    }
-
-    .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        top: 70px;
-        height: calc(100vh - 70px);
-    }
-
-        .sidebar.active {
-            transform: translateX(0);
-        }
-
     .hamburger-btn {
-        display: block;
-        color: white;
-        font-size: 1.5rem;
-    }
-
-    .sidebar-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 750;
-        display: none;
-    }
-
-        .sidebar-overlay.active {
-            display: block;
-        }
-
-    .content-area {
-        margin-left: 0;
-        padding: 20px 15px;
-        width: 100%;
-    }
-
-        .content-area h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
-        }
-
-    .search-filter {
+        display: flex !important;
         flex-direction: column;
-        align-items: center;
+        justify-content: space-around;
+        width: 30px;
+        height: 25px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        z-index: 1200;
     }
 
-        .search-filter input {
+        .hamburger-btn span {
             width: 100%;
+            height: 3px;
+            background: white;
+            border-radius: 3px;
+            transition: all 0.3s ease;
         }
 
-    .table-card {
-        padding: 15px;
-        max-height: 450px;
-        border-radius: 8px;
-        margin: 20px 0;
-    }
-
-        .table-card table {
-            min-width: 650px;
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
         }
 
-    th {
-        padding: 12px 8px;
-        font-size: 13px;
-    }
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
 
-    td {
-        padding: 12px 8px;
-        font-size: 13px;
-    }
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
 
-    .title-cell {
-        max-width: 150px;
-    }
-
-    .button-area {
-        flex-direction: column;
-        align-items: center;
-        gap: 15px;
-        margin-top: 30px;
-    }
-
-    .btn {
-        width: 100%;
-        max-width: 300px;
-        padding: 12px 30px;
-    }
-
-    .modal-content {
-        width: 90%;
-        max-width: 400px;
-    }
-}
-
-@media (max-width: 480px) {
     .top-header {
-        height: 60px;
-        padding: 0 12px;
+        padding: 0 20px !important;
+        height: 80px !important;
+    }
+
+    .logo-area .school-name {
+        display: none !important;
     }
 
     .logo-circle {
-        width: 42px;
-        height: 42px;
-        border: 2px solid rgba(255,255,255,0.3);
-    }
-
-    .user-avatar img {
-        width: 38px;
-        height: 38px;
-        border: 2px solid rgba(255,255,255,0.6);
+        width: 55px;
+        height: 55px;
     }
 
     .user-area {
@@ -656,77 +576,419 @@ tbody tr {
     }
 
     .logout-text {
-        font-size: 0.8rem;
-        padding: 6px 10px;
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+
+    .user-avatar img {
+        width: 50px;
+        height: 50px;
     }
 
     .main-layout {
-        margin-top: 60px;
-        min-height: calc(100vh - 60px);
+        margin-top: 80px !important;
     }
 
     .sidebar {
-        top: 60px;
-        height: calc(100vh - 60px);
-        width: 260px;
-        min-width: 260px;
+        position: fixed !important;
+        left: -280px !important;
+        top: 80px !important;
+        width: 280px !important;
+        height: calc(100vh - 80px) !important;
+        z-index: 1100 !important;
+        transition: left 0.3s ease-in-out !important;
+        background-color: white !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3) !important;
+    }
+
+        .sidebar.active {
+            left: 0 !important;
+        }
+
+    .sidebar-overlay {
+        display: none !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1050;
+    }
+
+    .sidebar.active ~ .sidebar-overlay {
+        display: block !important;
     }
 
     .content-area {
-        padding: 15px 10px;
+        margin-left: 0 !important;
+        padding: 30px 20px !important;
     }
 
-        .content-area h2 {
-            font-size: 18px;
-            margin-bottom: 15px;
+    .search-filter {
+        gap: 15px;
+    }
+
+        .search-filter input {
+            width: 100%;
+            max-width: none;
+            min-width: auto;
+            font-size: 0.95rem;
+            padding: 12px 16px;
         }
 
     .table-card {
-        padding: 10px;
-        max-height: 400px;
-        border-radius: 6px;
+        max-width: 100%;
+        margin: 20px auto;
+        border-radius: 10px;
+        max-height: 500px;
+        padding: 20px;
     }
 
-        .table-card table {
-            min-width: 580px;
+    table {
+        font-size: 0.85rem;
+        min-width: 700px;
+    }
+
+    th {
+        padding: 10px 8px;
+        font-size: 0.9rem;
+    }
+
+    td {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    /* Button adjustments for tablets */
+    .btn {
+        padding: 13px 35px;
+        font-size: 0.95rem;
+    }
+
+    .button-area {
+        gap: 15px;
+        padding: 0 10px;
+    }
+}
+
+/* MOBILE RESPONSIVE - 768px */
+@media (max-width: 768px) {
+    .top-header {
+        height: 70px !important;
+        padding: 0 15px !important;
+    }
+
+    .logo-circle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .user-area {
+        gap: 10px;
+    }
+
+    .logout-text {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+
+    .user-avatar img {
+        width: 45px;
+        height: 45px;
+    }
+
+    .main-layout {
+        margin-top: 70px !important;
+    }
+
+    .sidebar {
+        top: 70px !important;
+        height: calc(100vh - 70px) !important;
+    }
+
+    .content-area {
+        padding: 20px 12px !important;
+    }
+
+        .content-area h2 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
         }
+
+    .search-filter {
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+        .search-filter input {
+            padding: 12px 14px;
+            font-size: 0.9rem;
+        }
+
+    .table-card {
+        padding: 0;
+        margin: 15px auto;
+        border-radius: 8px;
+        max-height: 450px;
+    }
+
+    table {
+        min-width: 650px;
+        font-size: 0.8rem;
+    }
 
     th {
         padding: 10px 6px;
-        font-size: 12px;
+        font-size: 0.85rem;
     }
 
     td {
         padding: 10px 6px;
-        font-size: 12px;
+        font-size: 0.8rem;
     }
 
-    .title-cell {
-        max-width: 120px;
-        font-size: 11px;
-    }
-
+    /* Button adjustments for mobile 768px */
     .btn {
-        padding: 12px 25px;
-        font-size: 14px;
+        padding: 12px 30px;
+        font-size: 0.9rem;
+    }
+
+    .btn-see-more {
+        padding: 7px 16px;
+        font-size: 0.8rem;
+    }
+
+    .button-area {
+        gap: 12px;
+        margin-top: 30px;
     }
 
     .modal-content {
-        padding: 20px 15px;
-        width: 95%;
+        width: 90%;
+        max-width: 350px;
+        padding: 20px;
     }
 
-        .modal-content h2 {
-            font-size: 20px;
+    .modal-actions,
+    .modal-buttons {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+        .modal-actions button,
+        .modal-buttons button {
+            flex: 1;
+            min-width: 100px;
+        }
+}
+
+/* SMALL MOBILE - 540px */
+@media (max-width: 540px) {
+    .top-header {
+        height: 65px !important;
+        padding: 0 12px !important;
+    }
+
+    .logo-circle {
+        width: 45px;
+        height: 45px;
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .user-area {
+        gap: 8px;
+    }
+
+    .user-avatar img {
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(255,255,255,0.6);
+    }
+
+    .logout-text {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+
+    .main-layout {
+        margin-top: 65px !important;
+    }
+
+    .sidebar {
+        top: 65px !important;
+        height: calc(100vh - 65px) !important;
+        width: 260px !important;
+        left: -260px !important;
+    }
+
+    .content-area {
+        padding: 15px 10px !important;
+    }
+
+        .content-area h2 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
         }
 
-        .modal-content p {
-            font-size: 13px;
+    .search-filter {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+        .search-filter input {
+            width: 100%;
+            padding: 11px 12px;
+            font-size: 0.85rem;
         }
+
+    .table-card {
+        margin: 12px auto;
+        border-radius: 6px;
+        max-height: 400px;
+    }
+
+    table {
+        min-width: 600px;
+        font-size: 0.75rem;
+    }
+
+    th {
+        padding: 8px 5px;
+        font-size: 0.8rem;
+    }
+
+    td {
+        padding: 8px 5px;
+        font-size: 0.75rem;
+    }
+
+    /* Button adjustments for 540px */
+    .btn {
+        padding: 11px 25px;
+        font-size: 0.85rem;
+    }
 
     .btn-see-more {
         padding: 6px 14px;
-        font-size: 12px;
+        font-size: 0.75rem;
+    }
+
+    .button-area {
+        gap: 10px;
+        margin-top: 25px;
+        padding: 0 5px;
+    }
+
+    .modal-content {
+        padding: 18px 15px;
+        width: 92%;
+    }
+
+        .modal-content h2 {
+            font-size: 1.1rem;
+        }
+
+        .modal-content p {
+            font-size: 0.85rem;
+        }
+}
+
+/* EXTRA SMALL MOBILE - 400px */
+@media (max-width: 400px) {
+    .top-header {
+        height: 60px !important;
+        padding: 0 10px !important;
+    }
+
+    .hamburger-btn {
+        width: 26px;
+        height: 22px;
+    }
+
+        .hamburger-btn span {
+            height: 2.5px;
+        }
+
+    .logo-circle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .user-area {
+        gap: 6px;
+    }
+
+    .logout-text {
+        font-size: 0.75rem;
+        padding: 4px 7px;
+    }
+
+    .user-avatar img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .main-layout {
+        margin-top: 60px !important;
+    }
+
+    .sidebar {
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
+        width: 240px !important;
+        left: -240px !important;
+    }
+
+    .content-area {
+        padding: 12px 8px !important;
+    }
+
+        .content-area h2 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+
+    .search-filter input {
+        padding: 10px;
+        font-size: 0.8rem;
+    }
+
+    .table-card {
+        margin: 10px auto;
+        max-height: 350px;
+    }
+
+    table {
+        min-width: 550px;
+        font-size: 0.7rem;
+    }
+
+    th {
+        padding: 7px 4px;
+        font-size: 0.75rem;
+    }
+
+    td {
+        padding: 7px 4px;
+        font-size: 0.7rem;
+    }
+
+    /* Button adjustments for 400px */
+    .btn {
+        padding: 10px 22px;
+        font-size: 0.8rem;
+    }
+
+    .btn-see-more {
+        padding: 5px 12px;
+        font-size: 0.7rem;
+    }
+
+    .button-area {
+        gap: 8px;
+        margin-top: 20px;
     }
 }
 

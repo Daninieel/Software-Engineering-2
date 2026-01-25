@@ -5,31 +5,31 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    /* Changed shadow to a neutral/warm tone to match red */
     box-shadow: 0 10px 25px rgba(190, 50, 50, 0.15);
     font-family: 'Poppins', sans-serif;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
 }
 
-    /* General Link Styling */
     .pagination-wrapper a {
         text-decoration: none;
     }
 
-/* Navigation Arrows (< >) */
 .nav-arrow {
-    color: #e6b0aa; /* Light Red/Pinkish for inactive state */
+    color: #e6b0aa;
     font-size: 18px;
     font-weight: 500;
     padding: 0 10px;
     transition: color 0.3s;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
     .nav-arrow:hover {
-        color: #c0392b; /* Strong Red on hover */
+        color: #c0392b;
     }
 
-/* Page List Container */
 .page-list {
     list-style: none;
     padding: 0;
@@ -37,11 +37,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
-/* Individual Page Links */
 .page-link {
-    color: #c0392b; /* Main Red Text */
+    color: #c0392b;
     width: 35px;
     height: 35px;
     display: flex;
@@ -51,33 +52,30 @@
     font-weight: 500;
     font-size: 16px;
     transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
     .page-link:hover {
-        background-color: #f9ebea; /* Very pale red background */
+        background-color: #f9ebea;
     }
 
-    /* The Active "1" Circle */
     .page-link.active {
-        /* RED GRADIENT: From lighter red to the deep red in your image */
         background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         color: white;
         font-weight: 600;
         font-size: 18px;
         width: 45px;
         height: 45px;
-        /* Red colored shadow */
         box-shadow: 0 4px 10px rgba(192, 57, 43, 0.4);
     }
 
-/* The "..." dots */
 .dots {
     color: #c0392b;
     font-size: 14px;
     padding: 0 5px;
+    flex-shrink: 0;
 }
 
-/* Go To Section */
 .goto-container {
     display: flex;
     align-items: center;
@@ -85,34 +83,193 @@
     margin-left: 15px;
     padding-left: 15px;
     border-left: 1px solid #f0f0f0;
+    flex-shrink: 0;
 }
 
 .goto-text {
     color: #c0392b;
     font-size: 15px;
     font-weight: 500;
+    white-space: nowrap;
 }
 
-/* Input Box */
 .goto-input {
     width: 50px;
     height: 35px;
     border: none;
     border-radius: 8px;
-    background: #c0392b; /* Solid Red background */
+    background: #c0392b;
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.15);
     color: white;
     text-align: center;
     font-weight: 600;
     outline: none;
+    flex-shrink: 0;
 }
 
     .goto-input:focus {
-        /* Red glow ring */
         box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25), 0 0 0 2px #fadbd8;
     }
 
-/* Responsive */
+@media (max-width: 768px) {
+    .pagination-wrapper {
+        padding: 10px 20px;
+        gap: 12px;
+        border-radius: 40px;
+    }
+
+    .nav-arrow {
+        font-size: 16px;
+        padding: 0 8px;
+    }
+
+    .page-list {
+        gap: 6px;
+    }
+
+    .page-link {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+        .page-link.active {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+
+    .dots {
+        font-size: 13px;
+        padding: 0 4px;
+    }
+
+    .goto-container {
+        margin-left: 10px;
+        padding-left: 10px;
+        gap: 8px;
+    }
+
+    .goto-text {
+        font-size: 14px;
+    }
+
+    .goto-input {
+        width: 45px;
+        height: 32px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 540px) {
+    .pagination-wrapper {
+        padding: 8px 15px;
+        gap: 10px;
+        border-radius: 30px;
+        box-shadow: 0 8px 20px rgba(190, 50, 50, 0.15);
+    }
+
+    .nav-arrow {
+        font-size: 15px;
+        padding: 0 6px;
+    }
+
+    .page-list {
+        gap: 5px;
+    }
+
+    .page-link {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+    }
+
+        .page-link.active {
+            width: 36px;
+            height: 36px;
+            font-size: 15px;
+        }
+
+    .dots {
+        font-size: 12px;
+        padding: 0 3px;
+    }
+
+    .goto-container {
+        margin-left: 8px;
+        padding-left: 8px;
+        gap: 6px;
+        flex-basis: 100%;
+        justify-content: center;
+        border-left: none;
+        border-top: 1px solid #f0f0f0;
+        padding-top: 8px;
+        margin-left: 0;
+        margin-top: 5px;
+    }
+
+    .goto-text {
+        font-size: 13px;
+    }
+
+    .goto-input {
+        width: 42px;
+        height: 30px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 400px) {
+    .pagination-wrapper {
+        padding: 8px 12px;
+        gap: 8px;
+        border-radius: 25px;
+    }
+
+    .nav-arrow {
+        font-size: 14px;
+        padding: 0 5px;
+    }
+
+    .page-list {
+        gap: 4px;
+    }
+
+    .page-link {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+        .page-link.active {
+            width: 34px;
+            height: 34px;
+            font-size: 14px;
+        }
+
+    .dots {
+        font-size: 11px;
+        padding: 0 2px;
+    }
+
+    .goto-container {
+        gap: 5px;
+        padding-top: 6px;
+        margin-top: 4px;
+    }
+
+    .goto-text {
+        font-size: 12px;
+    }
+
+    .goto-input {
+        width: 38px;
+        height: 28px;
+        font-size: 12px;
+        border-radius: 6px;
+    }
+}
+
 @media (max-width: 900px) {
     .cover-scan-content {
         flex-direction: column;

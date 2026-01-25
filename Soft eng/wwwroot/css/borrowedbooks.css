@@ -336,12 +336,14 @@ tbody tr {
         background-color: #f9f9f9;
     }
 
+/* DESKTOP BUTTONS - Default */
 .button-area {
     display: flex;
     justify-content: center;
     gap: 25px;
     margin-top: 40px;
     flex-wrap: wrap;
+    padding: 0 20px;
 }
 
 .btn {
@@ -351,11 +353,14 @@ tbody tr {
     border: none;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
+    font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .btn-blue {
     background: #5dade2;
+    text-decoration: none;
 }
 
     .btn-blue:hover {
@@ -390,6 +395,30 @@ tbody tr {
         transform: translateY(-2px);
     }
 
+/* See More Button - Desktop */
+.see-more-btn {
+    display: inline-block;
+    padding: 8px 20px;
+    background-color: #ddd;
+    color: #333;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .see-more-btn:hover {
+        background-color: #5dade2;
+        color: white;
+        box-shadow: 0 4px 8px rgba(93, 173, 226, 0.3);
+        transform: translateY(-1px);
+    }
+
+/* Overdue Buttons */
 .overdue-btn {
     padding: 8px 20px;
     border: none;
@@ -415,23 +444,6 @@ tbody tr {
     opacity: 0.9;
     transform: translateY(-1px);
 }
-
-.see-more-btn {
-    padding: 8px 20px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-size: 14px;
-}
-
-    .see-more-btn:hover {
-        background: #2980b9;
-        transform: translateY(-2px);
-    }
 
 .modal-overlay {
     display: none;
@@ -892,7 +904,7 @@ tbody tr {
     box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
 }
 
-/* Tablet Devices */
+/* TABLET RESPONSIVE - 1024px */
 @media (max-width: 1024px) {
     .content-area {
         padding: 30px;
@@ -905,9 +917,20 @@ tbody tr {
         .table-card table {
             min-width: 700px;
         }
+
+    /* Button adjustments for tablets */
+    .btn {
+        padding: 13px 35px;
+        font-size: 0.95rem;
+    }
+
+    .button-area {
+        gap: 15px;
+        padding: 0 10px;
+    }
 }
 
-/* Mobile Devices - Tablet Portrait */
+/* MOBILE RESPONSIVE - 768px */
 @media (max-width: 768px) {
     .top-header {
         height: 70px;
@@ -990,43 +1013,63 @@ tbody tr {
         max-height: 400px;
         border-radius: 8px;
         margin: 20px 0;
+        position: relative;
     }
 
+        .table-card::before {
+            content: "← Swipe to see more →";
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #fff3cd;
+            color: #856404;
+            font-size: 11px;
+            font-weight: 600;
+            border-bottom: 1px solid #ffeaa7;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
         .table-card table {
-            min-width: 650px;
+            min-width: 800px;
         }
 
     th {
-        padding: 12px 8px;
-        font-size: 13px;
+        padding: 10px 6px;
+        font-size: 11px;
     }
 
     td {
-        padding: 12px 8px;
-        font-size: 13px;
+        padding: 10px 6px;
+        font-size: 11px;
     }
 
     .title-cell {
         max-width: 150px;
     }
 
-    .overdue-btn, .see-more-btn {
-        padding: 6px 14px;
-        font-size: 12px;
-        min-width: 60px;
+    /* Button adjustments for mobile 768px */
+    .btn {
+        padding: 12px 30px;
+        font-size: 0.9rem;
+    }
+
+    .btn-see-more,
+    .see-more-btn {
+        padding: 7px 16px;
+        font-size: 0.8rem;
+    }
+
+    .overdue-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+        min-width: 55px;
     }
 
     .button-area {
-        flex-direction: column;
-        align-items: center;
-        gap: 15px;
+        gap: 12px;
         margin-top: 30px;
-    }
-
-    .btn {
-        width: 100%;
-        max-width: 300px;
-        padding: 12px 30px;
     }
 
     .details-modal-content {
@@ -1060,7 +1103,96 @@ tbody tr {
     }
 }
 
-/* Small Mobile Devices */
+/* SMALL MOBILE - 540px */
+@media (max-width: 540px) {
+    .top-header {
+        height: 65px;
+        padding: 0 12px;
+    }
+
+    .logo-circle {
+        width: 45px;
+        height: 45px;
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .user-avatar img {
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(255,255,255,0.6);
+    }
+
+    .user-area {
+        gap: 8px;
+    }
+
+    .logout-text {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+
+    .main-layout {
+        margin-top: 65px;
+        min-height: calc(100vh - 65px);
+    }
+
+    .sidebar {
+        top: 65px;
+        height: calc(100vh - 65px);
+        width: 260px;
+        min-width: 260px;
+    }
+
+    .content-area {
+        padding: 15px 10px;
+    }
+
+        .content-area h2 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+        }
+
+    .table-card {
+        margin: 12px auto;
+        border-radius: 6px;
+        max-height: 400px;
+    }
+
+    th {
+        padding: 8px 5px;
+        font-size: 0.8rem;
+    }
+
+    td {
+        padding: 8px 5px;
+        font-size: 0.75rem;
+    }
+
+    /* Button adjustments for 540px */
+    .btn {
+        padding: 11px 25px;
+        font-size: 0.85rem;
+    }
+
+    .btn-see-more,
+    .see-more-btn {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+    }
+
+    .overdue-btn {
+        padding: 5px 10px;
+        font-size: 10px;
+        min-width: 50px;
+    }
+
+    .button-area {
+        gap: 10px;
+        margin-top: 25px;
+        padding: 0 5px;
+    }
+}
+/* EXTRA SMALL MOBILE - 480px */
 @media (max-width: 480px) {
     .top-header {
         height: 60px;
@@ -1114,34 +1246,41 @@ tbody tr {
         border-radius: 6px;
     }
 
+        .table-card::before {
+            font-size: 10px;
+            padding: 8px;
+        }
+
         .table-card table {
-            min-width: 580px;
+            min-width: 750px;
         }
 
     th {
-        padding: 10px 6px;
-        font-size: 12px;
+        padding: 8px 4px;
+        font-size: 10px;
     }
 
     td {
-        padding: 10px 6px;
-        font-size: 12px;
+        padding: 8px 4px;
+        font-size: 10px;
     }
 
     .title-cell {
         max-width: 120px;
-        font-size: 11px;
+        font-size: 10px;
     }
 
-    .overdue-btn, .see-more-btn {
-        padding: 5px 10px;
-        font-size: 11px;
-        min-width: 50px;
-    }
-
+    /* Button adjustments for 480px */
     .btn {
         padding: 12px 25px;
         font-size: 14px;
+    }
+
+    .overdue-btn,
+    .see-more-btn {
+        padding: 5px 10px;
+        font-size: 10px;
+        min-width: 50px;
     }
 
     .modal-content {
@@ -1179,3 +1318,99 @@ tbody tr {
 
     .detail-label {
         font-size: 13px;
+    }
+}
+/* VERY SMALL MOBILE - 400px */
+@media (max-width: 400px) {
+    .top-header {
+        height: 60px;
+        padding: 0 10px;
+    }
+
+    .hamburger-btn {
+        width: 26px;
+        height: 22px;
+    }
+
+    .logo-circle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .user-area {
+        gap: 6px;
+    }
+
+    .logout-text {
+        font-size: 0.75rem;
+        padding: 4px 7px;
+    }
+
+    .user-avatar img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .main-layout {
+        margin-top: 60px;
+    }
+
+    .sidebar {
+        top: 60px;
+        height: calc(100vh - 60px);
+        width: 240px;
+        left: -240px;
+    }
+
+    .content-area {
+        padding: 12px 8px;
+    }
+
+        .content-area h2 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+
+    .table-card {
+        margin: 10px auto;
+        max-height: 350px;
+    }
+
+    table {
+        min-width: 550px;
+        font-size: 0.7rem;
+    }
+
+    th {
+        padding: 7px 4px;
+        font-size: 0.75rem;
+    }
+
+    td {
+        padding: 7px 4px;
+        font-size: 0.7rem;
+    }
+
+    /* Button adjustments for 400px */
+    .btn {
+        padding: 10px 22px;
+        font-size: 0.8rem;
+    }
+
+    .btn-see-more,
+    .see-more-btn {
+        padding: 5px 12px;
+        font-size: 0.7rem;
+    }
+
+    .overdue-btn {
+        padding: 4px 8px;
+        font-size: 9px;
+        min-width: 45px;
+    }
+
+    .button-area {
+        gap: 8px;
+        margin-top: 20px;
+    }
+}

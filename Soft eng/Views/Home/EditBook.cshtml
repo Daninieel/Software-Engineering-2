@@ -5,21 +5,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="~/css/addbooks.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Book</title>
+    <link rel="stylesheet" href="~/css/editbooks.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- Header -->
+    <header class="top-header">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/logo.png" alt="Logo">
+            </div>
+            <div class="school-name">School Library System</div>
+        </div>
+        <div class="user-area">
+            <div class="logout">
+                <a asp-action="Logout" asp-controller="Account" class="logout-link">
+                    <span class="logout-text">Logout</span>
+                </a>
+            </div>
+            <div class="user-avatar">
+                <img src="~/images/default-avatar.png" alt="User">
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <nav>
+            <ul>
+                <li><a asp-action="Dashboard" asp-controller="Home">Dashboard</a></li>
+                @if (ViewBag.FromAdmin == true)
+                {
+                    <li class="active"><a asp-action="InventoryAdmin" asp-controller="Books">Inventory</a></li>
+                    <li><a asp-action="AddBook" asp-controller="Books">Add Book</a></li>
+                }
+                else
+                {
+                    <li class="active"><a asp-action="Inventory" asp-controller="Books">Inventory</a></li>
+                    <li><a asp-action="AddBook" asp-controller="Books">Add Book</a></li>
+                }
+                <li><a asp-action="BorrowedBooks" asp-controller="Books">Borrowed Books</a></li>
+                <li><a asp-action="Reports" asp-controller="Books">Reports</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
     <main class="content-area">
         <h2>Edit Book Details</h2>
-
         <div class="form-card">
             <form asp-action="EditBook" method="post">
                 <div asp-validation-summary="All" class="validation-summary-errors"></div>
-
                 <input type="hidden" asp-for="BookID" />
                 <input type="hidden" name="isAdmin" value="@((ViewBag.FromAdmin ?? false).ToString().ToLower())" />
 
-                <div class="form-group full-width">
+                <div class="form-group">
                     <label>BOOK TITLE</label>
                     <input asp-for="BookTitle" required />
                     <span asp-validation-for="BookTitle" class="field-validation-error"></span>
@@ -41,51 +90,33 @@
                 <div class="form-grid-row">
                     <div class="form-group">
                         <label>EDITION</label>
-                        <input asp-for="Edition"
-                               placeholder="e.g. 2nd/2019"
-                               pattern="^\d+(st|nd|rd|th)/\d{4}$"
-                               title="Format must be like 2nd/2019"
-                               required />
+                        <input asp-for="Edition" placeholder="e.g. 2nd/2019" pattern="^\d+(st|nd|rd|th)/\d{4}$" title="Format must be like 2nd/2019" required />
                         <span asp-validation-for="Edition" class="field-validation-error"></span>
                     </div>
-
                     <div class="form-group">
                         <label>PUBLISHED YEAR</label>
-                        <input asp-for="Year"
-                               type="date"
-                               id="PublishedYear"
-                               required />
+                        <input asp-for="Year" type="date" id="PublishedYear" required />
                         <span asp-validation-for="Year" class="field-validation-error"></span>
                     </div>
                 </div>
 
-                <div class="form-grid-mixed">
-                    <div class="left-col">
-                        <div class="form-group">
-                            <label>ISBN</label>
-                            <input asp-for="ISBN"
-                                   inputmode="numeric"
-                                   pattern="[0-9]*"
-                                   maxlength="13"
-                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                   required />
-                            <span asp-validation-for="ISBN" class="field-validation-error"></span>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label>PUBLISHER</label>
-                            <input asp-for="Publisher" />
-                            <span asp-validation-for="Publisher" class="field-validation-error"></span>
-                        </div>
+                <div class="form-grid-row">
+                    <div class="form-group">
+                        <label>ISBN</label>
+                        <input asp-for="ISBN" inputmode="numeric" pattern="[0-9]*" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required />
+                        <span asp-validation-for="ISBN" class="field-validation-error"></span>
                     </div>
-
-                    <div class="right-col">
-                        <div class="form-group h-100">
-                            <label>REMARKS</label>
-                            <textarea asp-for="Remarks"></textarea>
-                            <span asp-validation-for="Remarks" class="field-validation-error"></span>
-                        </div>
+                    <div class="form-group">
+                        <label>REMARKS</label>
+                        <input asp-for="Remarks" />
+                        <span asp-validation-for="Remarks" class="field-validation-error"></span>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>PUBLISHER</label>
+                    <input asp-for="Publisher" />
+                    <span asp-validation-for="Publisher" class="field-validation-error"></span>
                 </div>
 
                 <div class="form-grid-row">
@@ -97,13 +128,9 @@
                         </select>
                         <span asp-validation-for="SourceType" class="field-validation-error"></span>
                     </div>
-
                     <div class="form-group">
                         <label>DATE RECEIVED</label>
-                        <input asp-for="DateReceived"
-                               type="date"
-                               id="DateReceived"
-                               required />
+                        <input asp-for="DateReceived" type="date" id="DateReceived" required />
                         <span asp-validation-for="DateReceived" class="field-validation-error"></span>
                     </div>
                 </div>
@@ -118,7 +145,6 @@
                         </select>
                         <span asp-validation-for="BookStatus" class="field-validation-error"></span>
                     </div>
-
                     <div class="form-group">
                         <label>TOTAL COPIES</label>
                         <input asp-for="TotalCopies" type="number" min="1" required />
@@ -126,22 +152,27 @@
                     </div>
                 </div>
 
-                <div class="form-group full-width">
+                <div class="form-group">
                     <label>SHELF LOCATION</label>
                     <input asp-for="ShelfLocation" />
                     <span asp-validation-for="ShelfLocation" class="field-validation-error"></span>
                 </div>
 
                 <div class="button-area">
-                    <button type="submit" class="btn btn-green">Update Book</button>
-
+                    <button type="submit" class="btn btn-green">
+                        <i class="fas fa-save"></i> Update Book
+                    </button>
                     @if (ViewBag.FromAdmin == true)
                     {
-                        <a asp-action="InventoryAdmin" class="btn btn-red">Cancel</a>
+                        <a asp-action="InventoryAdmin" class="btn btn-red">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
                     }
                     else
                     {
-                        <a asp-action="Inventory" class="btn btn-red">Cancel</a>
+                        <a asp-action="Inventory" class="btn btn-red">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
                     }
                 </div>
             </form>
@@ -149,6 +180,27 @@
     </main>
 
     <script>
+        // Mobile sidebar toggle
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const body = document.body;
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+            body.classList.toggle('sidebar-open');
+        }
+
+        if (hamburgerBtn) {
+            hamburgerBtn.addEventListener('click', toggleSidebar);
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+        }
+
+        // Date validation
         const publishedYear = document.getElementById("PublishedYear");
         const dateReceived = document.getElementById("DateReceived");
 
@@ -168,6 +220,7 @@
                 validateDates();
             }
         });
+
         dateReceived.addEventListener("change", validateDates);
     </script>
 

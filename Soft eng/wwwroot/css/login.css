@@ -40,7 +40,6 @@ body {
         object-fit: contain;
     }
 
-
 .form-group {
     margin-bottom: 20px;
     text-align: left;
@@ -164,25 +163,287 @@ input:focus {
         .password-wrap .toggle-password svg {
             color: #444;
         }
-@media screen and (max-width: 480px) {
-    .login-card {
-        padding: 30px 20px;
-        margin: 15px;
-        max-width: 100%;
+
+/* TABLET - 768px */
+@media screen and (max-width: 768px) {
+    body {
+        overflow-x: hidden;
     }
 
-    .logo-container img {
-        width: 100px;
-        height: 100px;
+    .login-card {
+        max-width: 360px;
+        padding: 35px 28px;
+        margin: 18px;
+    }
+
+    .logo-container {
+        margin-bottom: 25px;
+    }
+
+        .logo-container img {
+            width: 110px;
+            height: 110px;
+        }
+
+    label {
+        font-size: 15px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 11px;
+        font-size: 15px;
+    }
+
+    .btn-login {
+        width: 140px;
+        font-size: 17px;
+        padding: 11px 0;
+    }
+
+    .forgot-password {
+        font-size: 13px;
+    }
+
+    .footer-text {
+        font-size: 0.85em;
+    }
+}
+
+/* MOBILE - 540px */
+@media screen and (max-width: 540px) {
+    body {
+        padding: 10px;
+    }
+
+    .login-card {
+        max-width: 320px;
+        padding: 30px 24px;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .logo-container {
+        margin-bottom: 22px;
+    }
+
+        .logo-container img {
+            width: 100px;
+            height: 100px;
+            border: 4px solid white;
+        }
+
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    label {
+        font-size: 14px;
+        margin-bottom: 7px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 10px;
+        font-size: 14px;
+        border-radius: 7px;
+    }
+
+    .login-error {
+        padding: 10px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .forgot-password {
+        font-size: 12px;
     }
 
     .btn-login {
         width: 100%;
+        max-width: 200px;
+        font-size: 16px;
+        padding: 11px 0;
+        margin-top: 18px;
+    }
+
+    .footer-text {
+        font-size: 0.8em;
+        margin-top: 18px;
     }
 
     .password-wrap input[type="password"],
     .password-wrap input[type="text"] {
         padding-right: 40px;
+    }
+
+    .password-wrap .toggle-password {
+        right: 9px;
+    }
+}
+
+/* SMALL MOBILE - 480px */
+@media screen and (max-width: 480px) {
+    body {
+        padding: 8px;
+    }
+
+    .login-card {
+        max-width: 290px;
+        padding: 28px 22px;
+        margin: 10px;
+        border-radius: 10px;
+    }
+
+    .logo-container {
+        margin-bottom: 20px;
+    }
+
+        .logo-container img {
+            width: 90px;
+            height: 90px;
+            border: 3px solid white;
+        }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 9px;
+        font-size: 13px;
+    }
+
+    .login-error {
+        padding: 9px;
+        font-size: 12px;
+    }
+
+    .forgot-password {
+        font-size: 11px;
+    }
+
+    .btn-login {
+        width: 100%;
+        max-width: 180px;
+        font-size: 15px;
+        padding: 10px 0;
+        margin-top: 16px;
+    }
+
+    .footer-text {
+        font-size: 0.75em;
+        margin-top: 16px;
+    }
+}
+
+/* EXTRA SMALL MOBILE - 400px */
+@media screen and (max-width: 400px) {
+    body {
+        padding: 5px;
+    }
+
+    .login-card {
+        max-width: 270px;
+        padding: 25px 20px;
+        margin: 8px;
+        border-radius: 8px;
+    }
+
+    .logo-container {
+        margin-bottom: 18px;
+    }
+
+        .logo-container img {
+            width: 80px;
+            height: 80px;
+        }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    label {
+        font-size: 12px;
+        margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .login-error {
+        padding: 8px;
+        font-size: 11px;
+    }
+
+    .forgot-password {
+        font-size: 10px;
+    }
+
+    .btn-login {
+        width: 100%;
+        max-width: 160px;
+        font-size: 14px;
+        padding: 9px 0;
+        margin-top: 14px;
+        border-radius: 20px;
+    }
+
+    .footer-text {
+        font-size: 0.7em;
+        margin-top: 14px;
+    }
+
+    .password-wrap .toggle-password {
+        right: 7px;
+    }
+
+        .password-wrap .toggle-password svg {
+            width: 18px;
+            height: 18px;
+        }
+}
+
+/* VERY SMALL MOBILE - 360px */
+@media screen and (max-width: 360px) {
+    .login-card {
+        max-width: 250px;
+        padding: 22px 18px;
+        margin: 5px;
+    }
+
+    .logo-container img {
+        width: 70px;
+        height: 70px;
+    }
+
+    label {
+        font-size: 11px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        padding: 7px;
+        font-size: 11px;
+    }
+
+    .btn-login {
+        max-width: 140px;
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    .footer-text {
+        font-size: 0.65em;
     }
 }
 
