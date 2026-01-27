@@ -1,6 +1,6 @@
 ﻿let currentBookData = null;
 let isEditing = false;
-let allBorrowedBooks = []; 
+let allBorrowedBooks = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 let allFilteredBooks = [];
@@ -44,7 +44,7 @@ function initializeBorrowedBooks() {
 
     setupEventListeners();
     setupSearchListener();
-    loadBorrowedBooks(); 
+    loadBorrowedBooks();
 }
 
 function setupSearchListener() {
@@ -65,11 +65,11 @@ function filterBorrowedBooks(query) {
             const borrowerName = (book.borrowerName || '').toLowerCase();
             const bookTitle = (book.bookTitle || '').toLowerCase();
             const bookId = book.bookID.toString().toLowerCase();
-            
-            return loanId.includes(query) || 
-                   borrowerName.includes(query) || 
-                   bookTitle.includes(query) || 
-                   bookId.includes(query);
+
+            return loanId.includes(query) ||
+                borrowerName.includes(query) ||
+                bookTitle.includes(query) ||
+                bookId.includes(query);
         });
     }
     currentPage = 1;
@@ -174,6 +174,11 @@ function renderTableRows() {
         newRow.dataset.loanId = book.loanID;
         newRow.dataset.bookData = JSON.stringify(book);
 
+        // Check if overdue status is "Yes" to disable toggle
+        const isOverdueYes = book.overdueStatus === 'Yes';
+        const disabledAttr = isOverdueYes ? 'disabled' : '';
+        const cursorStyle = isOverdueYes ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+
         newRow.innerHTML = `
             <td>${book.loanID}</td>
             <td>${book.borrowerName}</td>
@@ -182,7 +187,9 @@ function renderTableRows() {
             <td>${book.dateReturned || '-'}</td>
             <td>
                 <button class="overdue-btn ${book.overdueStatus === 'Yes' ? 'overdue-yes' : 'overdue-no'}"
-                        onclick="toggleOverdueStatus(${book.loanID}, this)">
+                        onclick="toggleOverdueStatus(${book.loanID}, this)"
+                        ${disabledAttr}
+                        style="${cursorStyle}">
                     ${book.overdueStatus}
                 </button>
             </td>
@@ -281,7 +288,7 @@ async function handleIssueBookSubmit(e) {
         if (result.success) {
             alert('Book issued successfully!');
             closeIssueBookModal();
-            loadBorrowedBooks(); 
+            loadBorrowedBooks();
         } else {
             alert('Error: ' + result.error);
         }
@@ -426,7 +433,7 @@ async function saveBookChanges() {
             isEditing = false;
             setInputsEnabled(false);
             closeDetailsModal();
-            loadBorrowedBooks(); 
+            loadBorrowedBooks();
         } else {
             alert('Error updating book: ' + result.error);
         }
@@ -457,8 +464,13 @@ function formatDateForInput(dateStr) {
 }
 
 window.toggleOverdueStatus = async function (loanId, button) {
+    // Prevent toggle if already "Yes"
     const currentStatus = button.textContent.trim();
-    const newStatus = currentStatus === 'Yes' ? 'No' : 'Yes';
+    if (currentStatus === 'Yes') {
+        return; // Do nothing if already marked as overdue
+    }
+
+    const newStatus = 'Yes'; // Can only change from "No" to "Yes"
 
     try {
         const response = await fetch('/Home/UpdateOverdueStatus', {

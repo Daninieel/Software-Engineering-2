@@ -29,7 +29,6 @@ namespace Soft_eng.Models
         public int? Pages { get; set; }
 
         [Required]
-        // Updated Regex to be more flexible if needed, or matches your form requirement
         [RegularExpression(@"^[0-9]+(st|nd|rd|th)\/[0-9]{4}$",
             ErrorMessage = "Edition must follow format like 2nd/2019.")]
         public string? Edition { get; set; }
@@ -50,7 +49,6 @@ namespace Soft_eng.Models
         public int TotalCopies { get; set; } = 1;
 
         [Required]
-        // FIX: Added 'Missing' to the allowed list and ensured 'Good', 'Damaged' are present
         [RegularExpression(@"^(Available|Unavailable|Damaged|Lost|Borrowed|Reserved|Good|Missing)$",
             ErrorMessage = "Invalid book status.")]
         public string? BookStatus { get; set; }
