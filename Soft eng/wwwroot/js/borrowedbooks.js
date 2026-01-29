@@ -91,12 +91,21 @@ function setupEventListeners() {
         btnEdit.addEventListener('click', handleEditClick);
     }
 
+    // Handle Borrower Type change in Issue Book form
+    const borrowerTypeSelect = document.getElementById('borrowerType');
+    if (borrowerTypeSelect) {
+        borrowerTypeSelect.addEventListener('change', function() {
+            handleBorrowerTypeChange(this.value);
+        });
+    }
+
     window.onclick = function (event) {
         if (event.target === issueBookModal) closeIssueBookModal();
         if (event.target === detailsModal) closeDetailsModal();
     };
 
     setupAutocomplete();
+    setupDateValidation();
 
     if (prevBtn) {
         prevBtn.addEventListener('click', (e) => {
@@ -123,6 +132,98 @@ function setupEventListeners() {
     }
 }
 
+function setupDateValidation() {
+    const dueDateInput = document.getElementById('detailDueDate');
+    const dateReturnedInput = document.getElementById('detailDateReturned');
+    const borrowDateInput = document.getElementById('detailBorrowDate');
+
+    // Helper function to check if date is Thursday
+    const isThursday = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.getDay() === 4; // Thursday is 4
+    };
+
+    // Helper function to check if date is Friday, Saturday, or Sunday
+    const isFridayToSunday = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        const day = date.getDay();
+        return day === 5 || day === 6 || day === 0; // Friday (5), Saturday (6), Sunday (0)
+    };
+
+    // Helper function to get day name
+    const getDayName = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        return days[date.getDay()];
+    };
+
+    // Helper function to get next Thursday
+    const getNextThursday = (fromDate) => {
+        const date = new Date(fromDate + 'T00:00:00');
+        const day = date.getDay();
+        const daysUntilThursday = day <= 4 ? 4 - day : 11 - day;
+        date.setDate(date.getDate() + daysUntilThursday);
+        return date.toISOString().split('T')[0];
+    };
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Validation for Due Date - must be Thursday and in future
+    if (dueDateInput) {
+        dueDateInput.addEventListener('change', function () {
+            if (this.value) {
+                // Check if date is in the past
+                if (this.value < today) {
+                    alert('Due Date cannot be in the past. Please select a current or future date.');
+                    this.value = '';
+                    return;
+                }
+                // Check if date is Thursday
+                if (!isThursday(this.value)) {
+                    const dayName = getDayName(this.value);
+                    const nextThurs = getNextThursday(this.value);
+                    alert(`Due Date must be on Thursday. You selected ${dayName}. The next available Thursday is ${nextThurs}.`);
+                    this.value = '';
+                }
+            }
+        });
+    }
+
+    // Validation for Date Returned - cannot be Friday, Saturday, or Sunday
+    if (dateReturnedInput) {
+        dateReturnedInput.min = today;
+        dateReturnedInput.addEventListener('change', function () {
+            if (this.value) {
+                // Check if date is in the past
+                if (this.value < today) {
+                    alert('Date Returned cannot be in the past. Please select a current or future date.');
+                    this.value = '';
+                    return;
+                }
+                // Check if date is Friday, Saturday, or Sunday
+                if (isFridayToSunday(this.value)) {
+                    const dayName = getDayName(this.value);
+                    alert(`Books cannot be returned on ${dayName}. Please select a date from Monday to Thursday.`);
+                    this.value = '';
+                }
+            }
+        });
+    }
+
+    // Validation for Date Borrowed - cannot be earlier than original borrowed date
+    if (borrowDateInput) {
+        borrowDateInput.addEventListener('change', function () {
+            if (currentBookData && currentBookData.borrowDate) {
+                const originalBorrowDate = currentBookData.borrowDate;
+                if (this.value && this.value < originalBorrowDate) {
+                    alert('Date Borrowed cannot be earlier than the original borrowed date (' + originalBorrowDate + '). Please select a current or future date.');
+                    this.value = originalBorrowDate;
+                }
+            }
+        });
+    }
+}
+
 async function loadBorrowedBooks() {
     try {
         showLoadingState();
@@ -132,7 +233,13 @@ async function loadBorrowedBooks() {
         const books = await response.json();
 
         if (books && books.length > 0) {
-            allBorrowedBooks = books.sort((a, b) => b.loanID - a.loanID);
+            // Filter out books that have been returned
+            const unreturned = books.filter(book => 
+                book.returnStatus !== 'Returned' && 
+                (book.returnStatus === null || book.returnStatus === undefined || book.returnStatus === 'Unreturned' || book.returnStatus === 'Not Returned')
+            );
+            
+            allBorrowedBooks = unreturned.sort((a, b) => b.loanID - a.loanID);
             allFilteredBooks = [...allBorrowedBooks];
 
             changePage(1);
@@ -266,11 +373,22 @@ async function handleIssueBookSubmit(e) {
     e.preventDefault();
     const submitBtn = issueBookForm.querySelector('.btn-issue');
 
+    const borrowerName = document.getElementById('borrowerName').value.trim();
+    const borrowerType = document.getElementById('borrowerType').value;
+    const bookTitle = document.getElementById('bookTitle').value.trim();
+    const borrowDate = document.getElementById('borrowDate').value;
+
+    // Validation: Check if borrower name follows "LastName, FirstName" format
+    if (!validateBorrowerNameFormat(borrowerName)) {
+        alert('Please enter borrower name in the format: LastName, FirstName (e.g., Dela Cruz, Juan)');
+        return;
+    }
+
     const formData = new URLSearchParams({
-        borrowerName: document.getElementById('borrowerName').value.trim(),
-        borrowerType: document.getElementById('borrowerType').value,
-        bookTitle: document.getElementById('bookTitle').value.trim(),
-        borrowDate: document.getElementById('borrowDate').value
+        borrowerName: borrowerName,
+        borrowerType: borrowerType,
+        bookTitle: bookTitle,
+        borrowDate: borrowDate
     });
 
     try {
@@ -311,17 +429,42 @@ function showBookDetails(loanId, button) {
     const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     const setValue = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
+    // Set Loan ID and Borrower ID
     setText('detailLoanId', bookData.loanID);
+    setText('detailBorrowerId', bookData.borrowerID || '-');
+    setText('detailBookId', bookData.bookID || '-');
+    
     setValue('detailBorrowerName', bookData.borrowerName);
     setValue('detailBookTitle', bookData.bookTitle);
 
+    // Set Date Borrowed with original value and min constraint
     let borrowDateEl = document.getElementById('detailBorrowDate');
     if (borrowDateEl) {
-        borrowDateEl.value = bookData.borrowDate || bookData.dateBorrowed;
+        // Convert date format from MM/dd/yyyy to YYYY-MM-DD for date input
+        const originalBorrowDate = bookData.borrowDate || bookData.dateBorrowed;
+        const formattedBorrowDate = convertDateForInput(originalBorrowDate);
+        borrowDateEl.value = formattedBorrowDate;
+        borrowDateEl.min = formattedBorrowDate;
+        // Store the original formatted date
+        currentBookData.borrowDate = formattedBorrowDate;
     }
 
-    const returnedVal = bookData.dateReturned === '-' ? '' : formatDateForInput(bookData.dateReturned);
-    setValue('detailDateReturned', returnedVal);
+    // Set Due Date with original value
+    const dueDateEl = document.getElementById('detailDueDate');
+    if (dueDateEl) {
+        const formattedDueDate = convertDateForInput(bookData.dueDate);
+        dueDateEl.value = formattedDueDate;
+    }
+
+    // Set Date Returned with original value
+    const dateReturnedEl = document.getElementById('detailDateReturned');
+    if (dateReturnedEl) {
+        const today = new Date().toISOString().split('T')[0];
+        dateReturnedEl.min = today;
+        const returnedVal = bookData.dateReturned === '-' ? '' : convertDateForInput(bookData.dateReturned);
+        dateReturnedEl.value = returnedVal;
+    }
+
     setValue('detailOverdueStatus', bookData.overdueStatus);
 
     const statusSelect = document.getElementById('detailBookStatus');
@@ -344,6 +487,9 @@ function showBookDetails(loanId, button) {
 
     setValue('detailFineAmount', bookData.fineAmount || '-');
 
+    // Handle Teacher-specific restrictions
+    handleTeacherRestrictions(bookData.borrowerType);
+
     setInputsEnabled(false);
     detailsModal.style.display = 'flex';
 }
@@ -354,12 +500,60 @@ function closeDetailsModal() {
     currentBookData = null;
 }
 
-async function handleEditClick() {
+function handleTeacherRestrictions(borrowerType) {
+    // Hide/disable overdue status and fine amount for teachers
+    const isTeacher = borrowerType && borrowerType.trim().toLowerCase() === 'teacher';
+    
+    const overdueStatusEl = document.getElementById('detailOverdueStatus');
+    const fineAmountEl = document.getElementById('detailFineAmount');
+    const overdueGroup = overdueStatusEl ? overdueStatusEl.closest('.detail-group') : null;
+    const fineGroup = fineAmountEl ? fineAmountEl.closest('.detail-group') : null;
+
+    if (isTeacher) {
+        // Hide overdue status and fine amount for teachers
+        if (overdueGroup) {
+            overdueGroup.style.display = 'none';
+        }
+        if (fineGroup) {
+            fineGroup.style.display = 'none';
+        }
+        
+        // Disable overdue status field
+        if (overdueStatusEl) {
+            overdueStatusEl.disabled = true;
+            overdueStatusEl.value = 'No';
+        }
+        
+        // Set fine amount to '-'
+        if (fineAmountEl) {
+            fineAmountEl.disabled = true;
+            fineAmountEl.value = '-';
+        }
+    } else {
+        // Show for students
+        if (overdueGroup) {
+            overdueGroup.style.display = '';
+        }
+        if (fineGroup) {
+            fineGroup.style.display = '';
+        }
+        
+        // Enable fields
+        if (overdueStatusEl) {
+            overdueStatusEl.disabled = false;
+        }
+        if (fineAmountEl) {
+            fineAmountEl.disabled = false;
+        }
+    }
+}
+
+function handleEditClick() {
     if (!isEditing) {
         isEditing = true;
         setInputsEnabled(true);
     } else {
-        await saveBookChanges();
+        saveBookChanges();
     }
 }
 
@@ -370,14 +564,27 @@ function setInputsEnabled(enabled) {
         'detailBookStatus', 'detailFineAmount'
     ];
 
+    const borrowerType = currentBookData.borrowerType || 'Student';
+    const isTeacher = borrowerType.trim().toLowerCase() === 'teacher';
+
     editableIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.disabled = !enabled;
-            el.style.backgroundColor = enabled ? '#fff' : '#e9ecef';
-            el.style.border = enabled ? '1px solid #3498db' : '1px solid #ced4da';
+            // For teachers, don't enable overdue status or fine amount
+            if (isTeacher && (id === 'detailOverdueStatus' || id === 'detailFineAmount')) {
+                el.disabled = true;
+            } else {
+                el.disabled = !enabled;
+            }
+            el.style.backgroundColor = enabled && !(isTeacher && (id === 'detailOverdueStatus' || id === 'detailFineAmount')) ? '#fff' : '#e9ecef';
+            el.style.border = enabled && !(isTeacher && (id === 'detailOverdueStatus' || id === 'detailFineAmount')) ? '1px solid #3498db' : '1px solid #ced4da';
         }
     });
+
+    // Re-apply date validation when entering edit mode
+    if (enabled) {
+        setupDateValidation();
+    }
 
     if (btnEdit) {
         btnEdit.textContent = enabled ? 'Save' : 'Edit';
@@ -395,9 +602,31 @@ async function saveBookChanges() {
     const bookTitle = document.getElementById('detailBookTitle').value.trim();
     const borrowDate = document.getElementById('detailBorrowDate').value;
     const bookStatus = document.getElementById('detailBookStatus').value;
+    const returnStatus = document.getElementById('detailReturnStatus').value;
+    const dateReturned = document.getElementById('detailDateReturned').value;
+    const borrowerType = currentBookData.borrowerType || 'Student';
 
+    // Validation: Check required fields
     if (!borrowerName || !bookTitle || !borrowDate) {
         alert("Please fill in all required fields.");
+        return;
+    }
+
+    // Validation: If Return Status is "Not Returned", don't make any changes
+    if (returnStatus === 'Not Returned' || !returnStatus) {
+        alert("No changes will be made for 'Not Returned' status.");
+        return;
+    }
+
+    // Validation: If Return Status is "Returned", Date Returned must be filled
+    if (returnStatus === 'Returned' && !dateReturned) {
+        alert("Please also select the date in Date Returned.");
+        return;
+    }
+
+    // Validation: Teachers cannot have overdue or fines
+    if (borrowerType.trim().toLowerCase() === 'teacher') {
+        alert("Teachers are not subject to overdue fines. Please verify the borrower type.");
         return;
     }
 
@@ -410,7 +639,9 @@ async function saveBookChanges() {
             borrowerName: borrowerName,
             bookTitle: bookTitle,
             borrowDate: borrowDate,
-            bookStatus: bookStatus
+            bookStatus: bookStatus,
+            returnStatus: returnStatus,
+            dateReturned: dateReturned
         });
 
         const response = await fetch('/Home/UpdateBorrowedBook', {
@@ -422,12 +653,6 @@ async function saveBookChanges() {
         const result = await response.json();
 
         if (result.success) {
-            const newOverdue = document.getElementById('detailOverdueStatus').value;
-            if (newOverdue) await updateOverdueStatus(loanId, newOverdue);
-
-            const newDateReturned = document.getElementById('detailDateReturned').value;
-            if (newDateReturned) await updateDateReturned(loanId, newDateReturned);
-
             alert('Changes saved successfully!');
 
             isEditing = false;
@@ -453,14 +678,10 @@ function showLoadingState() {
     }
 }
 
-function formatDateForInput(dateStr) {
+function convertDateForInput(dateStr) {
     if (!dateStr || dateStr === '-') return '';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const [month, day, year] = dateStr.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 window.toggleOverdueStatus = async function (loanId, button) {
@@ -527,4 +748,60 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
+}
+
+function handleBorrowerTypeChange(borrowerType) {
+    // Display a message if Teacher is selected
+    const isTeacher = borrowerType && borrowerType.trim().toLowerCase() === 'teacher';
+    
+    if (isTeacher) {
+        const infoMsg = document.getElementById('teacherInfoMsg');
+        if (!infoMsg) {
+            // Create info message element if it doesn't exist
+            const msgDiv = document.createElement('div');
+            msgDiv.id = 'teacherInfoMsg';
+            msgDiv.style.cssText = 'background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin-bottom: 15px; border-radius: 4px; color: #1565c0; font-size: 0.9rem;';
+            msgDiv.textContent = 'ℹ️ Teachers are not subject to overdue status or fine amounts.';
+            
+            const formElement = document.getElementById('issueBookForm');
+            if (formElement) {
+                formElement.insertBefore(msgDiv, formElement.firstChild);
+            }
+        }
+    } else {
+        // Remove info message if Student is selected
+        const infoMsg = document.getElementById('teacherInfoMsg');
+        if (infoMsg) {
+            infoMsg.remove();
+        }
+    }
+}
+
+function validateBorrowerNameFormat(borrowerName) {
+    // Check if borrower name contains exactly one comma
+    if (!borrowerName.includes(',')) {
+        return false;
+    }
+
+    // Split by comma and check both parts
+    const parts = borrowerName.split(',');
+    if (parts.length !== 2) {
+        return false;
+    }
+
+    // Check if both parts (last name and first name) are non-empty after trimming
+    const lastName = parts[0].trim();
+    const firstName = parts[1].trim();
+
+    if (lastName.length === 0 || firstName.length === 0) {
+        return false;
+    }
+
+    // Check if both parts contain only letters, spaces, hyphens, and apostrophes
+    const nameRegex = /^[a-zA-Z\s\-']+$/;
+    if (!nameRegex.test(lastName) || !nameRegex.test(firstName)) {
+        return false;
+    }
+
+    return true;
 }

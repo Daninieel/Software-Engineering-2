@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/search-suggestions.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <style>
         /* Custom Dropdown Styling */
@@ -127,9 +128,8 @@
             <h2>Borrowed Books</h2>
 
             <div class="search-filter">
-                <input type="text" placeholder="Search by Title, Borrower, etc.">
+                <input type="text" id="borrowedSearch" placeholder="Search by Title, Borrower, etc.">
             </div>
-
             <div class="table-card">
                 <table id="borrowedBooksTable">
                     <thead>
@@ -185,7 +185,7 @@
             <form id="issueBookForm">
                 <div class="form-group">
                     <label for="borrowerName">Borrower Name</label>
-                    <input type="text" id="borrowerName" name="borrowerName" placeholder="Enter borrower name" required>
+                    <input type="text" id="borrowerName" name="borrowerName" placeholder="Dela Cruz, Juan" required>
                 </div>
 
                 <div class="form-group">
@@ -227,6 +227,17 @@
                         <div class="read-only-field" id="detailLoanId">-</div>
                     </div>
                     <div class="detail-group">
+                        <div class="detail-label">Borrower ID</div>
+                        <div class="read-only-field" id="detailBorrowerId">-</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book ID</div>
+                        <div class="read-only-field" id="detailBookId">-</div>
+                    </div>
+                    <div class="detail-group">
                         <div class="detail-label">Due Date</div>
                         <input type="date" class="detail-input" id="detailDueDate">
                     </div>
@@ -238,8 +249,8 @@
                         <input type="text" class="detail-input" id="detailBorrowerName" placeholder="Enter borrower name">
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Date Returned</div>
-                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
+                        <div class="detail-label">Date Borrowed</div>
+                        <input type="date" class="detail-input" id="detailBorrowDate">
                     </div>
                 </div>
 
@@ -249,8 +260,8 @@
                         <input type="text" class="detail-input" id="detailBookTitle" placeholder="Enter book title">
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Date Borrowed</div>
-                        <input type="date" class="detail-input" id="detailBorrowDate">
+                        <div class="detail-label">Date Returned</div>
+                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
                     </div>
                 </div>
 
@@ -264,27 +275,27 @@
                         </select>
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Book Status</div>
-                        <select class="detail-select" id="detailBookStatus">
+                        <div class="detail-label">Return Status</div>
+                        <select class="detail-select" id="detailReturnStatus">
                             <option value="" disabled selected>Select</option>
-                            <option value="Good">Good</option>
-                            <option value="Damage">Damage</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Not Returned">Not Returned</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="detail-group">
-                        <div class="detail-label">Fine Amount</div>
-                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
+                        <div class="detail-label">Book Status</div>
+                        <select class="detail-select" id="detailBookStatus">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Good">Good</option>
+                            <option value="Damaged">Damaged</option>
+                        </select>
                     </div>
                     <div class="detail-group">
-                        <div class="detail-label">Return Status</div>
-                        <select class="detail-select" id="detailReturnStatus">
-                            <option value="" disabled selected>Select</option>
-                            <option value="Returned">Returned</option>
-                            <option value="Unreturned">Unreturned</option>
-                        </select>
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
                     </div>
                 </div>
             </div>
@@ -323,6 +334,7 @@
     <script src="~/js/reportGeneration.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/borrowedbooks.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
     <script src="~/js/welcome.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/dropdown-fix.js"></script>

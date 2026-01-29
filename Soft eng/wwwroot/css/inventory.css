@@ -246,7 +246,7 @@ body {
 .content-area {
     flex: 1;
     padding: 40px;
-    background: #f8f9fa;
+    background: #f8f9fb;
     margin-left: 280px;
     width: 100%;
     overflow-x: hidden;
@@ -258,26 +258,36 @@ body {
         word-wrap: break-word;
     }
 
-.search-filter {
+/*
+    .search-filter {
     display: flex;
     gap: 20px;
     justify-content: center;
     align-items: center;
     margin-bottom: 30px;
     flex-wrap: wrap;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
     width: 100%;
 }
 
     .search-filter input {
         flex: 1;
-        max-width: 600px;
-        min-width: 200px;
+        min-width: 250px;
         padding: 14px 18px;
         border-radius: 8px;
         border: none;
-        background: #eee;
+        background: #f1f3f5;
         font-size: 1rem;
     }
+
+        .search-filter input:focus {
+            background: white;
+            border: 1px solid #e74c3c;
+            outline: none;
+        }
+*/
 
 .btn-filter {
     padding: 14px 30px;

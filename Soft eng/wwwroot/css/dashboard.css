@@ -11,7 +11,7 @@ html, body {
 }
 
 body {
-    background-color: #EDEDED;
+    background-color: #f8f9fb !important;
     display: flex;
     flex-direction: column;
 }
@@ -130,6 +130,7 @@ body {
     display: flex;
     min-height: calc(100vh - 100px);
     margin-top: 100px;
+    background-color: #f8f9fb !important;
 }
 
 .sidebar {
@@ -235,7 +236,7 @@ body {
 .content-area {
     flex: 1;
     padding: 40px;
-    background: #f8f9fa;
+    background: #f8f9fb !important;
     margin-left: 280px;
 }
 
@@ -257,23 +258,6 @@ body {
     margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 15px;
-}
-
-.search-filter-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
-
-.search-box {
-    padding: 12px 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    flex: 2;
-    font-size: 15px;
-    height: 46px;
-    box-sizing: border-box;
 }
 
 .time-filter {
@@ -499,21 +483,6 @@ tbody tr:hover {
     font-size: 14px;
 }
 
-.search-filter {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-bottom: 30px;
-}
-
-    .search-filter input {
-        width: 60%;
-        padding: 14px 18px;
-        border-radius: 8px;
-        border: none;
-        background: #eee;
-    }
-
 .btn-filter {
     padding: 14px 30px;
     background: #ddd;
@@ -666,16 +635,6 @@ tbody tr:hover {
 
     .dashboard-container {
         padding: 10px;
-    }
-
-    .search-filter-container {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .search-box {
-        flex: 1;
-        width: 100%;
     }
 
     .time-filter,
@@ -856,7 +815,6 @@ tbody tr:hover {
         font-size: 10px;
     }
 
-    .search-box,
     .time-filter,
     .filter-btn {
         padding: 10px 15px;

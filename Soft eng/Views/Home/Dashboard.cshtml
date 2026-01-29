@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/search-suggestions.css" />
 </head>
 <body>
 
@@ -90,27 +91,8 @@
             <h2>Dashboard</h2>
 
             <div class="dashboard-header">
-                <div class="search-filter-container">
+                <div class="search-filter">
                     <input type="text" class="search-box" placeholder="Search by Title, Author, etc.">
-                    <select class="time-filter">
-                        <option>1 Month</option>
-                    </select>
-                    <div class="filter-dropdown">
-                        <button type="button" class="filter-btn" id="filterBtn">Filter</button>
-                        <div class="filter-options" id="filterOptions">
-                            <div class="filter-option">Available</div>
-                            <div class="filter-option">Borrowed</div>
-                            <div class="filter-option">Damaged</div>
-                            <div class="filter-option">Missing/Lost</div>
-                            <div class="filter-option">Author</div>
-                            <div class="filter-option">Title</div>
-                            <div class="filter-option">Publisher</div>
-                            <div class="filter-option">Donation</div>
-                            <div class="filter-option">Year</div>
-                            <div class="filter-option">Category</div>
-                            <div class="filter-option">Shelf Location</div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -230,14 +212,14 @@
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/dashboard-search.js"></script>
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/chatbot.js"></script>
-    <script src="~/js/dashboard-search.js"></script>
     <script src="~/js/welcome.js"></script>
-    <script src="~/js/sidebar-mobile.js"></script>
-    <script src="~/js/dropdown-fix.js"></script>
 
-    
 
 </body>
 </html>
