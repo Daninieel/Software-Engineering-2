@@ -1,5 +1,7 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
-    const GOOGLE_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
+    const GOOGLE_BOOKS_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
+    const GOOGLE_FONTS_API_KEY = 'AIzaSyCtv40iZaI3uvKNUKFoPzq6KkJd8HPS6hY';
+    const GOOGLE_VISION_API_KEY = 'AIzaSyCY2cdaTXmC35ToRhrszuDWiIrLSjb9dgQ';
 
     const videoSourceSelect = document.getElementById('videoSource');
     const scanIsbnBtn = document.getElementById('scanIsbnBtn');
@@ -26,7 +28,6 @@
     const publisherInput = document.querySelector('input[name="Publisher"]');
     const remarksInput = document.querySelector('textarea[name="Remarks"]');
 
-    // State
     let stream = null;
     let isScanning = false;
     let scanTimeout = null;
@@ -35,8 +36,6 @@
     let currentSide = 'front';
     let frontImage = null;
     let backImage = null;
-
-    // Zoom & Pan state 
     let zoomLevel = 1;
     let panX = 0;
     let panY = 0;
@@ -47,8 +46,8 @@
     let startX = 0;
     let startY = 0;
     let tempCanvasRef = null;
+    let googleFontsCache = null;
 
-    // Otsu Threshold 
     function calculateOtsuThreshold(data) {
         const histogram = new Array(256).fill(0);
         for (let i = 0; i < data.length; i += 4) {
@@ -76,12 +75,10 @@
         return threshold;
     }
 
-    // OCR Preprocessing
     function preprocessForBookCoverOCR(sourceCanvas) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-
-        const scale = 3; // higher resolution helps Tesseract significantly
+        const scale = 3;
         canvas.width = sourceCanvas.width * scale;
         canvas.height = sourceCanvas.height * scale;
 
@@ -91,22 +88,19 @@
         let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let data = imgData.data;
 
-        // Better grayscale conversion for colored text
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i], g = data[i + 1], b = data[i + 2];
             let gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
-            // Boost contrast for saturated (colored) text
             const max = Math.max(r, g, b);
             const min = Math.min(r, g, b);
             const sat = max === 0 ? 0 : (max - min) / max;
-            if (sat > 0.35) gray *= 1.12; // mild boost
+            if (sat > 0.35) gray *= 1.12;
 
             gray = Math.max(0, Math.min(255, Math.round(gray)));
             data[i] = data[i + 1] = data[i + 2] = gray;
         }
 
-        // Binarization with Otsu
         const threshold = calculateOtsuThreshold(data);
         for (let i = 0; i < data.length; i += 4) {
             const val = data[i] < threshold ? 0 : 255;
@@ -117,7 +111,140 @@
         return canvas;
     }
 
-    //         ISBN from image (barcode / plain text)
+    async function extractTextWithGoogleVision(canvas) {
+        const base64Image = canvas.toDataURL('image/png').split(',')[1];
+
+        const requestBody = {
+            requests: [{
+                image: { content: base64Image },
+                features: [
+                    { type: 'TEXT_DETECTION', maxResults: 1 },
+                    { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }
+                ],
+                imageContext: {
+                    languageHints: ['en']
+                }
+            }]
+        };
+
+        try {
+            const response = await fetch(
+                `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Vision API error:', errorData);
+                return { text: '', confidence: 0, error: errorData };
+            }
+
+            const data = await response.json();
+
+            if (data.responses && data.responses[0]) {
+                const result = data.responses[0];
+
+                if (result.error) {
+                    console.error('Vision API response error:', result.error);
+                    return { text: '', confidence: 0, error: result.error };
+                }
+
+                const text = result.fullTextAnnotation?.text ||
+                    result.textAnnotations?.[0]?.description || '';
+
+                let confidence = 0;
+                if (result.textAnnotations && result.textAnnotations.length > 0) {
+                    confidence = result.textAnnotations[0].confidence || 0.9;
+                }
+
+                return {
+                    text: text.trim(),
+                    confidence: confidence,
+                    fullResponse: result
+                };
+            }
+
+            return { text: '', confidence: 0 };
+        } catch (error) {
+            console.error('Google Vision API fetch error:', error);
+            return { text: '', confidence: 0, error: error.message };
+        }
+    }
+
+    async function extractTextWithTesseract(canvas) {
+        const optimized = preprocessForBookCoverOCR(canvas);
+        const { data: { text, confidence } } = await Tesseract.recognize(
+            optimized.toDataURL('image/png'),
+            'eng',
+            {
+                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+                preserve_interword_spaces: '1',
+                user_defined_dpi: '300',
+                tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;?!'\"-–()& "
+            }
+        );
+
+        const cleaned = text
+            .replace(/\n+/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        return { text: cleaned, confidence: confidence / 100 };
+    }
+
+    async function fetchGoogleFonts() {
+        if (googleFontsCache) return googleFontsCache;
+
+        try {
+            const response = await fetch(
+                `https://www.googleapis.com/webfonts/v1/webfonts?key=${GOOGLE_FONTS_API_KEY}&sort=popularity`
+            );
+            const data = await response.json();
+            googleFontsCache = data.items || [];
+            return googleFontsCache;
+        } catch (error) {
+            console.error('Error fetching Google Fonts:', error);
+            return [];
+        }
+    }
+
+    async function suggestFontsForText(text) {
+        const fonts = await fetchGoogleFonts();
+        if (fonts.length === 0) return [];
+
+        const isAllCaps = text === text.toUpperCase() && text.length > 3;
+        const hasNumbers = /\d/.test(text);
+        const isShort = text.length < 30;
+        const isLong = text.length > 100;
+
+        let suggestions = [];
+
+        if (isAllCaps && isShort) {
+            suggestions = fonts.filter(f =>
+                f.category === 'display' ||
+                f.category === 'serif' ||
+                f.family.toLowerCase().includes('bold')
+            ).slice(0, 5);
+        } else if (isLong) {
+            suggestions = fonts.filter(f =>
+                f.category === 'sans-serif' ||
+                f.category === 'serif'
+            ).slice(0, 5);
+        } else {
+            suggestions = fonts.slice(0, 5);
+        }
+
+        return suggestions.map(f => ({
+            family: f.family,
+            category: f.category,
+            variants: f.variants
+        }));
+    }
+
     async function processImageAndGetIsbn(imageSource) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -131,13 +258,14 @@
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
 
-                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
                     avg = Math.max(0, Math.min(255, (avg - 128) * 1.4 + 128));
                     data[i] = data[i + 1] = data[i + 2] = avg;
                 }
-                ctx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+                ctx.putImageData(imgData, 0, 0);
 
                 try {
                     const { data: { text } } = await Tesseract.recognize(
@@ -156,7 +284,6 @@
         });
     }
 
-    //         Canvas Transform / Redraw
     function applyTransform() {
         const ctx = coverCanvas.getContext('2d');
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -169,7 +296,6 @@
         const img = currentSide === 'front' ? frontImage : backImage;
         if (img) ctx.drawImage(img, 0, 0);
 
-        // Draw existing detections
         allDetections.filter(d => d.side === currentSide).forEach((d, i) => {
             const { x0, y0, x1, y1 } = d.bbox;
             ctx.strokeStyle = '#27ae60';
@@ -198,7 +324,6 @@
         applyTransform();
     }
 
-    //         Zoom (toward mouse)
     coverCanvas.addEventListener('wheel', e => {
         e.preventDefault();
         if (!coverCanvasContainer) return;
@@ -216,7 +341,6 @@
         applyTransform();
     }, { passive: false });
 
-    //    Panning (Shift + drag)
     coverCanvas.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
 
@@ -259,7 +383,6 @@
             return;
         }
 
-        // Live drawing of selection rectangle
         const rect = coverCanvas.getBoundingClientRect();
         const scaleX = coverCanvas.width / rect.width;
         const scaleY = coverCanvas.height / rect.height;
@@ -305,7 +428,6 @@
             return;
         }
 
-        // Crop region
         const cropCanvas = document.createElement('canvas');
         cropCanvas.width = w;
         cropCanvas.height = h;
@@ -317,40 +439,58 @@
         detectedTextList.appendChild(loading);
 
         try {
-            const optimized = preprocessForBookCoverOCR(cropCanvas);
-            const { data: { text } } = await Tesseract.recognize(
-                optimized.toDataURL('image/png'),
-                'eng',
-                {
-                    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-                    preserve_interword_spaces: '1',
-                    user_defined_dpi: '300',
-                    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;?!'\"-–()& "
-                }
-            );
+            let result = { text: '', confidence: 0 };
+            let ocrMethod = '';
+            let fontSuggestions = [];
 
-            const cleaned = text
+            loading.textContent = `Using Google Vision AI...`;
+            result = await extractTextWithGoogleVision(cropCanvas);
+
+            if (result.text && result.text.length > 2) {
+                ocrMethod = 'Google Vision';
+                loading.textContent = `Analyzing fonts...`;
+                fontSuggestions = await suggestFontsForText(result.text);
+            } else {
+                loading.textContent = `Trying Tesseract OCR...`;
+                result = await extractTextWithTesseract(cropCanvas);
+                ocrMethod = 'Tesseract';
+
+                if (result.text && result.text.length > 2) {
+                    fontSuggestions = await suggestFontsForText(result.text);
+                }
+            }
+
+            const cleaned = result.text
                 .replace(/\n+/g, ' ')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
 
             loading.remove();
 
-            if (cleaned) {
+            if (cleaned && cleaned.length > 0) {
                 allDetections.push({
                     text: cleaned,
                     bbox: { x0: x, y0: y, x1: x + w, y1: y + h },
-                    side: currentSide
+                    side: currentSide,
+                    method: ocrMethod,
+                    confidence: result.confidence,
+                    fontSuggestions: fontSuggestions
                 });
+
                 redrawCanvas();
                 populateDetectedTextList();
+
+                const confidencePercent = Math.round(result.confidence * 100);
+                const confidenceText = confidencePercent > 0 ? ` (${confidencePercent}% confidence)` : '';
+                showTempMessage(`✓ Text extracted using ${ocrMethod}${confidenceText}`, '#27ae60', 3000);
             } else {
                 showTempMessage('No text detected', '#e74c3c', 3000);
                 redrawCanvas();
             }
         } catch (err) {
+            console.error('OCR error:', err);
             loading.remove();
-            showTempMessage('OCR failed', '#e74c3c', 4000);
+            showTempMessage(`OCR failed: ${err.message}`, '#e74c3c', 4000);
             redrawCanvas();
         }
     });
@@ -362,7 +502,7 @@
         detectedTextList.appendChild(div);
         setTimeout(() => div.remove(), ms);
     }
-    //         Detected Text List & Field Assignment
+
     function populateDetectedTextList() {
         const items = allDetections.filter(d => d.side === currentSide);
         detectedTextList.innerHTML = '';
@@ -371,7 +511,10 @@
             detectedTextList.innerHTML = `
                 <div style="text-align:center; padding:20px; color:#3498db;">
                     <b>${currentSide.toUpperCase()} COVER</b><br>
-                    Draw rectangles around text areas
+                    Draw rectangles around text areas<br>
+                    <button onclick="window.autoDetectAllText()" style="margin-top:12px; padding:10px 20px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; font-size:14px;">
+                        🤖 Auto-Detect All Text
+                    </button>
                 </div>`;
             return;
         }
@@ -387,14 +530,52 @@
             div.style.cssText = 'margin:12px 0; padding:12px; border:2px solid #ddd; border-radius:8px; background:#f9f9f9;';
 
             const content = document.createElement('div');
+
+            const methodBadge = det.method ?
+                `<span style="background:#3498db; color:white; padding:2px 8px; border-radius:4px; font-size:10px; margin-left:5px;">${det.method}</span>` : '';
+
+            const confidenceBadge = det.confidence && det.confidence > 0 ?
+                `<span style="background:#27ae60; color:white; padding:2px 8px; border-radius:4px; font-size:10px; margin-left:5px;">${Math.round(det.confidence * 100)}%</span>` : '';
+
             content.innerHTML = `
-                <span style="background:#667eea; color:white; padding:3px 9px; border-radius:5px; margin-right:10px; font-size:13px;">${idx + 1}</span>
-                <span class="editable" contenteditable="true">${det.text}</span>`;
+                <div style="margin-bottom:8px;">
+                    <span style="background:#667eea; color:white; padding:3px 9px; border-radius:5px; margin-right:5px; font-size:13px;">${idx + 1}</span>
+                    ${methodBadge}
+                    ${confidenceBadge}
+                </div>
+                <span class="editable" contenteditable="true" style="display:block; padding:8px; background:white; border:1px solid #ddd; border-radius:4px; min-height:30px;">${det.text}</span>`;
 
             const editable = content.querySelector('.editable');
             editable.addEventListener('blur', () => {
                 det.text = editable.textContent.trim();
             });
+
+            if (det.fontSuggestions && det.fontSuggestions.length > 0) {
+                const fontDiv = document.createElement('div');
+                fontDiv.style.cssText = 'margin-top:10px; padding:10px; background:#fff3cd; border-radius:6px; border-left:3px solid #ffc107;';
+
+                const fontList = det.fontSuggestions
+                    .map(f => `<span style="font-family:'${f.family}',sans-serif; padding:3px 6px; background:white; border-radius:3px; margin:2px; display:inline-block; font-size:11px;">${f.family}</span>`)
+                    .join('');
+
+                fontDiv.innerHTML = `
+                    <div style="font-size:11px; font-weight:bold; color:#856404; margin-bottom:6px;">
+                        🎨 Suggested Fonts:
+                    </div>
+                    <div style="line-height:1.8;">
+                        ${fontList}
+                    </div>`;
+                content.appendChild(fontDiv);
+
+                det.fontSuggestions.forEach(f => {
+                    const link = document.createElement('link');
+                    link.href = `https://fonts.googleapis.com/css2?family=${f.family.replace(/ /g, '+')}`;
+                    link.rel = 'stylesheet';
+                    if (!document.querySelector(`link[href="${link.href}"]`)) {
+                        document.head.appendChild(link);
+                    }
+                });
+            }
 
             const select = document.createElement('select');
             select.innerHTML = `
@@ -404,6 +585,7 @@
                 <option value="publisher">Publisher</option>
                 <option value="edition">Edition</option>
                 <option value="year">Year</option>`;
+            select.style.cssText = 'margin-top:10px; width:100%; padding:8px; border-radius:4px; border:1px solid #ddd;';
             select.addEventListener('change', e => {
                 const val = e.target.value;
                 updateSelectedField(val, det.text);
@@ -412,8 +594,10 @@
             });
 
             const delBtn = document.createElement('button');
-            delBtn.textContent = 'Delete';
-            delBtn.style.cssText = 'margin-top:10px; padding:8px; background:#e74c3c; color:white; border:none; border-radius:6px; cursor:pointer; width:100%;';
+            delBtn.textContent = '🗑️ Delete';
+            delBtn.style.cssText = 'margin-top:10px; padding:8px; background:#e74c3c; color:white; border:none; border-radius:6px; cursor:pointer; width:100%; font-weight:500;';
+            delBtn.onmouseover = () => delBtn.style.background = '#c0392b';
+            delBtn.onmouseout = () => delBtn.style.background = '#e74c3c';
             delBtn.onclick = () => {
                 const i = allDetections.indexOf(det);
                 if (i !== -1) {
@@ -435,7 +619,89 @@
         if (field !== 'none') selectedFields[field] = text;
     }
 
-    //    Apply → Form
+    window.autoDetectAllText = async function () {
+        const img = currentSide === 'front' ? frontImage : backImage;
+        if (!img) {
+            alert('Please load an image first');
+            return;
+        }
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        tempCanvas.getContext('2d').drawImage(img, 0, 0);
+
+        const loadingMsg = document.createElement('div');
+        loadingMsg.textContent = '🔍 Auto-detecting all text regions...';
+        loadingMsg.style.cssText = 'padding:15px; background:#e3f2fd; color:#1976d2; border-radius:6px; text-align:center; margin:10px 0; font-weight:500;';
+        detectedTextList.appendChild(loadingMsg);
+
+        try {
+            const base64Image = tempCanvas.toDataURL('image/png').split(',')[1];
+
+            const response = await fetch(
+                `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requests: [{
+                            image: { content: base64Image },
+                            features: [{ type: 'DOCUMENT_TEXT_DETECTION' }]
+                        }]
+                    })
+                }
+            );
+
+            const data = await response.json();
+            const result = data.responses[0];
+
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+
+            const annotations = result.textAnnotations || [];
+
+            if (annotations.length === 0) {
+                loadingMsg.remove();
+                showTempMessage('No text detected in image', '#ff9800', 3000);
+                return;
+            }
+
+            const blocks = annotations.slice(1, Math.min(annotations.length, 25));
+
+            for (const ann of blocks) {
+                const vertices = ann.boundingPoly.vertices;
+
+                const x0 = Math.min(...vertices.map(v => v.x || 0));
+                const y0 = Math.min(...vertices.map(v => v.y || 0));
+                const x1 = Math.max(...vertices.map(v => v.x || 0));
+                const y1 = Math.max(...vertices.map(v => v.y || 0));
+
+                const fontSuggestions = await suggestFontsForText(ann.description);
+
+                allDetections.push({
+                    text: ann.description,
+                    bbox: { x0, y0, x1, y1 },
+                    side: currentSide,
+                    method: 'Google Vision (Auto)',
+                    confidence: ann.confidence || 0.95,
+                    fontSuggestions: fontSuggestions
+                });
+            }
+
+            loadingMsg.remove();
+            showTempMessage(`✓ Detected ${blocks.length} text regions`, '#27ae60', 3000);
+            redrawCanvas();
+            populateDetectedTextList();
+
+        } catch (error) {
+            console.error('Auto-detect error:', error);
+            loadingMsg.remove();
+            showTempMessage(`Auto-detection failed: ${error.message}`, '#e74c3c', 4000);
+        }
+    };
+
     applyFieldsBtn.addEventListener('click', () => {
         if (selectedFields.title) titleInput.value = selectedFields.title;
         if (selectedFields.author) authorInput.value = selectedFields.author;
@@ -462,7 +728,6 @@
         resetCoverScan();
     });
 
-    //         Reset / Cleanup
     function resetCoverScan() {
         allDetections = [];
         selectedFields = { title: '', author: '', publisher: '', edition: '', year: '' };
@@ -479,9 +744,6 @@
         resetCoverScan();
     });
 
-    // ────────────────────────────────────────────────
-    //         Toggle Front / Back
-    // ────────────────────────────────────────────────
     function updateToggleButton() {
         if (!toggleSideBtn) return;
         if (frontImage && backImage) {
@@ -531,7 +793,10 @@
                 detectedTextList.innerHTML = `
                     <div style="text-align:center; padding:15px; color:#3498db; background:#e3f2fd; border-radius:8px;">
                         <b>${side.toUpperCase()} COVER LOADED</b><br>
-                        <small>Draw boxes around text • Scroll = zoom • Shift+drag = pan</small>
+                        <small>Draw boxes around text • Scroll = zoom • Shift+drag = pan</small><br>
+                        <button onclick="window.autoDetectAllText()" style="margin-top:12px; padding:10px 20px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; font-size:14px;">
+                            🤖 Auto-Detect All Text
+                        </button>
                     </div>`;
                 coverScanModal.style.display = 'flex';
                 updateToggleButton();
@@ -551,7 +816,6 @@
             );
 
             if (isBarcode) {
-                // ISBN scan
                 const btn = document.querySelector('.btn-blue') || searchIsbnBtn;
                 const orig = btn.innerText;
 
@@ -574,16 +838,15 @@
 
                 btn.innerText = orig;
                 btn.disabled = false;
-                break; 
+                break;
             } else {
-                // Cover scan
                 const isFront = confirm('OK = Front Cover\nCancel = Exit');
 
                 if (isFront) {
                     await processCoverImage(file, 'front');
                     break;
                 } else {
-                    break; 
+                    break;
                 }
             }
         }
@@ -591,9 +854,6 @@
         fileUpload.value = '';
     });
 
-
-
-    //  Camera / Live ISBN scanning
     async function startAutoScan() {
         if (!isScanning) return;
         const canvas = document.createElement('canvas');
@@ -635,9 +895,8 @@
         }
     });
 
-    //  Google Books + OpenLibrary
     async function fetchBookData(isbn) {
-        const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`;
+        const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_BOOKS_API_KEY}`;
         const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=details&format=json`;
 
         try {
@@ -689,9 +948,6 @@
         if (desc) remarksInput.value = desc.substring(0, 600);
     }
 
-  
-    //  Camera Controls
-  
     async function getCameras() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         videoSourceSelect.innerHTML = '';
@@ -737,9 +993,6 @@
     };
 
     closeCameraBtn.addEventListener('click', stopCamera);
-
-    
-    // ISBN Validation & Manual Search
 
     function isValidIsbn(val) {
         const clean = val.replace(/[^0-9X]/gi, '');
@@ -800,7 +1053,6 @@
         if (e.key === 'Enter') searchIsbnBtn.click();
     });
 
-    // Keyboard cursor hint
     document.addEventListener('keydown', e => {
         if (coverScanModal.style.display === 'flex' && e.key === 'Shift') {
             coverCanvas.style.cursor = 'grab';
