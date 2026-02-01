@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
 using Soft_eng.Models;
+using Soft_eng.Services;
 using System.Data;
 using System.Diagnostics;
 using System.Net;
@@ -23,12 +24,21 @@ namespace Soft_eng.Controllers
         private readonly MySqlConnection _connection;
         private readonly IConfiguration _configuration;
         private readonly IConverter _pdfConverter;
+        private readonly IJwtTokenService _jwtTokenService;
+        private readonly IInactivityTracker _inactivityTracker;
 
-        public HomeController(MySqlConnection connection, IConfiguration configuration, IConverter pdfConverter)
+        public HomeController(
+            MySqlConnection connection, 
+            IConfiguration configuration, 
+            IConverter pdfConverter,
+            IJwtTokenService jwtTokenService,
+            IInactivityTracker inactivityTracker)
         {
             _connection = connection;
             _configuration = configuration;
             _pdfConverter = pdfConverter;
+            _jwtTokenService = jwtTokenService;
+            _inactivityTracker = inactivityTracker;
         }
 
         public IActionResult Login() => View();
@@ -275,11 +285,23 @@ namespace Soft_eng.Controllers
 
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123")
             {
+                var adminToken = _jwtTokenService.GenerateAccessToken("admin@sia", "Administrator", "Admin");
+                Response.Cookies.Append("AuthToken", adminToken, 
+                    new Microsoft.AspNetCore.Http.CookieOptions 
+                    { 
+                        HttpOnly = true, 
+                        Secure = true, 
+                        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict,
+                        Expires = DateTime.UtcNow.AddMinutes(5)
+                    });
+
                 var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, "Administrator"),
-            new Claim(ClaimTypes.Role, "Admin")
-        };
+                {
+                    new Claim(ClaimTypes.Name, "Administrator"),
+                    new Claim(ClaimTypes.Role, "Admin"),
+                    new Claim(ClaimTypes.Email, "admin@sia")
+                };
+
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
 
@@ -305,11 +327,22 @@ namespace Soft_eng.Controllers
                 string role = reader.IsDBNull("Role") ? "Librarian" : reader.GetString("Role");
                 reader.Close();
 
+                var librarianToken = _jwtTokenService.GenerateAccessToken(normalizedEmail, fullName, role);
+                Response.Cookies.Append("AuthToken", librarianToken, 
+                    new Microsoft.AspNetCore.Http.CookieOptions 
+                    { 
+                        HttpOnly = true, 
+                        Secure = true, 
+                        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict,
+                        Expires = DateTime.UtcNow.AddMinutes(5)
+                    });
+
                 var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, fullName),
-            new Claim(ClaimTypes.Role, role)
-        };
+                {
+                    new Claim(ClaimTypes.Name, fullName),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim(ClaimTypes.Email, normalizedEmail)
+                };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
@@ -508,7 +541,7 @@ namespace Soft_eng.Controllers
         {
             StringBuilder html = new StringBuilder();
             html.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}.header{text-align:center;margin-bottom:30px;border-bottom:2px solid #c0392b;padding-bottom:15px}table{width:100%;border-collapse:collapse}th{background-color:#c0392b;color:#fff;padding:12px;text-align:left;border:1px solid #999}td{padding:10px;border:1px solid #ddd}tr:nth-child(even){background-color:#f9f9f9}</style></head><body><div class='header'>");
-            html.Append($"<h1>Saint Isidore Academy Library</h1><h2>{GetReportTitle(reportType)} Report</h2><p>Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p></div><table><thead><tr>");
+            html.Append($"<h1>Saint Isidore Academy</h1><h2>{GetReportTitle(reportType)} Report</h2><p>Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p></div><table><thead><tr>");
             foreach (DataColumn col in data.Columns) html.Append($"<th>{EscapeHTML(col.ColumnName)}</th>");
             html.Append("</tr></thead><tbody>");
             foreach (DataRow row in data.Rows) { html.Append("<tr>"); foreach (var cell in row.ItemArray) html.Append($"<td>{EscapeHTML(cell?.ToString() ?? "")}</td>"); html.Append("</tr>"); }
@@ -1119,6 +1152,20 @@ namespace Soft_eng.Controllers
                 return Json(suggestions);
             }
             finally { await _connection.CloseAsync(); }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardData()
+        {
+            try
+            {
+                var data = await GetDashboardViewModel();
+                return Json(data);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
         }
     }
 }

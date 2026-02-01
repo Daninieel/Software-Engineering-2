@@ -1,6 +1,5 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
     const GOOGLE_BOOKS_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
-    const GOOGLE_FONTS_API_KEY = 'AIzaSyCtv40iZaI3uvKNUKFoPzq6KkJd8HPS6hY';
     const GOOGLE_VISION_API_KEY = 'AIzaSyCY2cdaTXmC35ToRhrszuDWiIrLSjb9dgQ';
 
     const videoSourceSelect = document.getElementById('videoSource');
@@ -46,7 +45,6 @@
     let startX = 0;
     let startY = 0;
     let tempCanvasRef = null;
-    let googleFontsCache = null;
 
     function calculateOtsuThreshold(data) {
         const histogram = new Array(256).fill(0);
@@ -196,53 +194,53 @@
         return { text: cleaned, confidence: confidence / 100 };
     }
 
-    async function fetchGoogleFonts() {
-        if (googleFontsCache) return googleFontsCache;
-
+    /**
+     * Detect fonts using WhatTheFont API via secure MVC controller
+     * @param {HTMLCanvasElement} canvas - Canvas containing the text image
+     * @returns {Promise<Object>} Font detection results
+     */
+    async function detectFontWithWhatTheFont(canvas) {
         try {
-            const response = await fetch(
-                `https://www.googleapis.com/webfonts/v1/webfonts?key=${GOOGLE_FONTS_API_KEY}&sort=popularity`
+            // Convert canvas to blob
+            const blob = await new Promise(resolve =>
+                canvas.toBlob(resolve, 'image/png')
             );
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('image', blob, 'font-sample.png');
+
+            // Call our secure MVC controller endpoint
+            const response = await fetch('/api/what-the-font', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('WhatTheFont API error:', response.status, errorText);
+                return { results: [] };
+            }
+
             const data = await response.json();
-            googleFontsCache = data.items || [];
-            return googleFontsCache;
+
+            // Normalize the response format
+            const normalized = {
+                results: (data.results || []).map(font => ({
+                    family: font.fontName || font.font_name,
+                    foundry: font.foundryName || font.foundry_name,
+                    score: font.matchScore || font.match_score || 0,
+                    url: font.url || '',
+                    variants: font.variants || []
+                }))
+            };
+
+            return normalized;
+
         } catch (error) {
-            console.error('Error fetching Google Fonts:', error);
-            return [];
+            console.error('Font detection error:', error);
+            return { results: [] };
         }
-    }
-
-    async function suggestFontsForText(text) {
-        const fonts = await fetchGoogleFonts();
-        if (fonts.length === 0) return [];
-
-        const isAllCaps = text === text.toUpperCase() && text.length > 3;
-        const hasNumbers = /\d/.test(text);
-        const isShort = text.length < 30;
-        const isLong = text.length > 100;
-
-        let suggestions = [];
-
-        if (isAllCaps && isShort) {
-            suggestions = fonts.filter(f =>
-                f.category === 'display' ||
-                f.category === 'serif' ||
-                f.family.toLowerCase().includes('bold')
-            ).slice(0, 5);
-        } else if (isLong) {
-            suggestions = fonts.filter(f =>
-                f.category === 'sans-serif' ||
-                f.category === 'serif'
-            ).slice(0, 5);
-        } else {
-            suggestions = fonts.slice(0, 5);
-        }
-
-        return suggestions.map(f => ({
-            family: f.family,
-            category: f.category,
-            variants: f.variants
-        }));
     }
 
     async function processImageAndGetIsbn(imageSource) {
@@ -329,8 +327,8 @@
         if (!coverCanvasContainer) return;
 
         const rect = coverCanvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) / zoomLevel + panX;
-        const mouseY = (e.clientY - rect.top) / zoomLevel + panY;
+        const mouseX = (e.clientX - rect.left) / zoomLevel - panX;
+        const mouseY = (e.clientY - rect.top) / zoomLevel - panY;
 
         const oldZoom = zoomLevel;
         zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * (e.deltaY > 0 ? 0.88 : 1.13)));
@@ -443,20 +441,36 @@
             let ocrMethod = '';
             let fontSuggestions = [];
 
+            // Step 1: Extract text using Google Vision
             loading.textContent = `Using Google Vision AI...`;
             result = await extractTextWithGoogleVision(cropCanvas);
 
             if (result.text && result.text.length > 2) {
                 ocrMethod = 'Google Vision';
-                loading.textContent = `Analyzing fonts...`;
-                fontSuggestions = await suggestFontsForText(result.text);
+
+                // Step 2: Detect fonts using WhatTheFont API
+                loading.textContent = `Detecting fonts with WhatTheFont...`;
+                const fontResult = await detectFontWithWhatTheFont(cropCanvas);
+
+                if (fontResult && fontResult.results && fontResult.results.length > 0) {
+                    fontSuggestions = fontResult.results;
+                    loading.textContent = `Found ${fontSuggestions.length} font matches...`;
+                } else {
+                    loading.textContent = `Text extracted (no font matches)...`;
+                }
             } else {
+                // Fallback to Tesseract if Vision fails
                 loading.textContent = `Trying Tesseract OCR...`;
                 result = await extractTextWithTesseract(cropCanvas);
                 ocrMethod = 'Tesseract';
 
                 if (result.text && result.text.length > 2) {
-                    fontSuggestions = await suggestFontsForText(result.text);
+                    loading.textContent = `Detecting fonts with WhatTheFont...`;
+                    const fontResult = await detectFontWithWhatTheFont(cropCanvas);
+
+                    if (fontResult && fontResult.results && fontResult.results.length > 0) {
+                        fontSuggestions = fontResult.results;
+                    }
                 }
             }
 
@@ -482,7 +496,8 @@
 
                 const confidencePercent = Math.round(result.confidence * 100);
                 const confidenceText = confidencePercent > 0 ? ` (${confidencePercent}% confidence)` : '';
-                showTempMessage(`✓ Text extracted using ${ocrMethod}${confidenceText}`, '#27ae60', 3000);
+                const fontText = fontSuggestions.length > 0 ? ` • ${fontSuggestions.length} font${fontSuggestions.length === 1 ? '' : 's'} detected` : '';
+                showTempMessage(`✓ Text extracted using ${ocrMethod}${confidenceText}${fontText}`, '#27ae60', 3500);
             } else {
                 showTempMessage('No text detected', '#e74c3c', 3000);
                 redrawCanvas();
@@ -550,31 +565,38 @@
                 det.text = editable.textContent.trim();
             });
 
+            // Display WhatTheFont results
             if (det.fontSuggestions && det.fontSuggestions.length > 0) {
                 const fontDiv = document.createElement('div');
                 fontDiv.style.cssText = 'margin-top:10px; padding:10px; background:#fff3cd; border-radius:6px; border-left:3px solid #ffc107;';
 
                 const fontList = det.fontSuggestions
-                    .map(f => `<span style="font-family:'${f.family}',sans-serif; padding:3px 6px; background:white; border-radius:3px; margin:2px; display:inline-block; font-size:11px;">${f.family}</span>`)
+                    .slice(0, 5) // Show top 5 matches
+                    .map((f, i) => {
+                        const scorePercent = Math.round(f.score * 100);
+                        const scoreBar = scorePercent > 0
+                            ? `<div style="width:${scorePercent}%; height:3px; background:#ffc107; border-radius:2px; margin-top:2px;"></div>`
+                            : '';
+
+                        return `
+                            <div style="background:white; padding:6px; border-radius:4px; margin:4px 0; font-size:11px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:#333;">${f.family}</strong>
+                                    ${scorePercent > 0 ? `<span style="color:#856404; font-size:10px;">${scorePercent}%</span>` : ''}
+                                </div>
+                                ${f.foundry ? `<div style="color:#666; font-size:10px;">${f.foundry}</div>` : ''}
+                                ${scoreBar}
+                            </div>
+                        `;
+                    })
                     .join('');
 
                 fontDiv.innerHTML = `
-                    <div style="font-size:11px; font-weight:bold; color:#856404; margin-bottom:6px;">
-                        🎨 Suggested Fonts:
+                    <div style="font-size:11px; font-weight:bold; color:#856404; margin-bottom:8px;">
+                        🎨 WhatTheFont Matches:
                     </div>
-                    <div style="line-height:1.8;">
-                        ${fontList}
-                    </div>`;
+                    ${fontList}`;
                 content.appendChild(fontDiv);
-
-                det.fontSuggestions.forEach(f => {
-                    const link = document.createElement('link');
-                    link.href = `https://fonts.googleapis.com/css2?family=${f.family.replace(/ /g, '+')}`;
-                    link.rel = 'stylesheet';
-                    if (!document.querySelector(`link[href="${link.href}"]`)) {
-                        document.head.appendChild(link);
-                    }
-                });
             }
 
             const select = document.createElement('select');
@@ -668,9 +690,10 @@
                 return;
             }
 
-            const blocks = annotations.slice(1, Math.min(annotations.length, 25));
+            const blocks = annotations.slice(1, Math.min(annotations.length, 15)); // Limit to 15 for performance
 
-            for (const ann of blocks) {
+            for (let i = 0; i < blocks.length; i++) {
+                const ann = blocks[i];
                 const vertices = ann.boundingPoly.vertices;
 
                 const x0 = Math.min(...vertices.map(v => v.x || 0));
@@ -678,7 +701,17 @@
                 const x1 = Math.max(...vertices.map(v => v.x || 0));
                 const y1 = Math.max(...vertices.map(v => v.y || 0));
 
-                const fontSuggestions = await suggestFontsForText(ann.description);
+                loadingMsg.textContent = `Analyzing region ${i + 1}/${blocks.length}...`;
+
+                // Create crop canvas for this region
+                const regionCanvas = document.createElement('canvas');
+                regionCanvas.width = x1 - x0;
+                regionCanvas.height = y1 - y0;
+                regionCanvas.getContext('2d').drawImage(img, x0, y0, regionCanvas.width, regionCanvas.height, 0, 0, regionCanvas.width, regionCanvas.height);
+
+                // Detect fonts for this region
+                const fontResult = await detectFontWithWhatTheFont(regionCanvas);
+                const fontSuggestions = (fontResult && fontResult.results) ? fontResult.results : [];
 
                 allDetections.push({
                     text: ann.description,
@@ -691,7 +724,7 @@
             }
 
             loadingMsg.remove();
-            showTempMessage(`✓ Detected ${blocks.length} text regions`, '#27ae60', 3000);
+            showTempMessage(`✓ Detected ${blocks.length} text regions with font analysis`, '#27ae60', 3500);
             redrawCanvas();
             populateDetectedTextList();
 

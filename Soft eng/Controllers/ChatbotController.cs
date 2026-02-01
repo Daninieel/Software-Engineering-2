@@ -22,7 +22,6 @@ namespace Soft_eng.Controllers
         private readonly IConfiguration _configuration;
         private static readonly HttpClient _httpClient = new HttpClient();
 
-        // RATE LIMIT TRACKER
         private static DateTime _lastApiCall = DateTime.MinValue;
         private static readonly object _rateLimitLock = new object();
         private const int MIN_DELAY_BETWEEN_CALLS_MS = 4000;
@@ -88,7 +87,6 @@ CURRENT DATE/TIME: {0} (Cabuyao, Philippines time)
             if (string.IsNullOrWhiteSpace(apiKey))
                 return StatusCode(500, new { error = "Gemini API key missing" });
 
-            // ENFORCE RATE LIMITING
             lock (_rateLimitLock)
             {
                 var timeSinceLastCall = (DateTime.Now - _lastApiCall).TotalMilliseconds;
@@ -104,7 +102,6 @@ CURRENT DATE/TIME: {0} (Cabuyao, Philippines time)
                 }
             }
 
-            // STRATEGY 1: Try pattern matching first (NO API CALL)
             var quickAnswer = await TryPatternMatch(request.Message);
             if (quickAnswer != null)
             {
@@ -125,7 +122,6 @@ CURRENT DATE/TIME: {0} (Cabuyao, Philippines time)
                 });
             }
 
-            // STRATEGY 2: Use AI
             try
             {
                 var schema = string.Format(DATABASE_SCHEMA, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -190,14 +186,12 @@ Hello! I'm your library assistant. How can I help you today?
                     return Ok(new { debug = true, rawResponse = aiResponse, schema });
                 }
 
-                // Parse AI response with improved extraction
                 var sqlQuery = ExtractBetweenMarkers(aiResponse, "###SQL_QUERY###", "###END_SQL###");
                 var userResponse = ExtractBetweenMarkers(aiResponse, "###RESPONSE###", "###END_RESPONSE###");
 
                 Console.WriteLine($"[EXTRACTED SQL] {sqlQuery}");
                 Console.WriteLine($"[EXTRACTED RESPONSE] {userResponse}");
 
-                // If no SQL needed
                 if (sqlQuery.Trim().Equals("NONE", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(sqlQuery))
                 {
                     return Ok(new
@@ -216,10 +210,8 @@ Hello! I'm your library assistant. How can I help you today?
                     });
                 }
 
-                // Clean the SQL query
                 sqlQuery = CleanSQLQuery(sqlQuery);
 
-                // Execute SQL
                 var queryResult = await ExecuteQuerySmart(sqlQuery);
                 var finalResponse = $"{userResponse}\n\n{queryResult}";
 
@@ -273,7 +265,6 @@ Hello! I'm your library assistant. How can I help you today?
                 if (endIndex == -1)
                 {
                     Console.WriteLine($"[PARSE WARNING] End marker not found: {endMarker}");
-                    // Return everything after start marker
                     return text.Substring(startIndex).Trim();
                 }
 
@@ -289,22 +280,18 @@ Hello! I'm your library assistant. How can I help you today?
 
         private string CleanSQLQuery(string sql)
         {
-            // Remove any remaining markers or text after the query
             sql = sql.Trim();
 
-            // Remove common AI additions
             sql = Regex.Replace(sql, @"^(sql|mysql|query):\s*", "", RegexOptions.IgnoreCase);
             sql = Regex.Replace(sql, @"^```sql\s*", "", RegexOptions.IgnoreCase);
             sql = Regex.Replace(sql, @"```\s*$", "", RegexOptions.IgnoreCase);
 
-            // Take only up to the first semicolon (or end if no semicolon)
             var semicolonIndex = sql.IndexOf(';');
             if (semicolonIndex > 0)
             {
                 sql = sql.Substring(0, semicolonIndex + 1);
             }
 
-            // Remove any text after common ending patterns
             var patterns = new[] { "EXPECTED_RESULT:", "USER_MESSAGE:", "###", "---" };
             foreach (var pattern in patterns)
             {
@@ -322,14 +309,12 @@ Hello! I'm your library assistant. How can I help you today?
         {
             var lower = message.ToLower().Trim();
 
-            // Greetings
             if (new[] { "hi", "hello", "hey", "good morning", "good afternoon", "good evening" }
                 .Any(g => lower == g || lower == g + "!" || lower == g + "."))
             {
                 return "Hello! 👋 I'm your library assistant. I can help you check book availability, see borrowed books, track fines, and more. What would you like to know?";
             }
 
-            // Help
             if (lower.Contains("help") || lower.Contains("what can you do"))
             {
                 return @"I can help you with:
@@ -345,13 +330,11 @@ Just ask naturally, like:
 • ""Show me book 1013""";
             }
 
-            // Thanks
             if (lower.Contains("thank") || lower == "thanks")
             {
                 return "You're welcome! 😊 Let me know if you need anything else.";
             }
 
-            // How many books total
             if (lower == "how many books" || lower == "how many books?" || lower == "total books")
             {
                 return await ExecuteSimpleCount(
@@ -360,7 +343,6 @@ Just ask naturally, like:
                 );
             }
 
-            // How many available
             if (lower.Contains("how many available") || lower.Contains("available books"))
             {
                 return await ExecuteSimpleCount(
@@ -369,7 +351,6 @@ Just ask naturally, like:
                 );
             }
 
-            // Overdue count
             if (lower.Contains("how many overdue"))
             {
                 return await ExecuteSimpleCount(
@@ -378,7 +359,6 @@ Just ask naturally, like:
                 );
             }
 
-            // Check for "how many copies of [book]"
             if (lower.Contains("how many cop") && (lower.Contains(" of ") || lower.Contains(" do we have")))
             {
                 var bookTitle = ExtractBookFromCopyQuery(message);
@@ -388,7 +368,6 @@ Just ask naturally, like:
                 }
             }
 
-            // Show book by ID
             if (Regex.IsMatch(lower, @"(show|display|get|find)\s+(book|bookid|id)\s+\d+"))
             {
                 var match = Regex.Match(lower, @"\d+");
@@ -551,7 +530,6 @@ Just ask naturally, like:
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
-                // Check if it's a single value result (COUNT, SUM, etc.)
                 if (reader.FieldCount == 1 && await reader.ReadAsync())
                 {
                     var value = reader.GetValue(0);
@@ -566,12 +544,10 @@ Just ask naturally, like:
                         return $"**{value}**";
                 }
 
-                // Multi-column or multi-row result
                 var result = new StringBuilder();
                 var rowCount = 0;
                 var isFirstRow = true;
 
-                // Reset reader
                 await _connection.CloseAsync();
                 await _connection.OpenAsync();
                 using var cmd2 = new MySqlCommand(sqlQuery, _connection);
@@ -582,7 +558,6 @@ Just ask naturally, like:
                 {
                     if (isFirstRow)
                     {
-                        // Format as a nice table
                         var headers = new List<string>();
                         for (int i = 0; i < reader2.FieldCount; i++)
                             headers.Add($"**{reader2.GetName(i)}**");

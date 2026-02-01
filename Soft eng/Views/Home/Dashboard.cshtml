@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewBag.Title = "Dashboard";
     Layout = null;
 }
@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search-suggestions.css" />
+    <link rel="stylesheet" href="~/css/logout-confirmation.css" />
 </head>
 <body>
 
@@ -75,7 +76,7 @@
 
                     <li>
                         <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
-                            <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                            <a href="javascript:void(0);" class="logout-link">
                                 <i class="fas fa-sign-out-alt"></i>
                                 <span class="logout-text">Log Out</span>
                             </a>
@@ -212,13 +213,16 @@
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
+    <script src="~/js/logout-confirmation.js"></script>
     <script src="~/js/dropdown-fix.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/search-suggestions.js"></script>
     <script src="~/js/dashboard-search.js"></script>
     <script src="~/js/dashboard.js"></script>
+    <script src="~/js/dashboard-sync.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/welcome.js"></script>
+    <script src="~/js/inactivity-monitor.js"></script>
 
 
 </body>

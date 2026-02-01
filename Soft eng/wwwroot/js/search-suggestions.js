@@ -1,4 +1,3 @@
-// Search Suggestions Utility with "Do you mean..." functionality
 class SearchSuggestions {
     constructor(searchInputSelector, apiEndpoint, fieldsToSearch = ['title']) {
         this.searchInput = typeof searchInputSelector === 'string'
@@ -22,31 +21,26 @@ class SearchSuggestions {
             return;
         }
 
-        // Ensure the search input has an ID for reference
         if (!this.searchInput.id) {
             this.searchInput.id = 'searchInput_' + Math.random().toString(36).substr(2, 9);
         }
 
-        // Create container
         this.container = document.createElement('div');
         this.container.className = 'suggestions-container';
         this.container.id = 'suggestions_' + this.searchInput.id;
         this.container.setAttribute('role', 'listbox');
         this.searchInput.parentNode.insertBefore(this.container, this.searchInput.nextSibling);
 
-        // Make search filter position relative for absolute positioning of suggestions
         const searchFilter = this.searchInput.closest('.search-filter');
         if (searchFilter) {
             searchFilter.style.position = 'relative';
         }
 
-        // Add ARIA attributes
         this.searchInput.setAttribute('role', 'combobox');
         this.searchInput.setAttribute('aria-autocomplete', 'list');
         this.searchInput.setAttribute('aria-controls', this.container.id);
         this.searchInput.setAttribute('aria-expanded', 'false');
 
-        // Event listeners
         this.searchInput.addEventListener('input', (e) => this.handleInput(e));
         this.searchInput.addEventListener('keydown', (e) => this.handleKeydown(e));
         this.searchInput.addEventListener('focus', (e) => this.handleFocus(e));
@@ -113,9 +107,8 @@ class SearchSuggestions {
 
     async fetchSuggestions(query) {
         try {
-            const allSuggestions = new Map(); // Use Map to store suggestions with metadata
+            const allSuggestions = new Map();
 
-            // Fetch from all fields
             for (const field of this.fieldsToSearch) {
                 try {
                     const url = `${this.apiEndpoint}?query=${encodeURIComponent(query)}&field=${encodeURIComponent(field)}`;
@@ -153,14 +146,11 @@ class SearchSuggestions {
             this.selectedIndex = -1;
 
             if (this.suggestions.length > 0) {
-                // Check if there's an exact match
                 const hasExactMatch = this.suggestions.some(s => s.toLowerCase() === query.toLowerCase());
 
                 if (!hasExactMatch && this.suggestions.length > 0) {
-                    // Show "Do you mean..." for close matches
                     this.renderWithDoYouMean(query);
                 } else {
-                    // Show regular suggestions
                     this.renderSuggestions(query);
                 }
                 this.showSuggestions();
@@ -176,13 +166,11 @@ class SearchSuggestions {
     renderWithDoYouMean(query) {
         this.container.innerHTML = '';
 
-        // Add "Do you mean..." header
         const header = document.createElement('div');
         header.className = 'suggestions-header';
         header.textContent = `No exact match for "${this.escapeHtml(query)}"`;
         this.container.appendChild(header);
 
-        // Add top suggestion with special styling
         if (this.suggestions.length > 0) {
             const doYouMeanItem = document.createElement('div');
             doYouMeanItem.className = 'suggestion-item do-you-mean';
@@ -209,13 +197,11 @@ class SearchSuggestions {
 
             this.container.appendChild(doYouMeanItem);
 
-            // Add divider if there are more suggestions
             if (this.suggestions.length > 1) {
                 const divider = document.createElement('div');
                 divider.className = 'suggestion-divider';
                 this.container.appendChild(divider);
 
-                // Add remaining suggestions
                 this.renderRemainingItems(query, 1);
             }
         }
@@ -248,7 +234,6 @@ class SearchSuggestions {
     renderSuggestions(query) {
         this.container.innerHTML = '';
 
-        // Add header
         const header = document.createElement('div');
         header.className = 'suggestions-header';
         header.textContent = 'Suggestions';
@@ -308,10 +293,8 @@ class SearchSuggestions {
         this.searchInput.value = suggestion;
         this.hideSuggestions();
 
-        // Trigger input event to update search results
         this.searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-        // Optionally trigger a custom event for additional handling
         this.searchInput.dispatchEvent(new CustomEvent('suggestionSelected', {
             detail: { suggestion },
             bubbles: true
@@ -360,7 +343,6 @@ class SearchSuggestions {
     }
 }
 
-// Initialize suggestions for different pages
 document.addEventListener('DOMContentLoaded', function () {
     const url = window.location.pathname.toLowerCase();
     const searchInput = document.querySelector('.search-filter input');
@@ -372,30 +354,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let suggestionInstance = null;
 
-    // Determine page type and initialize appropriate suggestions
     if (url.includes('inventory') || url.includes('dashboard') || url.includes('logbook')) {
-        // Dashboard & Logbook pages: Book Title, Author, ISBN, Shelf Location
         suggestionInstance = new SearchSuggestions(
             searchInput,
             '/Home/GetInventorySuggestions',
             ['title', 'author', 'isbn', 'shelf']
         );
     } else if (url.includes('borrowedbooks')) {
-        // Borrowed Books page: Title and Borrower
         suggestionInstance = new SearchSuggestions(
             searchInput,
             '/Home/GetBorrowedBooksSuggestions',
             ['title', 'borrower']
         );
     } else if (url.includes('requestedbooks')) {
-        // Requested Books page: Title and Borrower
         suggestionInstance = new SearchSuggestions(
             searchInput,
             '/Home/GetRequestedBooksSuggestions',
             ['title', 'borrower']
         );
     } else if (url.includes('fine')) {
-        // Fine page: Title only
         suggestionInstance = new SearchSuggestions(
             searchInput,
             '/Home/GetFineSuggestions',
@@ -403,7 +380,6 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    // Store instance globally if needed for debugging or manual control
     if (suggestionInstance) {
         window.searchSuggestionsInstance = suggestionInstance;
     }

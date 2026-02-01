@@ -82,6 +82,42 @@
         });
     }
 
+    const archiveBtn = document.querySelector('.btn-purple');
+    if (archiveBtn) {
+        archiveBtn.addEventListener('click', function () {
+            const selected = document.querySelector('input[name="selectedBook"]:checked');
+            if (selected) {
+                if (confirm('Are you sure you want to archive this book? It will no longer appear in the active inventory.')) {
+                    archiveBook(selected.value);
+                }
+            } else {
+                alert("Please select a book to archive.");
+            }
+        });
+    }
+
+    function archiveBook(bookId) {
+        fetch('/Home/ArchiveBook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ bookId: bookId })
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert('Book archived successfully!');
+                    location.reload();
+                } else {
+                    alert('Failed to archive book.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while archiving the book.');
+            });
+    }
+
     function displayPage(page) {
         const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
         if (page < 1) page = 1;
