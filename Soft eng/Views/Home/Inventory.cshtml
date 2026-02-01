@@ -72,7 +72,7 @@
                     </li>
                     <li>
                         <form asp-action="Logout" asp-controller="Home" method="post" id="logoutForm" style="display:inline;">
-                            <a href="javascript:void(0);" onclick="document.getElementById('logoutForm').submit();" class="logout-link">
+                            <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
                                 <i class="fas fa-sign-out-alt"></i>
                                 <span class="logout-text">Log Out</span>
                             </a>
@@ -174,6 +174,112 @@
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/inventory.js"></script>
     <script src="~/js/dropdown-fix.js"></script>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px 36px 32px;
+            width: 360px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            font-family: 'Poppins', sans-serif;
+        ">
+            <div style="
+                width: 56px;
+                height: 56px;
+                background-color: #fff3cd;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 18px;
+            ">
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="
+                font-size: 18px;
+                font-weight: 600;
+                color: #333333;
+                margin: 0 0 8px;
+            ">Do you wish to logout?</p>
+            <p style="
+                font-size: 13px;
+                color: #777777;
+                margin: 0 0 24px;
+            ">You will need to log in again to access the system.</p>
+            <div style="
+                display: flex;
+                justify-content: center;
+                gap: 14px;
+            ">
+                <button onclick="confirmLogout();" style="
+                    background-color: #e74c3c;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+
+                <button onclick="closeLogoutModal();" style="
+                    background-color: #2980b9;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            document.getElementById('logoutForm').submit();
+        }
+
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+    </script>
 
 </body>
 </html>
