@@ -17,7 +17,6 @@ using System.Security.Claims;
 
 namespace Soft_eng.Controllers
 {
-
     public class HomeController : Controller
     {
         private readonly MySqlConnection _connection;
@@ -32,9 +31,8 @@ namespace Soft_eng.Controllers
         }
 
         public IActionResult Login() => View();
+        public IActionResult VerificationResult() => View();
         public IActionResult Register() => View();
-
-     
 
         private async Task<dynamic> GetDashboardViewModel()
         {
@@ -45,7 +43,7 @@ namespace Soft_eng.Controllers
 
             try
             {
-                if (_connection.State != ConnectionState.Open)  await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 string updateOverdueSql = "UPDATE Loan SET OverdueStatus = 1 WHERE DateDue < CURDATE() AND ReturnStatus = 'Not Returned'";
                 using (var updateCmd = new MySqlCommand(updateOverdueSql, _connection))
@@ -241,25 +239,227 @@ namespace Soft_eng.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(string fullname, string email, string password, string confirmPassword)
+        public async Task<IActionResult> Register(Registerdb model)
         {
-            if (password != confirmPassword) { ViewBag.Message = "Passwords do not match."; return View(); }
+            ModelState.Remove("ConfirmPassword");
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                string normalizedEmail = model.Email.Trim().ToLower();
+
                 using (var existCmd = new MySqlCommand("SELECT COUNT(1) FROM Register WHERE Email = @e", _connection))
                 {
-                    existCmd.Parameters.AddWithValue("@e", email);
-                    if (Convert.ToInt32(await existCmd.ExecuteScalarAsync()) > 0) { ViewBag.Message = "An account with that email already exists."; return View(); }
+                    existCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                    if (Convert.ToInt32(await existCmd.ExecuteScalarAsync()) > 0)
+                    {
+                        ModelState.AddModelError("Email", "An account with that email already exists.");
+                        return View(model);
+                    }
                 }
-                string hashed = BCrypt.Net.BCrypt.HashPassword(password);
-                using var cmd = new MySqlCommand("INSERT INTO Register (FullName, Email, Password, ConfirmPassword, Role, IsLoggedIn) VALUES (@n, @e, @p, @c, 'Librarian', 0)", _connection);
-                cmd.Parameters.AddWithValue("@n", fullname); cmd.Parameters.AddWithValue("@e", email); cmd.Parameters.AddWithValue("@p", hashed); cmd.Parameters.AddWithValue("@c", hashed);
+
+                string verificationToken = Guid.NewGuid().ToString();
+                DateTime tokenExpiry = DateTime.Now.AddHours(24);
+
+                string hashed = BCrypt.Net.BCrypt.HashPassword(model.Password);
+
+                using var cmd = new MySqlCommand(
+                    @"INSERT INTO Register 
+                      (FullName, Email, Password, ConfirmPassword, Role, IsEmailVerified, VerificationToken, TokenExpiry, CreatedAt) 
+                      VALUES (@n, @e, @p, @c, @role, 0, @token, @expiry, @created)",
+                    _connection);
+
+                cmd.Parameters.AddWithValue("@n", model.FullName);
+                cmd.Parameters.AddWithValue("@e", normalizedEmail);
+                cmd.Parameters.AddWithValue("@p", hashed);
+                cmd.Parameters.AddWithValue("@c", hashed);
+                cmd.Parameters.AddWithValue("@role", model.Role);
+                cmd.Parameters.AddWithValue("@token", verificationToken);
+                cmd.Parameters.AddWithValue("@expiry", tokenExpiry);
+                cmd.Parameters.AddWithValue("@created", DateTime.Now);
+
                 await cmd.ExecuteNonQueryAsync();
-                return RedirectToAction("Login");
+
+                string? verificationLink = Url.Action("VerifyEmail", "Home",
+                    new { token = verificationToken, email = normalizedEmail }, Request.Scheme);
+
+                if (!string.IsNullOrEmpty(verificationLink))
+                {
+                    try
+                    {
+                        await SendVerificationEmail(normalizedEmail, verificationLink);
+                        ViewBag.SuccessMessage = $"Registration successful! We've sent a verification email to {normalizedEmail}. Please check your inbox and click the verification link to activate your account.";
+                    }
+                    catch (Exception emailEx)
+                    {
+                        ModelState.AddModelError("", "Failed to send verification email. Please check if your email address is correct.");
+
+                        using var deleteCmd = new MySqlCommand("DELETE FROM Register WHERE Email = @e AND IsEmailVerified = 0", _connection);
+                        deleteCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                        await deleteCmd.ExecuteNonQueryAsync();
+
+                        return View(model);
+                    }
+                }
+
+                ModelState.Clear();
+                return View(new Registerdb());
             }
-            catch { ViewBag.Message = "A database error occurred."; return View(); }
-            finally { await _connection.CloseAsync(); }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", "Registration error: " + ex.Message);
+                return View(model);
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+
+        private async Task SendVerificationEmail(string email, string link)
+        {
+            try
+            {
+                using var smtp = new SmtpClient(_configuration["EmailSettings:SmtpHost"])
+                {
+                    Port = int.Parse(_configuration["EmailSettings:SmtpPort"]),
+                    Credentials = new NetworkCredential(
+                        _configuration["EmailSettings:SenderEmail"],
+                        _configuration["EmailSettings:SenderPassword"]
+                    ),
+                    EnableSsl = true,
+                    Timeout = 10000
+                };
+
+                var msg = new MailMessage
+                {
+                    From = new MailAddress(
+                        _configuration["EmailSettings:SenderEmail"],
+                        _configuration["EmailSettings:SenderName"]
+                    ),
+                    Subject = "Verify Your Email - Saint Isidore Academy Library",
+                    Body = $@"
+                        <html>
+                        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                            <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                                <h2 style='color: #c0392b;'>Welcome to Saint Isidore Academy Library!</h2>
+                                <p>Hello,</p>
+                                <p>Thank you for registering with us. To complete your registration and verify that this email address belongs to you, please click the link below:</p>
+                                <p style='margin: 30px 0;'>
+                                    <a href='{link}' style='color: #c0392b; text-decoration: underline; font-weight: bold;'>Click here to verify your email address</a>
+                                </p>
+                                <p><strong>Important:</strong> This verification link will expire in 24 hours.</p>
+                                <p>If you did not create an account with Saint Isidore Academy Library, please ignore this email.</p>
+                                <hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>
+                                <p style='font-size: 12px; color: #666;'>
+                                    Saint Isidore Academy Library<br>
+                                    This is an automated message, please do not reply to this email.
+                                </p>
+                            </div>
+                        </body>
+                        </html>
+                    ",
+                    IsBodyHtml = true
+                };
+
+                msg.To.Add(email);
+                await smtp.SendMailAsync(msg);
+            }
+            catch (SmtpException smtpEx)
+            {
+                throw new Exception("Failed to send verification email. The email address may not exist.", smtpEx);
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> VerifyEmail(string? token, string? email)
+        {
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(email))
+            {
+                ViewBag.Message = "Invalid verification link.";
+                ViewBag.IsSuccess = false;
+                return View("VerificationResult");
+            }
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                string normalizedEmail = email.Trim().ToLower();
+
+                using var cmd = new MySqlCommand(
+                    @"SELECT VerificationToken, TokenExpiry, IsEmailVerified 
+                      FROM Register 
+                      WHERE Email = @e LIMIT 1",
+                    _connection);
+                cmd.Parameters.AddWithValue("@e", normalizedEmail);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (!await reader.ReadAsync())
+                {
+                    ViewBag.Message = "Account not found.";
+                    ViewBag.IsSuccess = false;
+                    return View("VerificationResult");
+                }
+
+                bool isAlreadyVerified = reader.GetBoolean("IsEmailVerified");
+                if (isAlreadyVerified)
+                {
+                    ViewBag.Message = "This email has already been verified. You can now log in to your account.";
+                    ViewBag.IsSuccess = true;
+                    return View("VerificationResult");
+                }
+
+                string storedToken = reader.GetString("VerificationToken");
+                DateTime tokenExpiry = reader.GetDateTime("TokenExpiry");
+
+                await reader.CloseAsync();
+
+                if (storedToken != token)
+                {
+                    ViewBag.Message = "Invalid verification token. Please check your email and try again.";
+                    ViewBag.IsSuccess = false;
+                    return View("VerificationResult");
+                }
+
+                if (DateTime.Now > tokenExpiry)
+                {
+                    ViewBag.Message = "Verification link has expired. Please register again or request a new verification email.";
+                    ViewBag.IsSuccess = false;
+                    return View("VerificationResult");
+                }
+
+                using var updateCmd = new MySqlCommand(
+                    @"UPDATE Register 
+                      SET IsEmailVerified = 1, 
+                          VerificationToken = NULL, 
+                          TokenExpiry = NULL 
+                      WHERE Email = @e",
+                    _connection);
+                updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                await updateCmd.ExecuteNonQueryAsync();
+
+                ViewBag.Message = "Email verified successfully! Your account is now active. You can log in now.";
+                ViewBag.IsSuccess = true;
+                return View("VerificationResult");
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Message = "Verification error: " + ex.Message;
+                ViewBag.IsSuccess = false;
+                return View("VerificationResult");
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
         [HttpPost]
@@ -271,18 +471,17 @@ namespace Soft_eng.Controllers
                 return View();
             }
 
-            string normalizedEmail = email.Trim();
+            string normalizedEmail = email.Trim().ToLower();
 
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123")
             {
-                var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, "Administrator"),
-            new Claim(ClaimTypes.Role, "Admin")
-        };
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
-
+                var adminClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "Administrator"),
+                    new Claim(ClaimTypes.Role, "Admin")
+                };
+                var adminIdentity = new ClaimsIdentity(adminClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(adminIdentity));
                 return RedirectToAction("AdminDashboard");
             }
 
@@ -290,35 +489,48 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                using var cmd = new MySqlCommand("SELECT FullName, Password, Role FROM Register WHERE Email = @e LIMIT 1", _connection);
+                using var cmd = new MySqlCommand(
+                    "SELECT FullName, Password, Role, IsEmailVerified FROM Register WHERE Email = @e LIMIT 1",
+                    _connection);
                 cmd.Parameters.AddWithValue("@e", normalizedEmail);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
-                if (!await reader.ReadAsync() || !BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
+                if (!await reader.ReadAsync())
+                {
+                    ViewBag.ErrorMessage = "Invalid email or password.";
+                    return View();
+                }
+
+                bool isEmailVerified = reader.GetBoolean("IsEmailVerified");
+                if (!isEmailVerified)
+                {
+                    ViewBag.ErrorMessage = "Please verify your email before logging in. Check your inbox for the verification link.";
+                    return View();
+                }
+
+                if (!BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
                 {
                     ViewBag.ErrorMessage = "Invalid email or password.";
                     return View();
                 }
 
                 string fullName = reader.GetString("FullName");
-                string role = reader.IsDBNull("Role") ? "Librarian" : reader.GetString("Role");
-                reader.Close();
+                string role = reader.IsDBNull(reader.GetOrdinal("Role")) ? "Librarian" : reader.GetString("Role");
 
                 var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, fullName),
-            new Claim(ClaimTypes.Role, role)
-        };
+                {
+                    new Claim(ClaimTypes.Name, fullName),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim(ClaimTypes.Email, normalizedEmail)
+                };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
 
-                using var updateCmd = new MySqlCommand("UPDATE Register SET IsLoggedIn = 1, LastLoginAt = NOW() WHERE Email = @e", _connection);
-                updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
-                await updateCmd.ExecuteNonQueryAsync();
-
-                return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase) ? RedirectToAction("AdminDashboard") : RedirectToAction("Dashboard");
+                return role.Equals("School Admin", StringComparison.OrdinalIgnoreCase)
+                    ? RedirectToAction("AdminDashboard")
+                    : RedirectToAction("Dashboard");
             }
             catch (Exception ex)
             {
@@ -331,20 +543,14 @@ namespace Soft_eng.Controllers
             }
         }
 
-
         [HttpPost]
         public async Task<IActionResult> Logout()
         {
             try
             {
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("UPDATE Register SET IsLoggedIn = 0 WHERE IsLoggedIn = 1", _connection);
-                await cmd.ExecuteNonQueryAsync();
             }
             catch { }
-            finally { await _connection.CloseAsync(); }
 
             return RedirectToAction("Login");
         }
@@ -352,44 +558,219 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            if (string.IsNullOrWhiteSpace(email)) { ViewBag.Message = "Email is required."; return View(); }
-            string normalizedEmail = email.Trim();
-            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase)) return RedirectToAction("ResetPasswordAdmin", new { token = "internal-admin-bypass", email = normalizedEmail });
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ViewBag.Message = "Email is required.";
+                return View();
+            }
+
+            string normalizedEmail = email.Trim().ToLower();
+
+            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase))
+                return RedirectToAction("ResetPasswordAdmin", new { token = "internal-admin-bypass", email = normalizedEmail });
+
+            var gmailPattern = @"^[a-zA-Z0-9._%+-]+@gmail\.com$";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, gmailPattern))
+            {
+                ViewBag.Message = "Please use a valid Gmail address (example@gmail.com).";
+                return View();
+            }
+
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using (var existCmd = new MySqlCommand("SELECT 1 FROM Register WHERE Email = @e LIMIT 1", _connection))
+
+                using (var existCmd = new MySqlCommand("SELECT IsEmailVerified FROM Register WHERE Email = @e LIMIT 1", _connection))
                 {
                     existCmd.Parameters.AddWithValue("@e", normalizedEmail);
-                    if (await existCmd.ExecuteScalarAsync() == null) { ViewBag.Message = "No account found."; return View(); }
+                    var result = await existCmd.ExecuteScalarAsync();
+
+                    if (result == null)
+                    {
+                        ViewBag.Message = "No account found with this email address.";
+                        return View();
+                    }
+
+                    bool isVerified = Convert.ToBoolean(result);
+                    if (!isVerified)
+                    {
+                        ViewBag.Message = "This email address has not been verified. Please verify your email first.";
+                        return View();
+                    }
                 }
+
                 string token = Guid.NewGuid().ToString();
+                DateTime tokenExpiry = DateTime.Now.AddHours(1);
+
+                using (var updateCmd = new MySqlCommand(
+                    "UPDATE Register SET PasswordResetToken = @token, PasswordResetExpiry = @expiry WHERE Email = @e",
+                    _connection))
+                {
+                    updateCmd.Parameters.AddWithValue("@token", token);
+                    updateCmd.Parameters.AddWithValue("@expiry", tokenExpiry);
+                    updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
                 string? link = Url.Action("ResetPassword", "Home", new { token, email = normalizedEmail }, Request.Scheme);
-                if (!string.IsNullOrEmpty(link)) await SendEmail(normalizedEmail, link);
-                ViewBag.Message = "Reset link sent."; return View();
+
+                if (!string.IsNullOrEmpty(link))
+                {
+                    await SendPasswordResetEmail(normalizedEmail, link);
+                }
+
+                ViewBag.Message = "Password reset link has been sent to your email. Please check your inbox.";
+                return View();
             }
-            catch { ViewBag.Message = "Error occurred."; return View(); }
-            finally { await _connection.CloseAsync(); }
+            catch (Exception ex)
+            {
+                ViewBag.Message = "Error occurred: " + ex.Message;
+                return View();
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
-        public IActionResult ResetPassword(string? token, string? email) { ViewBag.Token = token; ViewBag.Email = email; return View(); }
+        private async Task SendPasswordResetEmail(string email, string link)
+        {
+            using var smtp = new SmtpClient(_configuration["EmailSettings:SmtpHost"])
+            {
+                Port = int.Parse(_configuration["EmailSettings:SmtpPort"]),
+                Credentials = new NetworkCredential(
+                    _configuration["EmailSettings:SenderEmail"],
+                    _configuration["EmailSettings:SenderPassword"]
+                ),
+                EnableSsl = true
+            };
+
+            var msg = new MailMessage
+            {
+                From = new MailAddress(
+                    _configuration["EmailSettings:SenderEmail"],
+                    _configuration["EmailSettings:SenderName"]
+                ),
+                Subject = "Password Reset Request - Saint Isidore Academy Library",
+                Body = $@"
+                    <html>
+                    <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                        <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                            <h2 style='color: #c0392b;'>Password Reset Request</h2>
+                            <p>Hello,</p>
+                            <p>We received a request to reset your password for your Saint Isidore Academy Library account.</p>
+                            <p>To reset your password, <a href='{link}' style='color: #c0392b; text-decoration: underline;'>click here to reset password</a>.</p>
+                            <p><strong>Note:</strong> This link will expire in 1 hour for security reasons.</p>
+                            <p>If you did not request a password reset, please ignore this email or contact the library administrator.</p>
+                            <hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>
+                            <p style='font-size: 12px; color: #666;'>
+                                Saint Isidore Academy Library<br>
+                                This is an automated message, please do not reply to this email.
+                            </p>
+                        </div>
+                    </body>
+                    </html>
+                ",
+                IsBodyHtml = true
+            };
+
+            msg.To.Add(email);
+            await smtp.SendMailAsync(msg);
+        }
+
+        public IActionResult ResetPassword(string? token, string? email)
+        {
+            ViewBag.Token = token;
+            ViewBag.Email = email;
+            return View();
+        }
 
         [HttpPost]
         public async Task<IActionResult> ResetPassword(string? email, string? newPassword, string? confirmPassword, string? token)
         {
-            if (newPassword != confirmPassword) { ViewBag.Message = "Passwords do not match."; ViewBag.Token = token; ViewBag.Email = email; return View(); }
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword)) { ViewBag.Message = "Email and new password are required."; ViewBag.Token = token; ViewBag.Email = email; return View(); }
+            if (newPassword != confirmPassword)
+            {
+                ViewBag.Message = "Passwords do not match.";
+                ViewBag.Token = token;
+                ViewBag.Email = email;
+                return View();
+            }
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword))
+            {
+                ViewBag.Message = "Email and new password are required.";
+                ViewBag.Token = token;
+                ViewBag.Email = email;
+                return View();
+            }
+
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                string normalizedEmail = email.Trim().ToLower();
+
+                using (var checkCmd = new MySqlCommand(
+                    "SELECT PasswordResetToken, PasswordResetExpiry FROM Register WHERE Email = @e",
+                    _connection))
+                {
+                    checkCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                    using var reader = await checkCmd.ExecuteReaderAsync();
+
+                    if (!await reader.ReadAsync())
+                    {
+                        ViewBag.Message = "Invalid email address.";
+                        return View();
+                    }
+
+                    string storedToken = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    DateTime? expiry = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
+
+                    await reader.CloseAsync();
+
+                    if (string.IsNullOrEmpty(storedToken) || storedToken != token)
+                    {
+                        ViewBag.Message = "Invalid or expired reset link.";
+                        return View();
+                    }
+
+                    if (expiry.HasValue && DateTime.Now > expiry.Value)
+                    {
+                        ViewBag.Message = "Reset link has expired. Please request a new one.";
+                        return View();
+                    }
+                }
+
                 string hashed = BCrypt.Net.BCrypt.HashPassword(newPassword);
-                using var cmd = new MySqlCommand("UPDATE Register SET Password = @p, ConfirmPassword = @p WHERE Email = @e", _connection);
-                cmd.Parameters.AddWithValue("@p", hashed); cmd.Parameters.AddWithValue("@e", email.Trim());
-                if (await cmd.ExecuteNonQueryAsync() > 0) return RedirectToAction("Login");
-                ViewBag.Message = "User email not found."; ViewBag.Token = token; ViewBag.Email = email; return View();
+
+                using var cmd = new MySqlCommand(
+                    @"UPDATE Register 
+                      SET Password = @p, 
+                          ConfirmPassword = @p, 
+                          PasswordResetToken = NULL, 
+                          PasswordResetExpiry = NULL 
+                      WHERE Email = @e",
+                    _connection);
+                cmd.Parameters.AddWithValue("@p", hashed);
+                cmd.Parameters.AddWithValue("@e", normalizedEmail);
+
+                if (await cmd.ExecuteNonQueryAsync() > 0)
+                    return RedirectToAction("Login");
+
+                ViewBag.Message = "Password reset failed.";
+                ViewBag.Token = token;
+                ViewBag.Email = email;
+                return View();
             }
-            catch { ViewBag.Message = "Database error."; return View(); }
-            finally { await _connection.CloseAsync(); }
+            catch (Exception ex)
+            {
+                ViewBag.Message = "Database error: " + ex.Message;
+                return View();
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
         [HttpGet]
@@ -553,13 +934,6 @@ namespace Soft_eng.Controllers
         private string EscapeCSV(string v) => (string.IsNullOrEmpty(v) || !v.Any(c => c == ',' || c == '"' || c == '\n' || c == '\r')) ? v : $"\"{v.Replace("\"", "\"\"")}\"";
         private string EscapeHTML(string v) => string.IsNullOrEmpty(v) ? "" : v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
-        private async Task SendEmail(string email, string link)
-        {
-            using var smtp = new SmtpClient("smtp.gmail.com") { Port = 587, Credentials = new NetworkCredential("markdanielc0502@gmail.com", "yfco kddx caaz ulob"), EnableSsl = true };
-            var msg = new MailMessage { From = new MailAddress("markdanielc0502@gmail.com", "Saint Isidore Academy Library"), Subject = "Saint Isidore Library Password Reset", Body = $"Click to reset: {link}", IsBodyHtml = true };
-            msg.To.Add(email); await smtp.SendMailAsync(msg);
-        }
-
         public async Task<IActionResult> Inventory(bool fromAdmin = false)
         {
             List<LogBook> books = new List<LogBook>();
@@ -643,7 +1017,6 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
- 
                 using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@total, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
                 {
                     cmd.Parameters.AddWithValue("@id", book.BookID);
@@ -679,33 +1052,29 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 int copies = book.TotalCopies > 0 ? book.TotalCopies : 1;
-                
-                // Check if book with same ISBN already exists
+
                 if (!string.IsNullOrEmpty(book.ISBN))
                 {
                     using var checkCmd = new MySqlCommand("SELECT BookID, TotalCopies FROM LogBook WHERE ISBN = @isbn LIMIT 1", _connection);
                     checkCmd.Parameters.AddWithValue("@isbn", book.ISBN);
                     using var reader = await checkCmd.ExecuteReaderAsync();
-                    
+
                     if (await reader.ReadAsync())
                     {
-                        // Book already exists - update total copies instead
                         int existingBookId = reader.GetInt32("BookID");
                         int existingCopies = reader.GetInt32("TotalCopies");
-                        
+
                         await reader.CloseAsync();
-                        
-                        // Update existing book with new total copies
+
                         using var updateCmd = new MySqlCommand("UPDATE LogBook SET TotalCopies = @copies WHERE BookID = @id", _connection);
                         updateCmd.Parameters.AddWithValue("@copies", existingCopies + copies);
                         updateCmd.Parameters.AddWithValue("@id", existingBookId);
                         await updateCmd.ExecuteNonQueryAsync();
-                        
+
                         return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
                     }
                 }
-                
-                // Insert new record with the TotalCopies count
+
                 using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
                 cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
                 cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
@@ -758,9 +1127,6 @@ namespace Soft_eng.Controllers
             finally { await _connection.CloseAsync(); }
             return Json(borrowed);
         }
-
-        [HttpPost]
-
 
         [HttpPost]
         public async Task<IActionResult> AddBorrowedBook(string borrowerName, string borrowerType, string bookTitle, DateTime borrowDate)
@@ -849,13 +1215,11 @@ namespace Soft_eng.Controllers
                 int bId = await GetOrCreateBorrower(borrowerName, "Student");
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                // Get borrower type to validate teacher restrictions
                 using var getBorrowerType = new MySqlCommand("SELECT BorrowerType FROM Borrower WHERE BorrowerID = @id", _connection);
                 getBorrowerType.Parameters.AddWithValue("@id", bId);
                 var borrowerTypeResult = await getBorrowerType.ExecuteScalarAsync();
                 string borrowerType = borrowerTypeResult?.ToString() ?? "Student";
 
-                // Teachers cannot have overdue status or fines
                 if (borrowerType.Trim().ToLower() == "teacher" && returnStatus == "Returned" && !dateReturned.HasValue)
                 {
                     return Json(new { success = false, error = "Please provide date returned for the teacher." });
@@ -869,7 +1233,6 @@ namespace Soft_eng.Controllers
                 int bkId = Convert.ToInt32(res);
                 DateTime due = borrowDate.AddDays(4);
 
-                // Build the update query with optional return status and date returned
                 string updateQuery = "UPDATE Loan SET BookID=@bk, BorrowerID=@br, DateBorrowed=@db, DateDue=@dd, BookStatus=@bs";
                 if (!string.IsNullOrEmpty(returnStatus))
                 {
@@ -900,7 +1263,6 @@ namespace Soft_eng.Controllers
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Update LogBook status (including Damage status)
                 if (!string.IsNullOrEmpty(bookStatus) && bookStatus != "Borrowed")
                 {
                     using var lb = new MySqlCommand("UPDATE LogBook SET BookStatus=@s WHERE BookID=@bk", _connection);
@@ -909,7 +1271,6 @@ namespace Soft_eng.Controllers
                     await lb.ExecuteNonQueryAsync();
                 }
 
-                // If book is returned, update availability to "Available"
                 if (!string.IsNullOrEmpty(returnStatus) && returnStatus == "Returned")
                 {
                     using var updateAvail = new MySqlCommand("UPDATE LogBook SET Availability=@a WHERE BookID=@bk", _connection);
@@ -918,7 +1279,6 @@ namespace Soft_eng.Controllers
                     await updateAvail.ExecuteNonQueryAsync();
                 }
 
-                // For teachers, don't create fines
                 if (borrowerType.Trim().ToLower() != "teacher")
                 {
                     using var checkOverdue = new MySqlCommand("SELECT OverdueStatus FROM Loan WHERE LoanID = @id", _connection);
@@ -1049,8 +1409,8 @@ namespace Soft_eng.Controllers
                     "borrower" => "b.BorrowerName",
                     _ => "lb.BookTitle"
                 };
-                string tablePart = field == "borrower" 
-                    ? "Borrower b" 
+                string tablePart = field == "borrower"
+                    ? "Borrower b"
                     : "LogBook lb";
                 string whereClause = field == "borrower"
                     ? "WHERE b.BorrowerName LIKE @q AND b.BorrowerName IS NOT NULL AND b.BorrowerName != ''"

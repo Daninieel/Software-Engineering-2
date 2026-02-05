@@ -26,7 +26,6 @@
     const publisherInput = document.querySelector('input[name="Publisher"]');
     const remarksInput = document.querySelector('textarea[name="Remarks"]');
 
-    // State
     let stream = null;
     let isScanning = false;
     let scanTimeout = null;
@@ -36,7 +35,6 @@
     let frontImage = null;
     let backImage = null;
 
-    // Zoom & Pan state 
     let zoomLevel = 1;
     let panX = 0;
     let panY = 0;
@@ -48,7 +46,6 @@
     let startY = 0;
     let tempCanvasRef = null;
 
-    // Otsu Threshold 
     function calculateOtsuThreshold(data) {
         const histogram = new Array(256).fill(0);
         for (let i = 0; i < data.length; i += 4) {
@@ -76,12 +73,11 @@
         return threshold;
     }
 
-    // OCR Preprocessing
     function preprocessForBookCoverOCR(sourceCanvas) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        const scale = 3; // higher resolution helps Tesseract significantly
+        const scale = 3;
         canvas.width = sourceCanvas.width * scale;
         canvas.height = sourceCanvas.height * scale;
 
@@ -91,22 +87,19 @@
         let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let data = imgData.data;
 
-        // Better grayscale conversion for colored text
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i], g = data[i + 1], b = data[i + 2];
             let gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
-            // Boost contrast for saturated (colored) text
             const max = Math.max(r, g, b);
             const min = Math.min(r, g, b);
             const sat = max === 0 ? 0 : (max - min) / max;
-            if (sat > 0.35) gray *= 1.12; // mild boost
+            if (sat > 0.35) gray *= 1.12;
 
             gray = Math.max(0, Math.min(255, Math.round(gray)));
             data[i] = data[i + 1] = data[i + 2] = gray;
         }
 
-        // Binarization with Otsu
         const threshold = calculateOtsuThreshold(data);
         for (let i = 0; i < data.length; i += 4) {
             const val = data[i] < threshold ? 0 : 255;
@@ -117,7 +110,6 @@
         return canvas;
     }
 
-    //         ISBN from image (barcode / plain text)
     async function processImageAndGetIsbn(imageSource) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -156,7 +148,6 @@
         });
     }
 
-    //         Canvas Transform / Redraw
     function applyTransform() {
         const ctx = coverCanvas.getContext('2d');
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -169,7 +160,6 @@
         const img = currentSide === 'front' ? frontImage : backImage;
         if (img) ctx.drawImage(img, 0, 0);
 
-        // Draw existing detections
         allDetections.filter(d => d.side === currentSide).forEach((d, i) => {
             const { x0, y0, x1, y1 } = d.bbox;
             ctx.strokeStyle = '#27ae60';
@@ -198,7 +188,6 @@
         applyTransform();
     }
 
-    //         Zoom (toward mouse)
     coverCanvas.addEventListener('wheel', e => {
         e.preventDefault();
         if (!coverCanvasContainer) return;
@@ -216,7 +205,6 @@
         applyTransform();
     }, { passive: false });
 
-    //    Panning (Shift + drag)
     coverCanvas.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
 
@@ -259,7 +247,6 @@
             return;
         }
 
-        // Live drawing of selection rectangle
         const rect = coverCanvas.getBoundingClientRect();
         const scaleX = coverCanvas.width / rect.width;
         const scaleY = coverCanvas.height / rect.height;
@@ -305,7 +292,6 @@
             return;
         }
 
-        // Crop region
         const cropCanvas = document.createElement('canvas');
         cropCanvas.width = w;
         cropCanvas.height = h;
@@ -362,7 +348,7 @@
         detectedTextList.appendChild(div);
         setTimeout(() => div.remove(), ms);
     }
-    //         Detected Text List & Field Assignment
+
     function populateDetectedTextList() {
         const items = allDetections.filter(d => d.side === currentSide);
         detectedTextList.innerHTML = '';
@@ -435,7 +421,6 @@
         if (field !== 'none') selectedFields[field] = text;
     }
 
-    //    Apply → Form
     applyFieldsBtn.addEventListener('click', () => {
         if (selectedFields.title) titleInput.value = selectedFields.title;
         if (selectedFields.author) authorInput.value = selectedFields.author;
@@ -462,7 +447,6 @@
         resetCoverScan();
     });
 
-    //         Reset / Cleanup
     function resetCoverScan() {
         allDetections = [];
         selectedFields = { title: '', author: '', publisher: '', edition: '', year: '' };
@@ -479,9 +463,6 @@
         resetCoverScan();
     });
 
-    // ────────────────────────────────────────────────
-    //         Toggle Front / Back
-    // ────────────────────────────────────────────────
     function updateToggleButton() {
         if (!toggleSideBtn) return;
         if (frontImage && backImage) {
@@ -551,7 +532,6 @@
             );
 
             if (isBarcode) {
-                // ISBN scan
                 const btn = document.querySelector('.btn-blue') || searchIsbnBtn;
                 const orig = btn.innerText;
 
@@ -574,16 +554,15 @@
 
                 btn.innerText = orig;
                 btn.disabled = false;
-                break; 
+                break;
             } else {
-                // Cover scan
                 const isFront = confirm('OK = Front Cover\nCancel = Exit');
 
                 if (isFront) {
                     await processCoverImage(file, 'front');
                     break;
                 } else {
-                    break; 
+                    break;
                 }
             }
         }
@@ -591,9 +570,6 @@
         fileUpload.value = '';
     });
 
-
-
-    //  Camera / Live ISBN scanning
     async function startAutoScan() {
         if (!isScanning) return;
         const canvas = document.createElement('canvas');
@@ -635,7 +611,6 @@
         }
     });
 
-    //  Google Books + OpenLibrary
     async function fetchBookData(isbn) {
         const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`;
         const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=details&format=json`;
@@ -689,9 +664,6 @@
         if (desc) remarksInput.value = desc.substring(0, 600);
     }
 
-  
-    //  Camera Controls
-  
     async function getCameras() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         videoSourceSelect.innerHTML = '';
@@ -705,17 +677,39 @@
 
     async function startCamera(deviceId = null) {
         if (stream) stream.getTracks().forEach(t => t.stop());
-        const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true };
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        let constraints;
+        if (deviceId) {
+            constraints = { video: { deviceId: { exact: deviceId } } };
+        } else if (isMobile) {
+            constraints = {
+                video: {
+                    facingMode: { ideal: 'environment' }
+                }
+            };
+        } else {
+            constraints = { video: true };
+        }
+
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
-            video.style.transform = "scaleX(-1)";
+
+            if (!isMobile) {
+                video.style.transform = "scaleX(-1)";
+            } else {
+                video.style.transform = "scaleX(1)";
+            }
+
             if (videoSourceSelect.options.length === 0) await getCameras();
             video.onloadedmetadata = () => {
                 isScanning = true;
                 startAutoScan();
             };
         } catch (err) {
+            console.error("Camera error:", err);
             alert("Camera access denied or unavailable.");
         }
     }
@@ -737,9 +731,6 @@
     };
 
     closeCameraBtn.addEventListener('click', stopCamera);
-
-    
-    // ISBN Validation & Manual Search
 
     function isValidIsbn(val) {
         const clean = val.replace(/[^0-9X]/gi, '');
@@ -800,7 +791,6 @@
         if (e.key === 'Enter') searchIsbnBtn.click();
     });
 
-    // Keyboard cursor hint
     document.addEventListener('keydown', e => {
         if (coverScanModal.style.display === 'flex' && e.key === 'Shift') {
             coverCanvas.style.cursor = 'grab';
