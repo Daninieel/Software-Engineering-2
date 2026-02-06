@@ -1,6 +1,8 @@
 USE `Soft Eng 2`;
 
-CREATE TABLE Register (
+DROP TABLE IF EXISTS Register;
+
+CREATE TABLE IF NOT EXISTS Register (
     UserID INT AUTO_INCREMENT PRIMARY KEY,
     FullName VARCHAR(100) NOT NULL,
     Email VARCHAR(100) NOT NULL UNIQUE,
@@ -18,7 +20,17 @@ CREATE TABLE Register (
     INDEX idx_password_reset_token (PasswordResetToken)
 );
 
--- Only verify admin account (new users must verify their email)
-UPDATE Register
-SET IsEmailVerified = 1
+INSERT INTO Register (FullName, Email, Password, ConfirmPassword, Role, IsEmailVerified, CreatedAt)
+VALUES (
+    'System Administrator',
+    'admin@sia',
+    '$2a$11$vQN5rM4vZ8xJ6yP2wT9LKeLqR5mN8oP7qS9tU0vW1xY2zA3bC4dE5',
+    '$2a$11$vQN5rM4vZ8xJ6yP2wT9LKeLqR5mN8oP7qS9tU0vW1xY2zA3bC4dE5',
+    'School Admin',
+    1,
+    NOW()
+);
+
+SELECT UserID, FullName, Email, Role, IsEmailVerified, CreatedAt
+FROM Register 
 WHERE Email = 'admin@sia';
