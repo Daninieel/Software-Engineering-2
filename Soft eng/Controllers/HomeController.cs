@@ -239,6 +239,12 @@ namespace Soft_eng.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> ResetPasswordAdmin(string? email, string? newPassword, string? confirmPassword, string? token)
+        {
+            return await ResetPassword(email, newPassword, confirmPassword, token);
+        }
+
+        [HttpPost]
         public async Task<IActionResult> Register(Registerdb model)
         {
             ModelState.Remove("ConfirmPassword");
@@ -473,15 +479,19 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim().ToLower();
 
-            if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase) && password == "adminsia123")
+            // Fixed admin credentials check
+            if (normalizedEmail == "admin@sia" && password == "adminsia123")
             {
-                var adminClaims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, "Administrator"),
-                    new Claim(ClaimTypes.Role, "Admin")
-                };
-                var adminIdentity = new ClaimsIdentity(adminClaims, CookieAuthenticationDefaults.AuthenticationScheme);
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(adminIdentity));
+                var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, "System Administrator"),
+            new Claim(ClaimTypes.Role, "School Admin"),
+            new Claim(ClaimTypes.Email, "admin@sia")
+        };
+
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+
                 return RedirectToAction("AdminDashboard");
             }
 
@@ -519,11 +529,11 @@ namespace Soft_eng.Controllers
                 string role = reader.IsDBNull(reader.GetOrdinal("Role")) ? "Librarian" : reader.GetString("Role");
 
                 var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, fullName),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim(ClaimTypes.Email, normalizedEmail)
-                };
+        {
+            new Claim(ClaimTypes.Name, fullName),
+            new Claim(ClaimTypes.Role, role),
+            new Claim(ClaimTypes.Email, normalizedEmail)
+        };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
@@ -555,6 +565,7 @@ namespace Soft_eng.Controllers
             return RedirectToAction("Login");
         }
 
+
         [HttpPost]
         public async Task<IActionResult> ForgotPassword(string email)
         {
@@ -566,10 +577,57 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim().ToLower();
 
+            // Special handling for admin - direct redirect to reset page
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase))
-                return RedirectToAction("ResetPasswordAdmin", new { token = "internal-admin-bypass", email = normalizedEmail });
+            {
+                try
+                {
+                    if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
+                    // Check if admin account exists
+                    using (var existCmd = new MySqlCommand("SELECT UserID FROM Register WHERE Email = @e LIMIT 1", _connection))
+                    {
+                        existCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                        var result = await existCmd.ExecuteScalarAsync();
+
+                        if (result == null)
+                        {
+                            ViewBag.Message = "Admin account not found.";
+                            return View();
+                        }
+                    }
+
+                    // Generate token and save to database
+                    string token = Guid.NewGuid().ToString();
+                    DateTime tokenExpiry = DateTime.Now.AddHours(1);
+
+                    using (var updateCmd = new MySqlCommand(
+                        "UPDATE Register SET PasswordResetToken = @token, PasswordResetExpiry = @expiry WHERE Email = @e",
+                        _connection))
+                    {
+                        updateCmd.Parameters.AddWithValue("@token", token);
+                        updateCmd.Parameters.AddWithValue("@expiry", tokenExpiry);
+                        updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
+                        await updateCmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Direct redirect to reset password page (no email sent)
+                    return RedirectToAction("ResetPasswordAdmin", new { token, email = normalizedEmail });
+                }
+                catch (Exception ex)
+                {
+                    ViewBag.Message = "Error occurred: " + ex.Message;
+                    return View();
+                }
+                finally
+                {
+                    await _connection.CloseAsync();
+                }
+            }
+
+            // Regular user flow - require Gmail and send email
             var gmailPattern = @"^[a-zA-Z0-9._%+-]+@gmail\.com$";
+
             if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, gmailPattern))
             {
                 ViewBag.Message = "Please use a valid Gmail address (example@gmail.com).";

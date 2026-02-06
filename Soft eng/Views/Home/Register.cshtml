@@ -2,23 +2,35 @@
     ViewBag.Title = "Register";
     Layout = null;
 }
-
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Register - Saint Isidore Academy</title>
-
     <link rel="stylesheet" href="~/css/register.css" />
 </head>
 <body>
-
     <div class="login-card">
-
         <div class="logo-container">
             <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
             <h3>Create Account</h3>
         </div>
+
+        @* Success Message Display *@
+        @if (!string.IsNullOrEmpty(ViewBag.SuccessMessage))
+        {
+            <div class="alert alert-success" style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                @ViewBag.SuccessMessage
+            </div>
+        }
+
+        @* Error Message Display *@
+        @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+        {
+            <div class="alert alert-danger" style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                @ViewBag.ErrorMessage
+            </div>
+        }
 
         @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { id = "registerForm" }))
         {
@@ -26,12 +38,10 @@
                 <label for="fullname">Full Name</label>
                 <input type="text" id="fullname" name="fullname" placeholder="e.g. Juan Dela Cruz" required />
             </div>
-
             <div class="form-group">
                 <label for="email">Email Address</label>
                 <input type="email" id="email" name="email" placeholder="student@saintisidore.edu" required />
             </div>
-
             <div class="form-group">
                 <label for="password">Password</label>
                 <div class="password-wrap" style="display:flex;align-items:center;gap:8px;">
@@ -42,7 +52,6 @@
                     </button>
                 </div>
             </div>
-
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
                 <div class="password-wrap" style="display:flex;align-items:center;gap:8px;">
@@ -53,19 +62,23 @@
                     </button>
                 </div>
             </div>
-
             <button type="submit" class="btn-login" id="registerBtn">Sign Up</button>
-
             <div class="account-link">
                 <span>Already have an account?</span>
                 <a href="@Url.Action("Login", "Home")">Log In here</a>
             </div>
         }
-
     </div>
+
+    @* JavaScript Alert *@
+    @if (!string.IsNullOrEmpty(ViewBag.SuccessMessage))
+    {
+        <script>
+            alert('@Html.Raw(ViewBag.SuccessMessage)');
+        </script>
+    }
 
     <script src="~/js/register.js"></script>
     <script src="~/js/passwordToggle.js"></script>
-
 </body>
 </html>
