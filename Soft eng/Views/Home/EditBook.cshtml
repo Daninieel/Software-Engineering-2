@@ -9,9 +9,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Book</title>
     <link rel="stylesheet" href="~/css/editbooks.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
-    <main class="content-area">
+    <main class="content-area page-content">
         <h2>Edit Book Details</h2>
         <div class="form-card">
             <form asp-action="EditBook" method="post">
@@ -131,6 +132,7 @@
             }
         });
         dateReceived.addEventListener("change", validateDates);
+
     </script>
     <partial name="_ValidationScriptsPartial" />
 </body>

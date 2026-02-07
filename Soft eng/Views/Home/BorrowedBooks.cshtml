@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="~/css/pagination.css">
     <link rel="stylesheet" href="~/css/search-suggestions.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <style>
         /* Custom Dropdown Styling */
         #issueBookForm select {
@@ -52,6 +53,15 @@
         /* Make the select look like a placeholder when the empty value is selected */
         .detail-select:has(option[value=""]:checked) {
             color: #757575;
+        }
+
+        /* Ensure table is responsive */
+        .table-card {
+            overflow-x: auto;
+        }
+
+        #borrowedBooksTable {
+            min-width: 900px;
         }
     </style>
 </head>
@@ -123,13 +133,15 @@
                 </ul>
             </nav>
         </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <main class="content-area">
+        <main class="content-area page-content">
             <h2>Borrowed Books</h2>
 
             <div class="search-filter">
                 <input type="text" id="borrowedSearch" placeholder="Search by Title, Borrower, etc.">
             </div>
+
             <div class="table-card">
                 <table id="borrowedBooksTable">
                     <thead>
@@ -168,7 +180,6 @@
             <div class="button-area">
                 <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
                 <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
-
             </div>
         </main>
 
@@ -324,20 +335,6 @@
             </div>
         </div>
     </div>
-    <script>
-        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
-        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
-    </script>
-
-
-    <script src="~/js/dashboard.js"></script>
-    <script src="~/js/reportGeneration.js"></script>
-    <script src="~/js/chatbot.js"></script>
-    <script src="~/js/borrowedbooks.js"></script>
-    <script src="~/js/search-suggestions.js"></script>
-    <script src="~/js/welcome.js"></script>
-    <script src="~/js/sidebar-mobile.js"></script>
-    <script src="~/js/dropdown-fix.js"></script>
 
     <!-- Logout Confirmation Modal -->
     <div id="logoutModal" style="
@@ -424,6 +421,21 @@
             </div>
         </div>
     </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/reportGeneration.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/borrowedbooks.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <script>
         function showLogoutModal() {

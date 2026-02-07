@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="~/css/pagination.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search-suggestions.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="top-header admin">
@@ -78,13 +79,12 @@
                             </a>
                         </form>
                     </li>
-
-
                 </ul>
             </nav>
         </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <main class="content-area">
+        <main class="content-area page-content">
             <h2>
                 Logbook
                 @if (ViewBag.SearchQuery != null)
@@ -100,7 +100,6 @@
                     <thead>
                         <tr>
                             <th>Book ID</th>
-                            <th>ISBN</th>
                             <th>Title</th>
                             <th>Author</th>
                             <th>Shelf Location</th>
@@ -117,7 +116,6 @@
                                     <input type="radio" name="selectedBook" value="@item.BookID" hidden>
                                     @item.BookID
                                 </td>
-                                <td class="isbn-cell">@item.ISBN</td>
                                 <td class="title-cell">@item.BookTitle</td>
                                 <td class="author-cell">@item.Author</td>
                                 <td class="shelf-cell">@item.ShelfLocation</td>
@@ -164,16 +162,14 @@
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
-
     <script src="~/js/sidebar-mobile.js"></script>
-
     <script src="~/js/search-suggestions.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/welcome.js"></script>
-
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/inventory.js"></script>
     <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <!-- Logout Confirmation Modal -->
     <div id="logoutModal" style="

@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="~/css/pagination.css">
     <link rel="stylesheet" href="~/css/search-suggestions.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
 
@@ -88,8 +89,9 @@
                 </ul>
             </nav>
         </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <main class="content-area">
+        <main class="content-area page-content">
             <h2>Admin Fine</h2>
             <div class="search-filter">
                 <input type="text" id="fineSearch" placeholder="Search by Title or Borrower Name...">
@@ -131,92 +133,83 @@
             </div>
 
             <div class="total-container mb-3">
-                <h4>Grand Total of All Fines: <span id="grandTotalDisplay">\u20b10.00</span></h4>
+                <h4>Grand Total of All Fines: <span id="grandTotalDisplay">₱0.00</span></h4>
             </div>
 
             <div class="button-area">
                 <button class="btn btn-green" id="openReportModal">Generate Report</button>
                 <button class="btn btn-red" id="editFineBtn">Edit Fine</button>
             </div>
-            <div id="reportModal" class="report-modal" style="display:none;">
-                <div class="report-modal-content">
-                    <button id="closeReportModal" class="close-report-modal">&times;</button>
-                    <h2>Select Report Format</h2>
-                    <p>Choose the format for your report:</p>
-                    <div class="report-format-buttons">
-                        <button class="report-format-btn pdf" data-format="pdf">
-                            <i class="fas fa-file-pdf"></i> PDF
-                        </button>
-                        <button class="report-format-btn csv" data-format="csv">
-                            <i class="fas fa-file-csv"></i> CSV
-                        </button>
+        </main>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="report-modal" style="display:none;">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fine Details Modal -->
+    <div id="fineDetailsModal" class="report-modal">
+        <div class="report-modal-content" style="max-width: 600px; text-align: left;">
+            <span class="close-report-modal" onclick="closeFineModal()">&times;</span>
+            <h2 style="text-align: center; margin-bottom: 20px;">Fine Details</h2>
+
+            <form id="editFineForm">
+                <input type="hidden" id="detailFineID" name="FineID">
+
+                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div class="detail-group" style="flex: 1;">
+                        <label class="detail-label">Borrower Name</label>
+                        <input type="text" id="detailBorrowerName" class="detail-input" disabled>
+                    </div>
+                    <div class="detail-group" style="flex: 1;">
+                        <label class="detail-label">Loan ID</label>
+                        <input type="text" id="detailLoanID" class="detail-input" disabled>
                     </div>
                 </div>
-            </div>
 
-            <div id="fineDetailsModal" class="report-modal">
-                <div class="report-modal-content" style="max-width: 600px; text-align: left;">
-                    <span class="close-report-modal" onclick="closeFineModal()">&times;</span>
-                    <h2 style="text-align: center; margin-bottom: 20px;">Fine Details</h2>
-
-                    <form id="editFineForm">
-                        <input type="hidden" id="detailFineID" name="FineID">
-
-                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
-                            <div class="detail-group" style="flex: 1;">
-                                <label class="detail-label">Borrower Name</label>
-                                <input type="text" id="detailBorrowerName" class="detail-input" disabled>
-                            </div>
-                            <div class="detail-group" style="flex: 1;">
-                                <label class="detail-label">Loan ID</label>
-                                <input type="text" id="detailLoanID" class="detail-input" disabled>
-                            </div>
-                        </div>
-
-                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
-                            <div class="detail-group" style="flex: 1;">
-                                <label class="detail-label">Payment Status</label>
-                                <select id="detailPaymentStatus" name="PaymentStatus" class="detail-select" disabled>
-                                    <option value="Unpaid">Unpaid</option>
-                                    <option value="Paid">Paid</option>
-                                </select>
-                            </div>
-                            <div class="detail-group" style="flex: 1;">
-                                <label class="detail-label">Daily Fine</label>
-                                <input type="number" id="detailFineAmount" name="FineAmount" step="0.01" class="detail-input" disabled>
-                            </div>
-                        </div>
-
-                        <div class="form-row" style="margin-bottom: 25px;">
-                            <div class="detail-group" style="width: 100%;">
-                                <label class="detail-label">Date Paid</label>
-                                <input type="date" id="detailDatePaid" name="DatePaid" class="detail-input" disabled>
-                            </div>
-                        </div>
-                        <div class="button-area" style="display: flex; justify-content: center; gap: 15px;">
-                            <button type="button" class="btn btn-blue" id="btnEditToggle">Edit</button>
-                            <button type="button" class="btn btn-red" onclick="closeFineModal()">Back</button>
-                        </div>
-                    </form>
+                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div class="detail-group" style="flex: 1;">
+                        <label class="detail-label">Payment Status</label>
+                        <select id="detailPaymentStatus" name="PaymentStatus" class="detail-select" disabled>
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="detail-group" style="flex: 1;">
+                        <label class="detail-label">Daily Fine</label>
+                        <input type="number" id="detailFineAmount" name="FineAmount" step="0.01" class="detail-input" disabled>
+                    </div>
                 </div>
-            </div>
 
-            <script>
-                window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
-                window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
-            </script>
+                <div class="form-row" style="margin-bottom: 25px;">
+                    <div class="detail-group" style="width: 100%;">
+                        <label class="detail-label">Date Paid</label>
+                        <input type="date" id="detailDatePaid" name="DatePaid" class="detail-input" disabled>
+                    </div>
+                </div>
+                <div class="button-area" style="display: flex; justify-content: center; gap: 15px;">
+                    <button type="button" class="btn btn-blue" id="btnEditToggle">Edit</button>
+                    <button type="button" class="btn btn-red" onclick="closeFineModal()">Back</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            <script src="~/js/dashboard.js"></script>
-            <script src="~/js/reportGeneration.js"></script>
-            <script src="~/js/chatbot.js"></script>
-            <script src="~/js/fine.js"></script>
-            <script src="~/js/search-suggestions.js"></script>
-            <script src="~/js/welcome.js"></script>
-            <script src="~/js/sidebar-mobile.js"></script>
-            <script src="~/js/dropdown-fix.js"></script>
-
-            <!-- Logout Confirmation Modal -->
-            <div id="logoutModal" style="
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" style="
         display: none;
         position: fixed;
         top: 0;
@@ -228,7 +221,7 @@
         justify-content: center;
         align-items: center;
     ">
-                <div style="
+        <div style="
             background-color: #ffffff;
             border-radius: 12px;
             padding: 40px 36px 32px;
@@ -238,7 +231,7 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
             font-family: 'Poppins', sans-serif;
         ">
-                    <div style="
+            <div style="
                 width: 56px;
                 height: 56px;
                 background-color: #fff3cd;
@@ -248,25 +241,25 @@
                 justify-content: center;
                 margin: 0 auto 18px;
             ">
-                        <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
-                    </div>
-                    <p style="
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="
                 font-size: 18px;
                 font-weight: 600;
                 color: #333333;
                 margin: 0 0 8px;
             ">Do you wish to logout?</p>
-                    <p style="
+            <p style="
                 font-size: 13px;
                 color: #777777;
                 margin: 0 0 24px;
             ">You will need to log in again to access the system.</p>
-                    <div style="
+            <div style="
                 display: flex;
                 justify-content: center;
                 gap: 14px;
             ">
-                        <button onclick="confirmLogout();" style="
+                <button onclick="confirmLogout();" style="
                     background-color: #e74c3c;
                     color: #ffffff;
                     border: none;
@@ -278,11 +271,11 @@
                     font-family: 'Poppins', sans-serif;
                     transition: background-color 0.2s;
                 " onmouseover="this.style.backgroundColor='#c0392b'"
-                                onmouseout="this.style.backgroundColor='#e74c3c'">
-                            Yes
-                        </button>
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
 
-                        <button onclick="closeLogoutModal();" style="
+                <button onclick="closeLogoutModal();" style="
                     background-color: #2980b9;
                     color: #ffffff;
                     border: none;
@@ -294,32 +287,47 @@
                     font-family: 'Poppins', sans-serif;
                     transition: background-color 0.2s;
                 " onmouseover="this.style.backgroundColor='#1a6da0'"
-                                onmouseout="this.style.backgroundColor='#2980b9'">
-                            No
-                        </button>
-                    </div>
-                </div>
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
             </div>
+        </div>
+    </div>
 
-            <script>
-                function showLogoutModal() {
-                    document.getElementById('logoutModal').style.display = 'flex';
-                }
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
 
-                function closeLogoutModal() {
-                    document.getElementById('logoutModal').style.display = 'none';
-                }
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/reportGeneration.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/fine.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
-                function confirmLogout() {
-                    document.getElementById('logoutForm').submit();
-                }
+    <script>
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
 
-                document.getElementById('logoutModal').addEventListener('click', function (e) {
-                    if (e.target === this) {
-                        closeLogoutModal();
-                    }
-                });
-            </script>
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            document.getElementById('logoutForm').submit();
+        }
+
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+    </script>
 
 </body>
 </html>

@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="~/css/addbooks.css">
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
@@ -83,7 +84,7 @@
             </nav>
         </aside>
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
-        <main class="content-area">
+        <main class="content-area page-content">
             <h2>Add Book</h2>
 
             <div class="form-card">
@@ -97,22 +98,22 @@
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Author</label>
-                            <input type="text" name="Author">
+                            <input type="text" name="Author" required>
                         </div>
                         <div class="form-group">
                             <label>Pages</label>
-                            <input type="number" name="Pages" id="pagesInput" min="1">
+                            <input type="number" name="Pages" id="pagesInput" min="1" required>
                         </div>
                     </div>
 
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Edition</label>
-                            <input type="text" name="Edition" placeholder="1st/2021">
+                            <input type="text" name="Edition" placeholder="1st/2021" required>
                         </div>
                         <div class="form-group">
                             <label>Year</label>
-                            <input type="text" name="Year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                            <input type="text" name="Year" placeholder="YYYY/MM/DD" onfocus="(this.type='date')" required>
                         </div>
                     </div>
 
@@ -121,7 +122,7 @@
                             <div class="form-group">
                                 <label>ISBN</label>
                                 <div class="isbn-search-wrapper">
-                                    <input type="text" name="ISBN" id="isbnInput" placeholder="Enter ISBN (10 or 13 digits)">
+                                    <input type="text" name="ISBN" id="isbnInput" placeholder="Enter ISBN (10 or 13 digits)" required>
                                     <button type="button" id="searchIsbnBtn" class="btn-search-isbn" title="Search by ISBN">
                                         <i class="fas fa-search"></i>
                                     </button>
@@ -254,6 +255,7 @@
     <script src="~/js/welcome.js"></script>
     <script src="~/js/sidebar-mobile.js"></script>
     <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <!-- Logout Confirmation Modal -->
     <div id="logoutModal" style="
         display: none;

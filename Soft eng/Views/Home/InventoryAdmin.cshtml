@@ -1,6 +1,6 @@
 @model List<Soft_eng.Models.LogBook>
 @{
-    ViewBag.Title = "Inventory Admin";
+    ViewBag.Title = "Inventory";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="~/css/pagination.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search-suggestions.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="top-header admin">
@@ -32,7 +33,7 @@
         <div class="user-area">
             <div class="welcome-text" id="welcomeText"></div>
             <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
             </div>
         </div>
     </header>
@@ -41,14 +42,14 @@
         <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
-                    <li class="@(ViewBag.Title == "AdminDashboard" ? "active" : "")">
-                        <a asp-action="AdminDashboard">
+                    <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                        <a asp-action="Dashboard">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                     </li>
 
-                    <li class="@(ViewBag.Title == "Inventory Admin" ? "active" : "")">
-                        <a asp-action="InventoryAdmin">
+                    <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                        <a asp-action="Inventory">
                             <i class="fas fa-book"></i> Logbook
                         </a>
                     </li>
@@ -59,14 +60,14 @@
                             <i class="fas fa-chevron-down arrow-icon"></i>
                         </a>
                         <ul class="submenu" id="bookManagementSubmenuLib">
-                            <li><a asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
-                            <li><a asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
-                            <li><a asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-action="AddBooks"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
                         </ul>
                     </li>
 
                     <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
-                        <a asp-action="FineAdmin">
+                        <a asp-action="Fine">
                             <i class="fas fa-money-bill-wave"></i> Fine
                         </a>
                     </li>
@@ -78,15 +79,14 @@
                             </a>
                         </form>
                     </li>
-
-
                 </ul>
             </nav>
         </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <main class="content-area">
+        <main class="content-area page-content">
             <h2>
-                Admin Logbook
+                Logbook
                 @if (ViewBag.SearchQuery != null)
                 {
                     <span style="font-size: 0.8em; font-weight: normal; color: #e74c3c;"> - Search Results for "@ViewBag.SearchQuery"</span>
@@ -162,16 +162,14 @@
         window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
     </script>
 
-
     <script src="~/js/sidebar-mobile.js"></script>
-
     <script src="~/js/search-suggestions.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/welcome.js"></script>
-
     <script src="~/js/dashboard.js"></script>
     <script src="~/js/inventory.js"></script>
     <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <!-- Logout Confirmation Modal -->
     <div id="logoutModal" style="
