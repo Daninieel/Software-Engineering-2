@@ -1196,3 +1196,11 @@ body.sidebar-open {
 .content-area {
     -webkit-overflow-scrolling: touch;
 }
+
+#requestsTable tbody td:nth-child(2),
+#requestsTable tbody td:nth-child(3) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}

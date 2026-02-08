@@ -63,7 +63,7 @@ namespace Soft_eng.Controllers
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE OverdueStatus = 1 AND ReturnStatus = 'Not Returned'", _connection))
                     totalOverdue = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(FineAmount), 0) FROM Fine WHERE PaymentStatus = 'Unpaid'", _connection))
+                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(FineAmount), 0) FROM Fine", _connection))
                     totalFineSum = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
 
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Missing'", _connection))
@@ -73,11 +73,11 @@ namespace Soft_eng.Controllers
                     totalDamaged = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                 string overdueSql = @"SELECT l.BorrowerID, b.BorrowerName, l.DateBorrowed, IFNULL(f.FineAmount, 0) as FineAmount 
-                                      FROM Loan l 
-                                      JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
-                                      LEFT JOIN Fine f ON l.LoanID = f.LoanID
-                                      WHERE l.OverdueStatus = 1 AND l.ReturnStatus = 'Not Returned'
-                                      ORDER BY l.DateBorrowed ASC LIMIT 5";
+                      FROM Loan l 
+                      JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
+                      LEFT JOIN Fine f ON l.LoanID = f.LoanID
+                      WHERE l.OverdueStatus = 1 AND l.ReturnStatus = 'Not Returned'
+                      ORDER BY l.DateBorrowed ASC LIMIT 5";
 
                 using (var cmd = new MySqlCommand(overdueSql, _connection))
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -902,10 +902,10 @@ namespace Soft_eng.Controllers
 
                 if (isOverdue)
                 {
-                    const string insertSql = @"INSERT INTO Fine (LoanID, PaymentStatus, FineAmount) 
-                                     SELECT @loanId, 'Unpaid', 5.00
-                                     FROM DUAL 
-                                     WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')";
+                    const string insertSql = @"INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
+                             SELECT @loanId, 'Unpaid', 5.00, 5.00
+                             FROM DUAL 
+                             WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')";
                     using var insCmd = new MySqlCommand(insertSql, _connection);
                     insCmd.Parameters.AddWithValue("@loanId", loanId);
                     await insCmd.ExecuteNonQueryAsync();
@@ -1107,6 +1107,28 @@ namespace Soft_eng.Controllers
         {
             try
             {
+                // Validate ISBN format - must be exactly 10 or 13 digits only
+                if (!string.IsNullOrEmpty(book.ISBN))
+                {
+                    string cleanIsbn = book.ISBN.Trim();
+
+                    // Check if ISBN contains only digits
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(cleanIsbn, @"^\d+$"))
+                    {
+                        // ISBN contains non-numeric characters - reject
+                        return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
+                    }
+
+                    // Check if ISBN is exactly 10 or 13 digits
+                    if (cleanIsbn.Length != 10 && cleanIsbn.Length != 13)
+                    {
+                        // ISBN is not 10 or 13 digits - reject
+                        return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
+                    }
+
+                    book.ISBN = cleanIsbn;
+                }
+
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 int copies = book.TotalCopies > 0 ? book.TotalCopies : 1;
@@ -1121,7 +1143,6 @@ namespace Soft_eng.Controllers
                     {
                         int existingBookId = reader.GetInt32("BookID");
                         int existingCopies = reader.GetInt32("TotalCopies");
-
                         await reader.CloseAsync();
 
                         using var updateCmd = new MySqlCommand("UPDATE LogBook SET TotalCopies = @copies WHERE BookID = @id", _connection);
@@ -1133,7 +1154,10 @@ namespace Soft_eng.Controllers
                     }
                 }
 
-                using var cmd = new MySqlCommand("INSERT INTO LogBook (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
+                using var cmd = new MySqlCommand(@"INSERT INTO LogBook 
+            (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, Publisher, Year, Remarks, ShelfLocation, Availability, TotalCopies, BookStatus) 
+            VALUES (@isbn, @source, @title, @received, @author, @pages, @edition, @pub, @year, @rem, @shelf, @avail, @copies, @status)", _connection);
+
                 cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
                 cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
                 cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
@@ -1153,7 +1177,10 @@ namespace Soft_eng.Controllers
 
                 return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
             }
-            finally { await _connection.CloseAsync(); }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
         public async Task<IActionResult> BookDetails(int id, bool fromAdmin = false)
@@ -1264,7 +1291,6 @@ namespace Soft_eng.Controllers
             }
             finally { if (close) await _connection.CloseAsync(); }
         }
-
         [HttpPost]
         public async Task<IActionResult> UpdateBorrowedBook(int loanId, string borrowerName, string bookTitle, DateTime borrowDate, string bookStatus, string returnStatus = null, DateTime? dateReturned = null)
         {
@@ -1291,7 +1317,11 @@ namespace Soft_eng.Controllers
                 int bkId = Convert.ToInt32(res);
                 DateTime due = borrowDate.AddDays(4);
 
-                string updateQuery = "UPDATE Loan SET BookID=@bk, BorrowerID=@br, DateBorrowed=@db, DateDue=@dd, BookStatus=@bs";
+                // Get the OverdueStatus value from the Request Form (from the modal)
+                string overdueFromModal = Request.Form["overdueStatus"];
+                bool isOverdue = overdueFromModal == "Yes";
+
+                string updateQuery = "UPDATE Loan SET BookID=@bk, BorrowerID=@br, DateBorrowed=@db, DateDue=@dd, BookStatus=@bs, OverdueStatus=@os";
                 if (!string.IsNullOrEmpty(returnStatus))
                 {
                     updateQuery += ", ReturnStatus=@rs";
@@ -1309,6 +1339,7 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@db", borrowDate);
                     cmd.Parameters.AddWithValue("@dd", due);
                     cmd.Parameters.AddWithValue("@bs", bookStatus ?? "Borrowed");
+                    cmd.Parameters.AddWithValue("@os", isOverdue); // Updates the Overdue Status in Loan table
                     if (!string.IsNullOrEmpty(returnStatus))
                     {
                         cmd.Parameters.AddWithValue("@rs", returnStatus);
@@ -1337,16 +1368,16 @@ namespace Soft_eng.Controllers
                     await updateAvail.ExecuteNonQueryAsync();
                 }
 
-                if (borrowerType.Trim().ToLower() != "teacher")
+                // Generate Fine if Overdue is Yes and not a Teacher
+                if (isOverdue && borrowerType.Trim().ToLower() != "teacher")
                 {
-                    using var checkOverdue = new MySqlCommand("SELECT OverdueStatus FROM Loan WHERE LoanID = @id", _connection);
-                    checkOverdue.Parameters.AddWithValue("@id", loanId);
-                    if (Convert.ToBoolean(await checkOverdue.ExecuteScalarAsync()))
-                    {
-                        using var fineCmd = new MySqlCommand("INSERT INTO Fine (LoanID, PaymentStatus, FineAmount) VALUES (@id, 'Unpaid', 5) ON DUPLICATE KEY UPDATE LoanID = LoanID", _connection);
-                        fineCmd.Parameters.AddWithValue("@id", loanId);
-                        await fineCmd.ExecuteNonQueryAsync();
-                    }
+                    const string fineSql = @"INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
+                                     SELECT @id, 'Unpaid', 5.00, 5.00 
+                                     FROM DUAL 
+                                     WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @id AND PaymentStatus = 'Unpaid')";
+                    using var fineCmd = new MySqlCommand(fineSql, _connection);
+                    fineCmd.Parameters.AddWithValue("@id", loanId);
+                    await fineCmd.ExecuteNonQueryAsync();
                 }
 
                 await UpdateBorrowerName(bId, borrowerName);
@@ -1355,7 +1386,6 @@ namespace Soft_eng.Controllers
             catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
             finally { await _connection.CloseAsync(); }
         }
-
         private async Task UpdateBorrowerName(int id, string name)
         {
             bool close = false; if (_connection.State != ConnectionState.Open) { await _connection.OpenAsync(); close = true; }
@@ -1495,17 +1525,21 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 var suggestions = new List<string>();
+
                 string selectField = field switch
                 {
-                    "borrower" => "r.RequestedBy",
-                    _ => "r.BookTitle"
+                    "borrower" => "r.RequesterName",  // Changed from RequestedBy
+                    _ => "r.RequestedTitle"            // Changed from BookTitle
                 };
-                string whereClause = field == "borrower"
-                    ? "WHERE r.RequestedBy LIKE @q AND r.RequestedBy IS NOT NULL AND r.RequestedBy != ''"
-                    : "WHERE r.BookTitle LIKE @q AND r.BookTitle IS NOT NULL AND r.BookTitle != ''";
 
-                using var cmd = new MySqlCommand($"SELECT DISTINCT {selectField} FROM RequestedBooks r {whereClause} LIMIT 10", _connection);
+                string whereClause = field == "borrower"
+                    ? "WHERE r.RequesterName LIKE @q AND r.RequesterName IS NOT NULL AND r.RequesterName != ''"
+                    : "WHERE r.RequestedTitle LIKE @q AND r.RequestedTitle IS NOT NULL AND r.RequestedTitle != ''";
+
+                // Changed table name from RequestedBooks to Request
+                using var cmd = new MySqlCommand($"SELECT DISTINCT {selectField} FROM Request r {whereClause} LIMIT 10", _connection);
                 cmd.Parameters.AddWithValue("@q", $"%{query}%");
+
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {

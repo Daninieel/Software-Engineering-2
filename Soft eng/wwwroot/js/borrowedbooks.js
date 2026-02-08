@@ -5,11 +5,9 @@ let currentPage = 1;
 const rowsPerPage = 10;
 let allFilteredBooks = [];
 
-
 let issueBookBtn, issueBookModal, closeModalBtn, cancelBtn, issueBookForm;
 let borrowedBooksTable, borrowDateInput, detailsModal, closeDetailsBtn, btnBack, btnEdit;
 let pageList, gotoInput, prevBtn, nextBtn;
-
 
 document.addEventListener('DOMContentLoaded', initializeBorrowedBooks);
 
@@ -21,7 +19,6 @@ function initializeBorrowedBooks() {
         cancelBtn = issueBookModal.querySelector('.btn-cancel');
     }
     issueBookForm = document.getElementById('issueBookForm');
-
 
     const tableElement = document.getElementById('borrowedBooksTable');
     if (tableElement) {
@@ -44,7 +41,25 @@ function initializeBorrowedBooks() {
 
     setupEventListeners();
     setupSearchListener();
+    setupModalAutocomplete(); // <--- Added this line to initialize modal suggestions
     loadBorrowedBooks();
+}
+
+// New function to handle suggestions inside the Issue Book Modal
+function setupModalAutocomplete() {
+    // Book Title Suggestions (Only shows 'Available' books from Logbook)
+    const bookTitleInput = document.getElementById('bookTitle');
+    if (bookTitleInput) {
+        // We use the existing SearchSuggestions class
+        // Passing 'title' as field, connected to GetBookTitleSuggestions endpoint
+        new SearchSuggestions(bookTitleInput, '/Home/GetBookTitleSuggestions', ['title']);
+    }
+
+    // Borrower Name Suggestions
+    const borrowerNameInput = document.getElementById('borrowerName');
+    if (borrowerNameInput) {
+        new SearchSuggestions(borrowerNameInput, '/Home/GetBorrowerSuggestions', ['borrower']);
+    }
 }
 
 function setupSearchListener() {
@@ -78,7 +93,6 @@ function filterBorrowedBooks(query) {
 }
 
 function setupEventListeners() {
-
     if (issueBookBtn) issueBookBtn.addEventListener('click', openIssueBookModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeIssueBookModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeIssueBookModal);
@@ -94,7 +108,7 @@ function setupEventListeners() {
     // Handle Borrower Type change in Issue Book form
     const borrowerTypeSelect = document.getElementById('borrowerType');
     if (borrowerTypeSelect) {
-        borrowerTypeSelect.addEventListener('change', function() {
+        borrowerTypeSelect.addEventListener('change', function () {
             handleBorrowerTypeChange(this.value);
         });
     }
@@ -104,7 +118,7 @@ function setupEventListeners() {
         if (event.target === detailsModal) closeDetailsModal();
     };
 
-    setupAutocomplete();
+    setupAutocomplete(); // This is for the dashboard search (existing)
     setupDateValidation();
 
     if (prevBtn) {
@@ -234,11 +248,11 @@ async function loadBorrowedBooks() {
 
         if (books && books.length > 0) {
             // Filter out books that have been returned
-            const unreturned = books.filter(book => 
-                book.returnStatus !== 'Returned' && 
+            const unreturned = books.filter(book =>
+                book.returnStatus !== 'Returned' &&
                 (book.returnStatus === null || book.returnStatus === undefined || book.returnStatus === 'Unreturned' || book.returnStatus === 'Not Returned')
             );
-            
+
             allBorrowedBooks = unreturned.sort((a, b) => b.loanID - a.loanID);
             allFilteredBooks = [...allBorrowedBooks];
 
@@ -280,8 +294,6 @@ function renderTableRows() {
         const newRow = borrowedBooksTable.insertRow();
         newRow.dataset.loanId = book.loanID;
         newRow.dataset.bookData = JSON.stringify(book);
-
-        // Check if overdue status is "Yes" to disable toggle
         const isOverdueYes = book.overdueStatus === 'Yes';
         const disabledAttr = isOverdueYes ? 'disabled' : '';
         const cursorStyle = isOverdueYes ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
@@ -351,7 +363,6 @@ function updatePaginationUI() {
     });
 }
 
-
 function openIssueBookModal() {
     if (issueBookModal) {
         issueBookModal.style.display = 'flex';
@@ -378,7 +389,6 @@ async function handleIssueBookSubmit(e) {
     const bookTitle = document.getElementById('bookTitle').value.trim();
     const borrowDate = document.getElementById('borrowDate').value;
 
-    // Validation: Check if borrower name follows "LastName, FirstName" format
     if (!validateBorrowerNameFormat(borrowerName)) {
         alert('Please enter borrower name in the format: LastName, FirstName (e.g., Dela Cruz, Juan)');
         return;
@@ -419,7 +429,6 @@ async function handleIssueBookSubmit(e) {
     }
 }
 
-
 function showBookDetails(loanId, button) {
     const row = button.closest('tr');
     const bookData = JSON.parse(row.dataset.bookData);
@@ -429,23 +438,19 @@ function showBookDetails(loanId, button) {
     const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     const setValue = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
-    // Set Loan ID and Borrower ID
     setText('detailLoanId', bookData.loanID);
     setText('detailBorrowerId', bookData.borrowerID || '-');
     setText('detailBookId', bookData.bookID || '-');
-    
+
     setValue('detailBorrowerName', bookData.borrowerName);
     setValue('detailBookTitle', bookData.bookTitle);
 
-    // Set Date Borrowed with original value and min constraint
     let borrowDateEl = document.getElementById('detailBorrowDate');
     if (borrowDateEl) {
-        // Convert date format from MM/dd/yyyy to YYYY-MM-DD for date input
         const originalBorrowDate = bookData.borrowDate || bookData.dateBorrowed;
         const formattedBorrowDate = convertDateForInput(originalBorrowDate);
         borrowDateEl.value = formattedBorrowDate;
         borrowDateEl.min = formattedBorrowDate;
-        // Store the original formatted date
         currentBookData.borrowDate = formattedBorrowDate;
     }
 
@@ -487,7 +492,6 @@ function showBookDetails(loanId, button) {
 
     setValue('detailFineAmount', bookData.fineAmount || '-');
 
-    // Handle Teacher-specific restrictions
     handleTeacherRestrictions(bookData.borrowerType);
 
     setInputsEnabled(false);
@@ -501,29 +505,26 @@ function closeDetailsModal() {
 }
 
 function handleTeacherRestrictions(borrowerType) {
-    // Hide/disable overdue status and fine amount for teachers
     const isTeacher = borrowerType && borrowerType.trim().toLowerCase() === 'teacher';
-    
+
     const overdueStatusEl = document.getElementById('detailOverdueStatus');
     const fineAmountEl = document.getElementById('detailFineAmount');
     const overdueGroup = overdueStatusEl ? overdueStatusEl.closest('.detail-group') : null;
     const fineGroup = fineAmountEl ? fineAmountEl.closest('.detail-group') : null;
 
     if (isTeacher) {
-        // Hide overdue status and fine amount for teachers
         if (overdueGroup) {
             overdueGroup.style.display = 'none';
         }
         if (fineGroup) {
             fineGroup.style.display = 'none';
         }
-        
-        // Disable overdue status field
+
         if (overdueStatusEl) {
             overdueStatusEl.disabled = true;
             overdueStatusEl.value = 'No';
         }
-        
+
         // Set fine amount to '-'
         if (fineAmountEl) {
             fineAmountEl.disabled = true;
@@ -537,7 +538,7 @@ function handleTeacherRestrictions(borrowerType) {
         if (fineGroup) {
             fineGroup.style.display = '';
         }
-        
+
         // Enable fields
         if (overdueStatusEl) {
             overdueStatusEl.disabled = false;
@@ -570,7 +571,6 @@ function setInputsEnabled(enabled) {
     editableIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            // For teachers, don't enable overdue status or fine amount
             if (isTeacher && (id === 'detailOverdueStatus' || id === 'detailFineAmount')) {
                 el.disabled = true;
             } else {
@@ -581,7 +581,6 @@ function setInputsEnabled(enabled) {
         }
     });
 
-    // Re-apply date validation when entering edit mode
     if (enabled) {
         setupDateValidation();
     }
@@ -605,6 +604,8 @@ async function saveBookChanges() {
     const returnStatus = document.getElementById('detailReturnStatus').value;
     const dateReturned = document.getElementById('detailDateReturned').value;
     const borrowerType = currentBookData.borrowerType || 'Student';
+
+    const overdueStatus = document.getElementById('detailOverdueStatus').value;
 
     // Validation: Check required fields
     if (!borrowerName || !bookTitle || !borrowDate) {
@@ -641,7 +642,8 @@ async function saveBookChanges() {
             borrowDate: borrowDate,
             bookStatus: bookStatus,
             returnStatus: returnStatus,
-            dateReturned: dateReturned
+            dateReturned: dateReturned,
+            overdueStatus: overdueStatus
         });
 
         const response = await fetch('/Home/UpdateBorrowedBook', {
@@ -685,13 +687,12 @@ function convertDateForInput(dateStr) {
 }
 
 window.toggleOverdueStatus = async function (loanId, button) {
-    // Prevent toggle if already "Yes"
     const currentStatus = button.textContent.trim();
     if (currentStatus === 'Yes') {
-        return; // Do nothing if already marked as overdue
+        return;
     }
 
-    const newStatus = 'Yes'; // Can only change from "No" to "Yes"
+    const newStatus = 'Yes';
 
     try {
         const response = await fetch('/Home/UpdateOverdueStatus', {
@@ -733,13 +734,9 @@ async function updateDateReturned(loanId, dateReturned) {
     });
 }
 
+
 function setupAutocomplete() {
     const borrowerInput = document.getElementById('borrowerName');
-    if (borrowerInput) {
-        borrowerInput.addEventListener('input', debounce(async (e) => {
-            const query = e.target.value;
-        }, 300));
-    }
 }
 
 function debounce(func, wait) {
@@ -751,25 +748,22 @@ function debounce(func, wait) {
 }
 
 function handleBorrowerTypeChange(borrowerType) {
-    // Display a message if Teacher is selected
     const isTeacher = borrowerType && borrowerType.trim().toLowerCase() === 'teacher';
-    
+
     if (isTeacher) {
         const infoMsg = document.getElementById('teacherInfoMsg');
         if (!infoMsg) {
-            // Create info message element if it doesn't exist
             const msgDiv = document.createElement('div');
             msgDiv.id = 'teacherInfoMsg';
             msgDiv.style.cssText = 'background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin-bottom: 15px; border-radius: 4px; color: #1565c0; font-size: 0.9rem;';
             msgDiv.textContent = 'ℹ️ Teachers are not subject to overdue status or fine amounts.';
-            
+
             const formElement = document.getElementById('issueBookForm');
             if (formElement) {
                 formElement.insertBefore(msgDiv, formElement.firstChild);
             }
         }
     } else {
-        // Remove info message if Student is selected
         const infoMsg = document.getElementById('teacherInfoMsg');
         if (infoMsg) {
             infoMsg.remove();
@@ -778,18 +772,15 @@ function handleBorrowerTypeChange(borrowerType) {
 }
 
 function validateBorrowerNameFormat(borrowerName) {
-    // Check if borrower name contains exactly one comma
     if (!borrowerName.includes(',')) {
         return false;
     }
 
-    // Split by comma and check both parts
     const parts = borrowerName.split(',');
     if (parts.length !== 2) {
         return false;
     }
 
-    // Check if both parts (last name and first name) are non-empty after trimming
     const lastName = parts[0].trim();
     const firstName = parts[1].trim();
 
@@ -797,7 +788,6 @@ function validateBorrowerNameFormat(borrowerName) {
         return false;
     }
 
-    // Check if both parts contain only letters, spaces, hyphens, and apostrophes
     const nameRegex = /^[a-zA-Z\s\-']+$/;
     if (!nameRegex.test(lastName) || !nameRegex.test(firstName)) {
         return false;

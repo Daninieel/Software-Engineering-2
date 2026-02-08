@@ -225,3 +225,7 @@
         transform: translateX(0);
     }
 }
+
+.suggestions-container {
+    z-index: 10000 !important; 
+}

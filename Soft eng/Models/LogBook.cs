@@ -10,7 +10,7 @@ namespace Soft_eng.Models
         public int BookID { get; set; }
 
         [Required]
-        [RegularExpression(@"^\d{13}$", ErrorMessage = "ISBN must be exactly 13 digits.")]
+        [RegularExpression(@"^\d{10}$|^\d{13}$", ErrorMessage = "ISBN must be exactly 10 or 13 digits.")]
         public string ISBN { get; set; } = string.Empty;
 
         [Required]

@@ -1426,3 +1426,12 @@ tbody tr {
         margin-top: 20px;
     }
 }
+
+
+#borrowedBooksTable tbody td:nth-child(2),
+#borrowedBooksTable tbody td:nth-child(3) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; 
+}
