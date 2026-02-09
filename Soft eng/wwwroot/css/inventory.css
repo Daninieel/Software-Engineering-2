@@ -436,12 +436,7 @@ td:last-child {
     text-align: center;
 }
 
-.title-cell {
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+
 
 @media (max-width: 1024px) {
     .hamburger-btn {
@@ -908,4 +903,13 @@ td:last-child {
         flex: 1;
         width: 100%;
     }
+}
+
+.title-cell,
+.author-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; 
+    display: table-cell; 
 }

@@ -34,6 +34,7 @@
     let currentSide = 'front';
     let frontImage = null;
     let backImage = null;
+    let isDesktopCamera = false; // NEW: Track if using desktop camera
 
     let zoomLevel = 1;
     let panX = 0;
@@ -146,6 +147,24 @@
             };
             img.onerror = () => resolve(null);
         });
+    }
+
+    // NEW: Helper function to capture video frame with proper orientation
+    function captureVideoFrame() {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+
+        // If desktop camera, flip the capture to get original orientation
+        // (video preview is mirrored, but we need un-mirrored for OCR)
+        if (isDesktopCamera) {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(video, 0, 0);
+        return canvas.toDataURL('image/jpeg');
     }
 
     function applyTransform() {
@@ -572,11 +591,8 @@
 
     async function startAutoScan() {
         if (!isScanning) return;
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const isbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
+        // CHANGED: Use new helper function that handles mirroring
+        const isbn = await processImageAndGetIsbn(captureVideoFrame());
         if (isbn) {
             isbnInput.value = isbn;
             const success = await fetchBookData(isbn);
@@ -590,12 +606,8 @@
         captureBtn.innerText = "Scanning...";
         captureBtn.disabled = true;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-
-        const isbn = await processImageAndGetIsbn(canvas.toDataURL('image/jpeg'));
+        // CHANGED: Use new helper function that handles mirroring
+        const isbn = await processImageAndGetIsbn(captureVideoFrame());
         if (isbn) {
             isbnInput.value = isbn;
             const success = await fetchBookData(isbn);
@@ -679,29 +691,40 @@
         if (stream) stream.getTracks().forEach(t => t.stop());
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        isDesktopCamera = !isMobile; // NEW: Track camera type
 
         let constraints;
         if (deviceId) {
-            constraints = { video: { deviceId: { exact: deviceId } } };
+            constraints = {
+                video: {
+                    deviceId: { exact: deviceId },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
         } else if (isMobile) {
             constraints = {
                 video: {
-                    facingMode: { ideal: 'environment' }
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
                 }
             };
         } else {
-            constraints = { video: true };
+            constraints = {
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
         }
 
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
 
-            if (!isMobile) {
-                video.style.transform = "scaleX(-1)";
-            } else {
-                video.style.transform = "scaleX(1)";
-            }
+            // NEW: Mirror preview for desktop (feels natural), don't mirror mobile
+            video.style.transform = isDesktopCamera ? "scaleX(-1)" : "scaleX(1)";
 
             if (videoSourceSelect.options.length === 0) await getCameras();
             video.onloadedmetadata = () => {
@@ -803,4 +826,3 @@
         }
     });
 });
-

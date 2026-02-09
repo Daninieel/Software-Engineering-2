@@ -116,15 +116,23 @@
                                     <input type="radio" name="selectedBook" value="@item.BookID" hidden>
                                     @item.BookID
                                 </td>
-                                <td class="title-cell">@item.BookTitle</td>
-                                <td class="author-cell">
-                                    <div style="display: block; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Author">
-                                        @item.Author
-                                    </div>
+
+                                <td class="title-cell" title="@item.BookTitle">
+                                    @item.BookTitle
                                 </td>
+
+                                <td class="author-cell" title="@item.Author">
+                                    @item.Author
+                                </td>
+
                                 <td class="shelf-cell">@item.ShelfLocation</td>
                                 <td class="status-cell">@item.Availability</td>
-                                <td><a asp-action="BookDetails" asp-route-id="@item.BookID" asp-route-fromAdmin="false" class="btn-see-more">See more</a></td>
+                                <td>
+                                    <a asp-action="BookDetails"
+                                       asp-route-id="@item.BookID"
+                                       asp-route-fromAdmin="false"
+                                       class="btn-see-more">See more</a>
+                                </td>
                             </tr>
                         }
                     </tbody>
