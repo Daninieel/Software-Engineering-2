@@ -33,7 +33,7 @@
         <div class="user-area">
             <div class="welcome-text" id="welcomeText"></div>
             <div class="user-avatar admin-avatar">
-                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
             </div>
         </div>
     </header>
@@ -43,13 +43,13 @@
             <nav>
                 <ul>
                     <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
-                        <a asp-action="Dashboard">
+                        <a asp-action="AdminDashboard">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                     </li>
 
                     <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
-                        <a asp-action="Inventory">
+                        <a asp-action="InventoryAdmin">
                             <i class="fas fa-book"></i> Logbook
                         </a>
                     </li>
@@ -60,14 +60,14 @@
                             <i class="fas fa-chevron-down arrow-icon"></i>
                         </a>
                         <ul class="submenu" id="bookManagementSubmenuLib">
-                            <li><a asp-action="AddBooks"><i class="fas fa-plus"></i> Add Books</a></li>
-                            <li><a asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
-                            <li><a asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
                         </ul>
                     </li>
 
                     <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
-                        <a asp-action="Fine">
+                        <a asp-action="FineAdmin">
                             <i class="fas fa-money-bill-wave"></i> Fine
                         </a>
                     </li>
@@ -79,6 +79,8 @@
                             </a>
                         </form>
                     </li>
+
+
                 </ul>
             </nav>
         </aside>
