@@ -484,8 +484,8 @@ namespace Soft_eng.Controllers
             {
                 var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, "System Administrator"),
-            new Claim(ClaimTypes.Role, "School Admin"),
+            new Claim(ClaimTypes.Name, "Admin"),
+            new Claim(ClaimTypes.Role, "Admin"),
             new Claim(ClaimTypes.Email, "admin@sia")
         };
 
