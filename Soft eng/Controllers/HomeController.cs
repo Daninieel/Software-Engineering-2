@@ -1069,13 +1069,63 @@ namespace Soft_eng.Controllers
         [HttpPost]
         public async Task<IActionResult> EditBook(LogBook book, bool isAdmin = false)
         {
-            if (!book.IsDateValid()) ModelState.AddModelError("DateReceived", "-");
-            if (!ModelState.IsValid) { ViewBag.FromAdmin = isAdmin; return View(book); }
+            if (!book.IsDateValid())
+                ModelState.AddModelError("DateReceived", "-");
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.FromAdmin = isAdmin;
+                return View(book);
+            }
+
             try
             {
-                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
 
-                using (var cmd = new MySqlCommand("UPDATE LogBook SET ISBN=@isbn, SourceType=@source, BookTitle=@title, DateReceived=@received, Author=@author, Pages=@pages, Edition=@edition, Publisher=@pub, Year=@year, Remarks=@rem, ShelfLocation=@shelf, TotalCopies=@total, BookStatus=@status, Availability=@avail WHERE BookID=@id", _connection))
+                // Calculate actual availability based on borrowed books
+                int borrowedCount = 0;
+                using (var countCmd = new MySqlCommand(
+                    "SELECT COUNT(*) FROM loan WHERE BookID = @bookId AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')",
+                    _connection))
+                {
+                    countCmd.Parameters.AddWithValue("@bookId", book.BookID);
+                    var result = await countCmd.ExecuteScalarAsync();
+                    borrowedCount = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // Determine availability: Available if there are copies not borrowed and status is not Missing
+                string availability;
+                if (book.BookStatus == "Missing" || book.TotalCopies == 0)
+                {
+                    availability = "Not Available";
+                }
+                else if (book.TotalCopies > borrowedCount)
+                {
+                    availability = "Available";
+                }
+                else
+                {
+                    availability = "Not Available";
+                }
+
+                using (var cmd = new MySqlCommand(@"
+            UPDATE logbook 
+            SET ISBN=@isbn, 
+                SourceType=@source, 
+                BookTitle=@title, 
+                DateReceived=@received, 
+                Author=@author, 
+                Pages=@pages, 
+                Edition=@edition, 
+                Publisher=@pub, 
+                Year=@year, 
+                Remarks=@rem, 
+                ShelfLocation=@shelf, 
+                TotalCopies=@total, 
+                BookStatus=@status, 
+                Availability=@avail 
+            WHERE BookID=@id", _connection))
                 {
                     cmd.Parameters.AddWithValue("@id", book.BookID);
                     cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
@@ -1090,16 +1140,18 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                     cmd.Parameters.AddWithValue("@total", book.TotalCopies);
-
-                    cmd.Parameters.AddWithValue("@avail", book.BookStatus ?? "Available");
                     cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
+                    cmd.Parameters.AddWithValue("@avail", availability);
 
                     await cmd.ExecuteNonQueryAsync();
                 }
 
                 return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
             }
-            finally { await _connection.CloseAsync(); }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
         }
 
         [HttpPost]
