@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     const GOOGLE_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
 
     const videoSourceSelect = document.getElementById('videoSource');
@@ -34,7 +34,7 @@
     let currentSide = 'front';
     let frontImage = null;
     let backImage = null;
-    let isDesktopCamera = false; // NEW: Track if using desktop camera
+    let isDesktopCamera = false;
 
     let zoomLevel = 1;
     let panX = 0;
@@ -46,6 +46,12 @@
     let startX = 0;
     let startY = 0;
     let tempCanvasRef = null;
+    
+    // Mobile-specific variables
+    let isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let mobileMode = 'draw'; // 'draw' or 'pan'
+    let lastTouchDistance = 0;
+    let mobileToggleBtn = null;
 
     function calculateOtsuThreshold(data) {
         const histogram = new Array(256).fill(0);
@@ -149,15 +155,12 @@
         });
     }
 
-    // NEW: Helper function to capture video frame with proper orientation
     function captureVideoFrame() {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
 
-        // If desktop camera, flip the capture to get original orientation
-        // (video preview is mirrored, but we need un-mirrored for OCR)
         if (isDesktopCamera) {
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
@@ -207,6 +210,27 @@
         applyTransform();
     }
 
+    // Helper function to get touch coordinates
+    function getTouchPos(touch) {
+        const rect = coverCanvas.getBoundingClientRect();
+        const scaleX = coverCanvas.width / rect.width;
+        const scaleY = coverCanvas.height / rect.height;
+        return {
+            x: (touch.clientX - rect.left) * scaleX,
+            y: (touch.clientY - rect.top) * scaleY,
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        };
+    }
+
+    // Helper function to calculate distance between two touches
+    function getTouchDistance(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // MOUSE EVENTS (Desktop)
     coverCanvas.addEventListener('wheel', e => {
         e.preventDefault();
         if (!coverCanvasContainer) return;
@@ -301,10 +325,143 @@
         const endX = (e.clientX - rect.left) * scaleX;
         const endY = (e.clientY - rect.top) * scaleY;
 
-        const x = Math.min(startX, endX);
-        const y = Math.min(startY, endY);
-        const w = Math.abs(endX - startX);
-        const h = Math.abs(endY - startY);
+        await processSelection(startX, startY, endX, endY);
+    });
+
+    // TOUCH EVENTS (Mobile)
+    coverCanvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        
+        const touches = e.touches;
+        
+        // Two-finger gesture for pinch zoom
+        if (touches.length === 2) {
+            lastTouchDistance = getTouchDistance(touches[0], touches[1]);
+            isPanning = false;
+            isDrawing = false;
+            return;
+        }
+        
+        // Single finger gesture
+        if (touches.length === 1) {
+            const pos = getTouchPos(touches[0]);
+            
+            if (mobileMode === 'pan') {
+                isPanning = true;
+                lastPanX = pos.clientX;
+                lastPanY = pos.clientY;
+                updateMobileCursor();
+            } else {
+                startX = pos.x;
+                startY = pos.y;
+                isDrawing = true;
+                
+                tempCanvasRef = document.createElement('canvas');
+                tempCanvasRef.width = coverCanvas.width;
+                tempCanvasRef.height = coverCanvas.height;
+                tempCanvasRef.getContext('2d').drawImage(coverCanvas, 0, 0);
+            }
+        }
+    }, { passive: false });
+
+    coverCanvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        
+        const touches = e.touches;
+        
+        // Two-finger pinch zoom
+        if (touches.length === 2 && lastTouchDistance > 0) {
+            const currentDistance = getTouchDistance(touches[0], touches[1]);
+            const scaleFactor = currentDistance / lastTouchDistance;
+            
+            const rect = coverCanvas.getBoundingClientRect();
+            const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+            const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+            
+            const mouseX = (centerX - rect.left) / zoomLevel + panX;
+            const mouseY = (centerY - rect.top) / zoomLevel + panY;
+            
+            const oldZoom = zoomLevel;
+            zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * scaleFactor));
+            
+            panX = mouseX - (mouseX - panX) * (zoomLevel / oldZoom);
+            panY = mouseY - (mouseY - panY) * (zoomLevel / oldZoom);
+            
+            lastTouchDistance = currentDistance;
+            applyTransform();
+            return;
+        }
+        
+        // Single finger gesture
+        if (touches.length === 1) {
+            const pos = getTouchPos(touches[0]);
+            
+            if (isPanning) {
+                const dx = pos.clientX - lastPanX;
+                const dy = pos.clientY - lastPanY;
+                panX += dx / zoomLevel;
+                panY += dy / zoomLevel;
+                lastPanX = pos.clientX;
+                lastPanY = pos.clientY;
+                applyTransform();
+                return;
+            }
+            
+            if (isDrawing) {
+                const currentX = pos.x;
+                const currentY = pos.y;
+                
+                const ctx = coverCanvas.getContext('2d');
+                ctx.drawImage(tempCanvasRef, 0, 0);
+                
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 4]);
+                ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+                ctx.fillStyle = 'rgba(52,152,219,0.12)';
+                ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+                ctx.setLineDash([]);
+            }
+        }
+    }, { passive: false });
+
+    coverCanvas.addEventListener('touchend', async e => {
+        e.preventDefault();
+        
+        // Reset pinch zoom tracking
+        if (e.touches.length < 2) {
+            lastTouchDistance = 0;
+        }
+        
+        if (isPanning) {
+            isPanning = false;
+            updateMobileCursor();
+            return;
+        }
+        
+        if (isDrawing) {
+            isDrawing = false;
+            
+            const touch = e.changedTouches[0];
+            const pos = getTouchPos(touch);
+            const endX = pos.x;
+            const endY = pos.y;
+            
+            await processSelection(startX, startY, endX, endY);
+        }
+    }, { passive: false });
+
+    // Prevent context menu on long press
+    coverCanvas.addEventListener('contextmenu', e => {
+        e.preventDefault();
+    });
+
+    // Shared selection processing function
+    async function processSelection(x1, y1, x2, y2) {
+        const x = Math.min(x1, x2);
+        const y = Math.min(y1, y2);
+        const w = Math.abs(x2 - x1);
+        const h = Math.abs(y2 - y1);
 
         if (w < 20 || h < 12) {
             redrawCanvas();
@@ -358,7 +515,7 @@
             showTempMessage('OCR failed', '#e74c3c', 4000);
             redrawCanvas();
         }
-    });
+    }
 
     function showTempMessage(msg, color, ms) {
         const div = document.createElement('div');
@@ -368,15 +525,75 @@
         setTimeout(() => div.remove(), ms);
     }
 
+    function createMobileToggleButton() {
+        if (!isMobileDevice || mobileToggleBtn) return;
+
+        mobileToggleBtn = document.createElement('button');
+        mobileToggleBtn.id = 'mobileToggleBtn';
+
+        // --- UPDATED STYLES START ---
+        mobileToggleBtn.style.cssText = `
+            position: fixed;
+            bottom: 30px;               /* Slightly higher for better visibility */
+            left: 50%;                  /* Move to horizontal center */
+            transform: translateX(-50%); /* Center align perfectly */
+            padding: 12px 28px;         /* slightly wider touch target */
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            z-index: 10000;
+            transition: all 0.3s ease;
+            display: none;
+            white-space: nowrap;        /* Prevent text wrapping */
+        `;
+
+        mobileToggleBtn.innerHTML = '✏️ DRAW';
+
+        mobileToggleBtn.addEventListener('click', () => {
+            mobileMode = mobileMode === 'draw' ? 'pan' : 'draw';
+            updateMobileCursor();
+
+            if (mobileMode === 'draw') {
+                mobileToggleBtn.innerHTML = '✏️ DRAW';
+                mobileToggleBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+                mobileToggleBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+            } else {
+                mobileToggleBtn.innerHTML = '👆 PAN';
+                mobileToggleBtn.style.background = 'linear-gradient(135deg, #f093fb, #f5576c)';
+                mobileToggleBtn.style.boxShadow = '0 4px 15px rgba(240, 147, 251, 0.4)';
+            }
+        });
+
+        document.body.appendChild(mobileToggleBtn);
+    }
+    function updateMobileCursor() {
+        if (!isMobileDevice) return;
+        
+        if (mobileMode === 'draw') {
+            coverCanvas.style.cursor = 'crosshair';
+        } else {
+            coverCanvas.style.cursor = isPanning ? 'grabbing' : 'grab';
+        }
+    }
+
     function populateDetectedTextList() {
         const items = allDetections.filter(d => d.side === currentSide);
         detectedTextList.innerHTML = '';
 
         if (items.length === 0) {
+            const instructions = isMobileDevice 
+                ? 'Tap the button below to switch modes<br>DRAW mode: Drag to select text<br>PAN mode: Drag to move image<br>Pinch to zoom'
+                : 'Draw rectangles around text areas<br>Shift+drag to pan • Scroll to zoom';
+                
             detectedTextList.innerHTML = `
                 <div style="text-align:center; padding:20px; color:#3498db;">
                     <b>${currentSide.toUpperCase()} COVER</b><br>
-                    Draw rectangles around text areas
+                    <small>${instructions}</small>
                 </div>`;
             return;
         }
@@ -402,6 +619,7 @@
             });
 
             const select = document.createElement('select');
+            select.style.cssText = 'width:100%; padding:10px; margin-top:10px; border-radius:6px; border:1px solid #ddd; font-size:14px;';
             select.innerHTML = `
                 <option value="none">-- Assign to field --</option>
                 <option value="title">Book Title</option>
@@ -475,6 +693,8 @@
         detectedTextList.innerHTML = '';
         coverCanvas.getContext('2d').clearRect(0, 0, coverCanvas.width, coverCanvas.height);
         if (toggleSideBtn) toggleSideBtn.style.display = 'none';
+        if (mobileToggleBtn) mobileToggleBtn.style.display = 'none';
+        mobileMode = 'draw';
     }
 
     cancelCoverScanBtn.addEventListener('click', () => {
@@ -528,13 +748,24 @@
                 panX = panY = 0;
                 redrawCanvas();
 
+                const instructions = isMobileDevice
+                    ? 'Tap button below to switch between DRAW and PAN modes'
+                    : 'Draw boxes around text • Scroll = zoom • Shift+drag = pan';
+
                 detectedTextList.innerHTML = `
                     <div style="text-align:center; padding:15px; color:#3498db; background:#e3f2fd; border-radius:8px;">
                         <b>${side.toUpperCase()} COVER LOADED</b><br>
-                        <small>Draw boxes around text • Scroll = zoom • Shift+drag = pan</small>
+                        <small>${instructions}</small>
                     </div>`;
+                    
                 coverScanModal.style.display = 'flex';
                 updateToggleButton();
+                
+                // Show mobile toggle button
+                if (isMobileDevice && mobileToggleBtn) {
+                    mobileToggleBtn.style.display = 'block';
+                    updateMobileCursor();
+                }
             };
             img.src = e.target.result;
         };
@@ -591,7 +822,6 @@
 
     async function startAutoScan() {
         if (!isScanning) return;
-        // CHANGED: Use new helper function that handles mirroring
         const isbn = await processImageAndGetIsbn(captureVideoFrame());
         if (isbn) {
             isbnInput.value = isbn;
@@ -606,7 +836,6 @@
         captureBtn.innerText = "Scanning...";
         captureBtn.disabled = true;
 
-        // CHANGED: Use new helper function that handles mirroring
         const isbn = await processImageAndGetIsbn(captureVideoFrame());
         if (isbn) {
             isbnInput.value = isbn;
@@ -691,7 +920,7 @@
         if (stream) stream.getTracks().forEach(t => t.stop());
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        isDesktopCamera = !isMobile; // NEW: Track camera type
+        isDesktopCamera = !isMobile;
 
         let constraints;
         if (deviceId) {
@@ -723,7 +952,6 @@
             stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
 
-            // NEW: Mirror preview for desktop (feels natural), don't mirror mobile
             video.style.transform = isDesktopCamera ? "scaleX(-1)" : "scaleX(1)";
 
             if (videoSourceSelect.options.length === 0) await getCameras();
@@ -825,4 +1053,9 @@
             coverCanvas.style.cursor = 'crosshair';
         }
     });
+    
+    // Initialize mobile features
+    if (isMobileDevice) {
+        createMobileToggleButton();
+    }
 });
