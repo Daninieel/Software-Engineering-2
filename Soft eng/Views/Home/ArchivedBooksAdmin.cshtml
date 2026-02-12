@@ -1,5 +1,5 @@
 @{
-    ViewBag.Title = "Archived Books";
+    ViewBag.Title = "Archived Books Admin";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="~/css/inventory.admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
     <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search-suggestions.css" />
@@ -174,8 +175,20 @@
     <script src="~/js/archivedbooks.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/js/dropdown-fix.js"></script>      
+    <script src="~/js/dropdown-fix.js"></script>
+
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const menu = document.getElementById('bookManagementSubmenu');
+            const btn = document.getElementById('bookManagementBtn');
+            if (menu && btn) {
+                menu.classList.add('show');
+                btn.classList.add('active');
+                const arrow = btn.querySelector('.arrow-icon');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            }
+        });
+
         function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
         function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
         function confirmLogout() { document.getElementById('logoutForm').submit(); }

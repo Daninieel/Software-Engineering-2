@@ -10,10 +10,11 @@
     <title>Archived Books</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="~/css/inventory.admin.css">
-    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/inventory.admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/chatbot.css">
     <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/report-modal.css">
     <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search-suggestions.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -71,6 +72,7 @@
 
         <main class="content-area">
             <h2>Archived Books</h2>
+
             <div class="search-filter">
                 <input type="text" id="searchInput" placeholder="Search by Title, Author, Reason..." />
             </div>
@@ -109,9 +111,15 @@
                     </div>
                 </div>
             </div>
+
+            <div class="button-area">
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
+            </div>
         </main>
     </div>
 
+    
+  
     <div id="reportModal" class="report-modal">
         <div class="report-modal-content">
             <button id="closeReportModal" class="close-report-modal">&times;</button>
@@ -172,27 +180,19 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/dropdown-fix.js"></script>
 
-<script>
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const menu = document.getElementById('bookManagementSubmenuLib');
-        const btn = document.getElementById('bookManagementBtnLib');
-        if (menu && btn) {
-            menu.classList.add('show');
-            btn.classList.add('active');
-            const arrow = btn.querySelector('.arrow-icon');
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
-        }
-    });
-
-    function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
-    function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
-    function confirmLogout() { document.getElementById('logoutForm').submit(); }
-    document.getElementById('logoutModal').addEventListener('click', function (e) {
-        if (e.target === this) closeLogoutModal();
-    });
-</script>
     <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+                    const menu = document.getElementById('bookManagementSubmenu');
+        const btn = document.getElementById('bookManagementBtn');
+            if (menu && btn) {
+                menu.classList.add('show');
+                btn.classList.add('active');
+                const arrow = btn.querySelector('.arrow-icon');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            }
+        });
+
         function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
         function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
         function confirmLogout() { document.getElementById('logoutForm').submit(); }
@@ -200,5 +200,6 @@
             if (e.target === this) closeLogoutModal();
         });
     </script>
+
 </body>
 </html>
