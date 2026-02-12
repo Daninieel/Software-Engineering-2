@@ -64,6 +64,7 @@
                             <li><a asp-action="AddBooks"><i class="fas fa-plus"></i> Add Books</a></li>
                             <li><a asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
                             <li><a asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
                         </ul>
                     </li>
 
@@ -131,7 +132,7 @@
                             </div>
                             <div class="form-group" style="margin-top: 20px;">
                                 <label>Publisher</label>
-                                <input type="text" name="Publisher">
+                                <input type="text" name="Publisher" required>
                             </div>
                         </div>
                         <div class="right-col">
@@ -141,12 +142,11 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Source Type</label>
                             <div class="select-wrapper">
-                                <select name="SourceType">
+                                <select name="SourceType" required>
                                     <option value="" disabled selected>Select</option>
                                     <option value="donation">Donation</option>
                                     <option value="purchased">Purchased</option>
@@ -155,15 +155,14 @@
                         </div>
                         <div class="form-group">
                             <label>Date Received</label>
-                            <input type="text" name="DateReceived" placeholder="YYYY/MM/DD" onfocus="(this.type='date')">
+                            <input type="text" name="DateReceived" placeholder="YYYY/MM/DD" onfocus="(this.type='date')" required>
                         </div>
                     </div>
-
                     <div class="form-grid-row">
                         <div class="form-group">
                             <label>Book Status</label>
                             <div class="select-wrapper">
-                                <select name="BookStatus">
+                                <select name="BookStatus" required>
                                     <option value="" disabled selected>Select</option>
                                     <option value="Available">Available</option>
                                     <option value="Damaged">Damaged</option>
@@ -171,14 +170,16 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Total Copies</label>
-                            <input type="number" name="TotalCopies" min="1">
+                            <label>Number of Physical Copies</label>
+                            <input type="number" name="TotalCopies" min="1" value="1" required>
+                            <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                                How many duplicate copies are you adding?
+                            </small>
                         </div>
                     </div>
-
                     <div class="form-group full-width">
                         <label>Shelf Location</label>
-                        <input type="text" name="ShelfLocation">
+                        <input type="text" name="ShelfLocation" required>
                     </div>
 
                     <div class="button-area">

@@ -232,6 +232,9 @@ namespace Soft_eng.Controllers
         public IActionResult BorrowedBooksAdmin() => View("BorrowedBooksAdmin");
         public IActionResult FineAdmin() => View("FineAdmin");
 
+        public IActionResult ArchivedBooks() => View();
+        public IActionResult ArchivedBooksAdmin() => View("ArchivedBooksAdmin");
+
         public IActionResult ResetPasswordAdmin(string? token, string? email)
         {
             ViewBag.Token = token; ViewBag.Email = email;
@@ -966,6 +969,7 @@ namespace Soft_eng.Controllers
                     "borrowedbooks" => "SELECT l.LoanID, b.BorrowerName, lb.BookTitle, l.DateDue, l.DateReturned, CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus FROM Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY l.LoanID DESC",
                     "fine" => "SELECT f.FineID, l.LoanID, b.BorrowerName, lb.BookTitle, f.PaymentStatus, f.FineAmount FROM Fine f JOIN Loan l ON f.LoanID = l.LoanID JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY f.FineID DESC",
                     "requestedbooks" => "SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status, Remarks FROM Request ORDER BY RequestID DESC",
+                    "archivedbooks" => "SELECT a.ArchiveID, a.BookID, a.BookTitle, a.Author, a.ISBN, a.Publisher, a.ShelfLocation, a.TotalCopies, a.DateArchived, a.ArchiveReason FROM ArchivedBooks a ORDER BY a.DateArchived DESC",
                     _ => throw new ArgumentException("Invalid report type")
                 };
                 using var cmd = new MySqlCommand(query, _connection);
@@ -988,7 +992,7 @@ namespace Soft_eng.Controllers
             return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         }
 
-        private string GetReportTitle(string type) => type switch { "borrowedbooks" => "Borrowed Books", "fine" => "Fine", "requestedbooks" => "Requested Books", _ => "Report" };
+        private string GetReportTitle(string type) => type switch { "borrowedbooks" => "Borrowed Books", "fine" => "Fine", "requestedbooks" => "Requested Books", "archivedbooks" => "Archived Books", _ => "Report" };
         private string EscapeCSV(string v) => (string.IsNullOrEmpty(v) || !v.Any(c => c == ',' || c == '"' || c == '\n' || c == '\r')) ? v : $"\"{v.Replace("\"", "\"\"")}\"";
         private string EscapeHTML(string v) => string.IsNullOrEmpty(v) ? "" : v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
@@ -1051,21 +1055,6 @@ namespace Soft_eng.Controllers
             return fromAdmin ? View("InventoryAdmin", results) : View("Inventory", results);
         }
 
-        public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
-        {
-            LogBook? book = null;
-            try
-            {
-                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT * FROM LogBook WHERE BookID = @id", _connection);
-                cmd.Parameters.AddWithValue("@id", id);
-                using var reader = await cmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync()) book = new LogBook { BookID = reader.GetInt32("BookID"), ISBN = reader.GetString("ISBN"), BookTitle = reader.GetString("BookTitle"), Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"), Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"), Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"), Year = reader.IsDBNull("Year") ? (DateTime?)null : reader.GetDateTime("Year"), Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"), Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"), SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"), DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived"), BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"), TotalCopies = reader.GetInt32("TotalCopies"), ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"), Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability") };
-            }
-            finally { await _connection.CloseAsync(); }
-            ViewBag.FromAdmin = fromAdmin; return View(book);
-        }
-
         [HttpPost]
         public async Task<IActionResult> EditBook(LogBook book, bool isAdmin = false)
         {
@@ -1083,30 +1072,152 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open)
                     await _connection.OpenAsync();
 
-                // Calculate actual availability based on borrowed books
-                int borrowedCount = 0;
+                string finalBookStatus = book.BookStatus ?? "Good";
+
+                // HANDLE DAMAGED STATUS - Copy-aware logic
+                if (finalBookStatus == "Damaged")
+                {
+                    // Get current total copies
+                    int currentTotalCopies = 0;
+                    using (var getCopiesCmd = new MySqlCommand(
+                        "SELECT TotalCopies FROM LogBook WHERE BookID = @bk", _connection))
+                    {
+                        getCopiesCmd.Parameters.AddWithValue("@bk", book.BookID);
+                        var result = await getCopiesCmd.ExecuteScalarAsync();
+                        currentTotalCopies = result != null ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Calculate borrowed count
+                    int borrowedCount = 0;
+                    using (var countCmd = new MySqlCommand(
+                        "SELECT COUNT(*) FROM loan WHERE BookID = @bookId AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')",
+                        _connection))
+                    {
+                        countCmd.Parameters.AddWithValue("@bookId", book.BookID);
+                        var result = await countCmd.ExecuteScalarAsync();
+                        borrowedCount = result != null ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Decrease total copies by 1 (one damaged copy)
+                    int newTotalCopies = currentTotalCopies - 1;
+
+                    if (newTotalCopies <= 0)
+                    {
+                        // ALL copies are now damaged - archive and mark unavailable
+                        // Check if book has loan history
+                        int loanCount = 0;
+                        using (var checkLoanCmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM loan WHERE BookID = @bk", _connection))
+                        {
+                            checkLoanCmd.Parameters.AddWithValue("@bk", book.BookID);
+                            var result = await checkLoanCmd.ExecuteScalarAsync();
+                            loanCount = result != null ? Convert.ToInt32(result) : 0;
+                        }
+
+                        if (loanCount > 0)
+                        {
+                            // Has loan history - keep in LogBook, mark as damaged
+                            using (var updateCmd = new MySqlCommand(@"
+                        UPDATE logbook 
+                        SET BookStatus = 'Damaged', 
+                            Availability = 'Not Available',
+                            TotalCopies = 0
+                        WHERE BookID = @id", _connection))
+                            {
+                                updateCmd.Parameters.AddWithValue("@id", book.BookID);
+                                await updateCmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                        else
+                        {
+                            // No loan history - safe to delete from LogBook
+                            using (var deleteCmd = new MySqlCommand(
+                                "DELETE FROM LogBook WHERE BookID = @bk", _connection))
+                            {
+                                deleteCmd.Parameters.AddWithValue("@bk", book.BookID);
+                                await deleteCmd.ExecuteNonQueryAsync();
+                            }
+                        }
+
+                        // Add to ArchivedBooks
+                        using (var archiveCmd = new MySqlCommand(@"
+                    INSERT INTO ArchivedBooks
+                        (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+                    SELECT
+                        BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, @copiesArchived, NOW(), 'Damaged'
+                    FROM LogBook
+                    WHERE BookID = @bk
+                    AND NOT EXISTS (
+                        SELECT 1 FROM ArchivedBooks 
+                        WHERE BookID = @bk AND ArchiveReason = 'Damaged'
+                    )", _connection))
+                        {
+                            archiveCmd.Parameters.AddWithValue("@bk", book.BookID);
+                            archiveCmd.Parameters.AddWithValue("@copiesArchived", currentTotalCopies);
+                            await archiveCmd.ExecuteNonQueryAsync();
+                        }
+                    }
+                    else
+                    {
+                        // Still have good copies remaining - just decrease count
+                        string availability = (newTotalCopies > borrowedCount) ? "Available" : "Not Available";
+
+                        using (var updateCmd = new MySqlCommand(@"
+                    UPDATE logbook 
+                    SET TotalCopies = @copies,
+                        Availability = @avail
+                    WHERE BookID = @id", _connection))
+                        {
+                            updateCmd.Parameters.AddWithValue("@copies", newTotalCopies);
+                            updateCmd.Parameters.AddWithValue("@avail", availability);
+                            updateCmd.Parameters.AddWithValue("@id", book.BookID);
+                            await updateCmd.ExecuteNonQueryAsync();
+                        }
+
+                        // Log the damaged copy to archive (for tracking)
+                        using (var archiveCmd = new MySqlCommand(@"
+                    INSERT INTO ArchivedBooks
+                        (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+                    SELECT
+                        BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, 1, NOW(), 'Damaged (Partial)'
+                    FROM LogBook
+                    WHERE BookID = @bk", _connection))
+                        {
+                            archiveCmd.Parameters.AddWithValue("@bk", book.BookID);
+                            await archiveCmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
+                }
+
+                // For Good and Missing statuses, update normally
+                int currentBorrowedCount = 0;
                 using (var countCmd = new MySqlCommand(
                     "SELECT COUNT(*) FROM loan WHERE BookID = @bookId AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')",
                     _connection))
                 {
                     countCmd.Parameters.AddWithValue("@bookId", book.BookID);
                     var result = await countCmd.ExecuteScalarAsync();
-                    borrowedCount = result != null ? Convert.ToInt32(result) : 0;
+                    currentBorrowedCount = result != null ? Convert.ToInt32(result) : 0;
                 }
 
-                // Determine availability: Available if there are copies not borrowed and status is not Missing
-                string availability;
-                if (book.BookStatus == "Missing" || book.TotalCopies == 0)
+                string finalAvailability;
+                switch (finalBookStatus)
                 {
-                    availability = "Not Available";
-                }
-                else if (book.TotalCopies > borrowedCount)
-                {
-                    availability = "Available";
-                }
-                else
-                {
-                    availability = "Not Available";
+                    case "Good":
+                    case "Available":
+                        finalAvailability = (book.TotalCopies > currentBorrowedCount) ? "Available" : "Not Available";
+                        finalBookStatus = "Good";
+                        break;
+
+                    case "Missing":
+                        finalAvailability = "Not Available";
+                        break;
+
+                    default:
+                        finalAvailability = (book.TotalCopies > currentBorrowedCount) ? "Available" : "Not Available";
+                        break;
                 }
 
                 using (var cmd = new MySqlCommand(@"
@@ -1140,10 +1251,19 @@ namespace Soft_eng.Controllers
                     cmd.Parameters.AddWithValue("@rem", book.Remarks ?? "");
                     cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
                     cmd.Parameters.AddWithValue("@total", book.TotalCopies);
-                    cmd.Parameters.AddWithValue("@status", book.BookStatus ?? "");
-                    cmd.Parameters.AddWithValue("@avail", availability);
+                    cmd.Parameters.AddWithValue("@status", finalBookStatus);
+                    cmd.Parameters.AddWithValue("@avail", finalAvailability);
 
                     await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Remove from archive if restored to Good
+                if (finalBookStatus == "Good" || finalBookStatus == "Available")
+                {
+                    using var removeArchiveCmd = new MySqlCommand(
+                        "DELETE FROM ArchivedBooks WHERE BookID = @bk", _connection);
+                    removeArchiveCmd.Parameters.AddWithValue("@bk", book.BookID);
+                    await removeArchiveCmd.ExecuteNonQueryAsync();
                 }
 
                 return isAdmin ? RedirectToAction("InventoryAdmin") : RedirectToAction("Inventory");
@@ -1414,13 +1534,32 @@ namespace Soft_eng.Controllers
 
                 if (!string.IsNullOrEmpty(returnStatus) && returnStatus == "Returned")
                 {
-                    using var updateAvail = new MySqlCommand("UPDATE LogBook SET Availability=@a WHERE BookID=@bk", _connection);
-                    updateAvail.Parameters.AddWithValue("@a", "Available");
+                    string finalStatus = (!string.IsNullOrEmpty(bookStatus) && bookStatus != "Borrowed")
+                        ? bookStatus
+                        : "Available";
+
+                    using var updateAvail = new MySqlCommand(
+                        "UPDATE LogBook SET Availability=@a, BookStatus=@bs WHERE BookID=@bk", _connection);
+                    updateAvail.Parameters.AddWithValue("@a", finalStatus);
+                    updateAvail.Parameters.AddWithValue("@bs", finalStatus);
                     updateAvail.Parameters.AddWithValue("@bk", bkId);
                     await updateAvail.ExecuteNonQueryAsync();
+
+                    if (finalStatus == "Damaged" || finalStatus == "Missing")
+                    {
+                        using var archiveCmd = new MySqlCommand(@"
+            INSERT INTO ArchivedBooks
+                (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+            SELECT
+                BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, NOW(), @reason
+            FROM LogBook
+            WHERE BookID = @bk", _connection);
+                        archiveCmd.Parameters.AddWithValue("@bk", bkId);
+                        archiveCmd.Parameters.AddWithValue("@reason", finalStatus);
+                        await archiveCmd.ExecuteNonQueryAsync();
+                    }
                 }
 
-                // Generate Fine if Overdue is Yes and not a Teacher
                 if (isOverdue && borrowerType.Trim().ToLower() != "teacher")
                 {
                     const string fineSql = @"INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
@@ -1514,15 +1653,25 @@ namespace Soft_eng.Controllers
         {
             try
             {
+                // Whitelist allowed fields to prevent SQL injection
+                var allowedFields = new Dictionary<string, string>
+        {
+            { "author", "Author" },
+            { "isbn", "ISBN" },
+            { "shelf", "ShelfLocation" },
+            { "title", "BookTitle" }
+        };
+
+                if (!allowedFields.ContainsKey(field))
+                {
+                    return Json(new List<string>());
+                }
+
+                string selectField = allowedFields[field];
+
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 var suggestions = new List<string>();
-                string selectField = field switch
-                {
-                    "author" => "Author",
-                    "isbn" => "ISBN",
-                    "shelf" => "ShelfLocation",
-                    _ => "BookTitle"
-                };
+
                 using var cmd = new MySqlCommand($"SELECT DISTINCT {selectField} FROM LogBook WHERE {selectField} LIKE @q AND {selectField} IS NOT NULL AND {selectField} != '' LIMIT 10", _connection);
                 cmd.Parameters.AddWithValue("@q", $"%{query}%");
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -1603,6 +1752,100 @@ namespace Soft_eng.Controllers
             }
             finally { await _connection.CloseAsync(); }
         }
+        [HttpGet]
+        public async Task<IActionResult> GetArchivedBooks()
+        {
+            var archived = new List<object>();
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+                using var cmd = new MySqlCommand(@"
+            SELECT ArchiveID, BookID, BookTitle, Author, ISBN,
+                   Publisher, ShelfLocation, TotalCopies,
+                   DateArchived, ArchiveReason
+            FROM ArchivedBooks
+            ORDER BY DateArchived DESC", _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    archived.Add(new
+                    {
+                        archiveID = reader.GetInt32("ArchiveID"),
+                        bookID = reader.GetInt32("BookID"),
+                        bookTitle = reader.GetString("BookTitle"),
+                        author = reader.IsDBNull(reader.GetOrdinal("Author")) ? "" : reader.GetString("Author"),
+                        isbn = reader.IsDBNull(reader.GetOrdinal("ISBN")) ? "" : reader.GetString("ISBN"),
+                        publisher = reader.IsDBNull(reader.GetOrdinal("Publisher")) ? "" : reader.GetString("Publisher"),
+                        shelfLocation = reader.IsDBNull(reader.GetOrdinal("ShelfLocation")) ? "" : reader.GetString("ShelfLocation"),
+                        totalCopies = reader.GetInt32("TotalCopies"),
+                        dateArchived = reader.GetDateTime("DateArchived").ToString("MM/dd/yyyy"),
+                        archiveReason = reader.GetString("ArchiveReason")
+                    });
+                }
+            }
+            finally { await _connection.CloseAsync(); }
+            return Json(archived);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RestoreArchivedBook(int archiveId)
+        {
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                // Get the book ID from archive
+                using var getCmd = new MySqlCommand(
+                    "SELECT BookID FROM ArchivedBooks WHERE ArchiveID = @id", _connection);
+                getCmd.Parameters.AddWithValue("@id", archiveId);
+                var bookId = await getCmd.ExecuteScalarAsync();
+                if (bookId == null) return Json(new { success = false, error = "Archive not found." });
+
+                // Check if book is currently borrowed
+                int borrowedCount = 0;
+                using (var countCmd = new MySqlCommand(
+                    "SELECT COUNT(*) FROM loan WHERE BookID = @bookId AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')",
+                    _connection))
+                {
+                    countCmd.Parameters.AddWithValue("@bookId", bookId);
+                    var result = await countCmd.ExecuteScalarAsync();
+                    borrowedCount = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // Get total copies
+                int totalCopies = 0;
+                using (var copiesCmd = new MySqlCommand(
+                    "SELECT TotalCopies FROM LogBook WHERE BookID = @bookId", _connection))
+                {
+                    copiesCmd.Parameters.AddWithValue("@bookId", bookId);
+                    var result = await copiesCmd.ExecuteScalarAsync();
+                    totalCopies = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // Determine availability based on borrowed count
+                string availability = (totalCopies > borrowedCount) ? "Available" : "Not Available";
+
+                // Restore the book with correct availability
+                using var restoreCmd = new MySqlCommand(@"
+            UPDATE LogBook
+            SET BookStatus = 'Available', Availability = @avail
+            WHERE BookID = @bk", _connection);
+                restoreCmd.Parameters.AddWithValue("@bk", bookId);
+                restoreCmd.Parameters.AddWithValue("@avail", availability);
+                await restoreCmd.ExecuteNonQueryAsync();
+
+                // Delete from archive
+                using var deleteCmd = new MySqlCommand(
+                    "DELETE FROM ArchivedBooks WHERE ArchiveID = @id", _connection);
+                deleteCmd.Parameters.AddWithValue("@id", archiveId);
+                await deleteCmd.ExecuteNonQueryAsync();
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
+            finally { await _connection.CloseAsync(); }
+        }
+
 
         [HttpGet]
         public async Task<IActionResult> GetFineSuggestions(string query)

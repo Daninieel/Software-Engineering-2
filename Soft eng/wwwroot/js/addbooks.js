@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     const GOOGLE_API_KEY = 'AIzaSyCKBTEr-lRyt7BokJofqH-L18tjHbOpWLk';
 
     const videoSourceSelect = document.getElementById('videoSource');
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let startX = 0;
     let startY = 0;
     let tempCanvasRef = null;
-    
+
     // Mobile-specific variables
     let isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     let mobileMode = 'draw'; // 'draw' or 'pan'
@@ -331,9 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // TOUCH EVENTS (Mobile)
     coverCanvas.addEventListener('touchstart', e => {
         e.preventDefault();
-        
+
         const touches = e.touches;
-        
+
         // Two-finger gesture for pinch zoom
         if (touches.length === 2) {
             lastTouchDistance = getTouchDistance(touches[0], touches[1]);
@@ -341,11 +341,11 @@ document.addEventListener('DOMContentLoaded', () => {
             isDrawing = false;
             return;
         }
-        
+
         // Single finger gesture
         if (touches.length === 1) {
             const pos = getTouchPos(touches[0]);
-            
+
             if (mobileMode === 'pan') {
                 isPanning = true;
                 lastPanX = pos.clientX;
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 startX = pos.x;
                 startY = pos.y;
                 isDrawing = true;
-                
+
                 tempCanvasRef = document.createElement('canvas');
                 tempCanvasRef.width = coverCanvas.width;
                 tempCanvasRef.height = coverCanvas.height;
@@ -366,36 +366,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     coverCanvas.addEventListener('touchmove', e => {
         e.preventDefault();
-        
+
         const touches = e.touches;
-        
+
         // Two-finger pinch zoom
         if (touches.length === 2 && lastTouchDistance > 0) {
             const currentDistance = getTouchDistance(touches[0], touches[1]);
             const scaleFactor = currentDistance / lastTouchDistance;
-            
+
             const rect = coverCanvas.getBoundingClientRect();
             const centerX = (touches[0].clientX + touches[1].clientX) / 2;
             const centerY = (touches[0].clientY + touches[1].clientY) / 2;
-            
+
             const mouseX = (centerX - rect.left) / zoomLevel + panX;
             const mouseY = (centerY - rect.top) / zoomLevel + panY;
-            
+
             const oldZoom = zoomLevel;
             zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * scaleFactor));
-            
+
             panX = mouseX - (mouseX - panX) * (zoomLevel / oldZoom);
             panY = mouseY - (mouseY - panY) * (zoomLevel / oldZoom);
-            
+
             lastTouchDistance = currentDistance;
             applyTransform();
             return;
         }
-        
+
         // Single finger gesture
         if (touches.length === 1) {
             const pos = getTouchPos(touches[0]);
-            
+
             if (isPanning) {
                 const dx = pos.clientX - lastPanX;
                 const dy = pos.clientY - lastPanY;
@@ -406,14 +406,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyTransform();
                 return;
             }
-            
+
             if (isDrawing) {
                 const currentX = pos.x;
                 const currentY = pos.y;
-                
+
                 const ctx = coverCanvas.getContext('2d');
                 ctx.drawImage(tempCanvasRef, 0, 0);
-                
+
                 ctx.strokeStyle = '#3498db';
                 ctx.lineWidth = 3;
                 ctx.setLineDash([6, 4]);
@@ -427,26 +427,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     coverCanvas.addEventListener('touchend', async e => {
         e.preventDefault();
-        
+
         // Reset pinch zoom tracking
         if (e.touches.length < 2) {
             lastTouchDistance = 0;
         }
-        
+
         if (isPanning) {
             isPanning = false;
             updateMobileCursor();
             return;
         }
-        
+
         if (isDrawing) {
             isDrawing = false;
-            
+
             const touch = e.changedTouches[0];
             const pos = getTouchPos(touch);
             const endX = pos.x;
             const endY = pos.y;
-            
+
             await processSelection(startX, startY, endX, endY);
         }
     }, { passive: false });
@@ -573,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function updateMobileCursor() {
         if (!isMobileDevice) return;
-        
+
         if (mobileMode === 'draw') {
             coverCanvas.style.cursor = 'crosshair';
         } else {
@@ -586,10 +586,10 @@ document.addEventListener('DOMContentLoaded', () => {
         detectedTextList.innerHTML = '';
 
         if (items.length === 0) {
-            const instructions = isMobileDevice 
+            const instructions = isMobileDevice
                 ? 'Tap the button below to switch modes<br>DRAW mode: Drag to select text<br>PAN mode: Drag to move image<br>Pinch to zoom'
                 : 'Draw rectangles around text areas<br>Shift+drag to pan • Scroll to zoom';
-                
+
             detectedTextList.innerHTML = `
                 <div style="text-align:center; padding:20px; color:#3498db;">
                     <b>${currentSide.toUpperCase()} COVER</b><br>
@@ -757,10 +757,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <b>${side.toUpperCase()} COVER LOADED</b><br>
                         <small>${instructions}</small>
                     </div>`;
-                    
+
                 coverScanModal.style.display = 'flex';
                 updateToggleButton();
-                
+
                 // Show mobile toggle button
                 if (isMobileDevice && mobileToggleBtn) {
                     mobileToggleBtn.style.display = 'block';
@@ -1053,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             coverCanvas.style.cursor = 'crosshair';
         }
     });
-    
+
     // Initialize mobile features
     if (isMobileDevice) {
         createMobileToggleButton();

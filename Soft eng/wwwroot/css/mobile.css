@@ -10,6 +10,8 @@
         cursor: pointer;
         padding: 0;
         z-index: 1200;
+        order: -1;
+        margin-right: 15px;
     }
 
         .hamburger-btn span {
@@ -33,13 +35,20 @@
         }
 
     .top-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
         padding: 0 20px !important;
         height: 80px !important;
     }
 
-    .logo-area .school-name {
-        display: none !important;
+    .logo-area {
+        margin-right: auto;
     }
+
+        .logo-area .school-name {
+            display: none !important;
+        }
 
     .logo-circle {
         width: 55px;
@@ -48,6 +57,7 @@
 
     .user-area {
         gap: 15px;
+        margin-left: auto;
     }
 
     .welcome-text {
@@ -78,6 +88,42 @@
         .sidebar.active {
             left: 0 !important;
         }
+
+        .sidebar nav ul,
+        .sidebar ul {
+            padding: 0 !important;
+            margin: 0 !important;
+            list-style: none !important;
+        }
+
+            .sidebar nav ul li a,
+            .sidebar ul li a,
+            .sidebar a {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+                padding: 12px 20px !important;
+                gap: 12px !important;
+            }
+
+                .sidebar nav ul li a i,
+                .sidebar ul li a i,
+                .sidebar a i,
+                .sidebar .nav-icon,
+                .sidebar a svg {
+                    flex-shrink: 0 !important;
+                    margin-right: 10px !important;
+                    text-align: left !important;
+                }
+
+                .sidebar nav ul li a span,
+                .sidebar ul li a span,
+                .sidebar a span,
+                .sidebar .nav-text {
+                    text-align: left !important;
+                    flex: 1 !important;
+                }
 
     .sidebar-overlay {
         display: none !important;
@@ -230,18 +276,17 @@
 }
 
 
-/* Global Search Container */
 .search-filter {
     display: flex;
     justify-content: center;
     align-items: center;
     margin: 0 auto 30px auto;
-    max-width: 1100px; /* Aligns with table-card max-width */
+    max-width: 1100px;
     width: 100%;
     padding: 0 25px;
 }
 
-    /* Unified Search Input */
+
     .search-filter input[type="text"],
     .search-box {
         flex: 1;

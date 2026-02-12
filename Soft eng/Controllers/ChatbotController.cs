@@ -557,7 +557,7 @@ Just ask naturally, like:
                     var value = reader.GetValue(0);
 
                     if (value is decimal dec)
-                        return $"**₱{dec:N2}**";
+                        return $"**{dec:N2}**";
                     else if (value is int || value is long)
                         return $"**{value}**";
                     else if (value is DateTime dt)
