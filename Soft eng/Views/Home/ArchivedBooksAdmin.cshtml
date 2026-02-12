@@ -174,28 +174,7 @@
     <script src="~/js/archivedbooks.js"></script>
     <script src="~/js/chatbot.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/js/dropdown-fix.js"></script>
-
-    <script>
-        // Force open Book Management dropdown on this page
-        document.addEventListener('DOMContentLoaded', function () {
-            const menu = document.getElementById('bookManagementSubmenuLib');
-            const btn = document.getElementById('bookManagementBtnLib');
-            if (menu && btn) {
-                menu.classList.add('show');
-                btn.classList.add('active');
-                const arrow = btn.querySelector('.arrow-icon');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        });
-
-        function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
-        function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
-        function confirmLogout() { document.getElementById('logoutForm').submit(); }
-        document.getElementById('logoutModal').addEventListener('click', function (e) {
-            if (e.target === this) closeLogoutModal();
-        });
-    </script>
+    <script src="~/js/dropdown-fix.js"></script>      
     <script>
         function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
         function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
