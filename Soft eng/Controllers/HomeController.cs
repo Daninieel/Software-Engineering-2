@@ -231,8 +231,18 @@ namespace Soft_eng.Controllers
 
                 // Set defaults
                 book.BookStatus = book.BookStatus ?? "Good";
-                book.Availability = "Available";
                 book.DateReceived = book.DateReceived ?? DateTime.Now;
+
+                // Damaged or Missing books are immediately archived — they must never enter active inventory
+                if (book.BookStatus == "Damaged" || book.BookStatus == "Missing")
+                {
+                    book.Availability = "Not Available";
+                    book.TotalCopies = 0;
+                }
+                else
+                {
+                    book.Availability = "Available";
+                }
 
                 string query = @"
             INSERT INTO Logbook 
@@ -260,6 +270,29 @@ namespace Soft_eng.Controllers
                 cmd.Parameters.AddWithValue("@avail", book.Availability);
 
                 await cmd.ExecuteNonQueryAsync();
+
+                // If the new book was added as Damaged or Missing, immediately archive it
+                if (book.BookStatus == "Damaged" || book.BookStatus == "Missing")
+                {
+                    long newBookId = cmd.LastInsertedId;
+                    using var archiveCmd = new MySqlCommand(@"
+                        INSERT INTO ArchivedBooks
+                            (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+                        VALUES (@bookId, @title, @author, @isbn, @publisher, @shelf, @copies, NOW(), @reason)
+                        ON DUPLICATE KEY UPDATE
+                            TotalCopies = @copies,
+                            DateArchived = NOW(),
+                            ArchiveReason = @reason", _connection);
+                    archiveCmd.Parameters.AddWithValue("@bookId", newBookId);
+                    archiveCmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                    archiveCmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                    archiveCmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                    archiveCmd.Parameters.AddWithValue("@publisher", book.Publisher ?? "");
+                    archiveCmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                    archiveCmd.Parameters.AddWithValue("@copies", 0);
+                    archiveCmd.Parameters.AddWithValue("@reason", book.BookStatus);
+                    await archiveCmd.ExecuteNonQueryAsync();
+                }
 
                 TempData["SuccessMessage"] = "Book added successfully!";
 
@@ -1516,6 +1549,8 @@ namespace Soft_eng.Controllers
                 string finalAvailability;
                 if (finalBookStatus == "Good" || finalBookStatus == "Available")
                 {
+                    // Ensure copies cannot be zero on an active good book
+                    if (book.TotalCopies <= 0) book.TotalCopies = 1;
                     finalAvailability = (book.TotalCopies > currentBorrowedCount) ? "Available" : "Not Available";
                     finalBookStatus = "Good";
                 }
@@ -1840,16 +1875,32 @@ namespace Soft_eng.Controllers
 
                     if (finalStatus == "Damaged" || finalStatus == "Missing")
                     {
+                        // Archive the book with ON DUPLICATE KEY so re-archiving is safe
                         using var archiveCmd = new MySqlCommand(@"
-            INSERT INTO ArchivedBooks
-                (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
-            SELECT
-                BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, NOW(), @reason
-            FROM Logbook
-            WHERE BookID = @bk", _connection);
+        INSERT INTO ArchivedBooks
+            (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+        SELECT
+            BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, NOW(), @reason
+        FROM Logbook
+        WHERE BookID = @bk
+        ON DUPLICATE KEY UPDATE
+            TotalCopies = VALUES(TotalCopies),
+            DateArchived = NOW(),
+            ArchiveReason = @reason", _connection);
                         archiveCmd.Parameters.AddWithValue("@bk", bkId);
                         archiveCmd.Parameters.AddWithValue("@reason", finalStatus);
                         await archiveCmd.ExecuteNonQueryAsync();
+
+                        // Zero out copies and mark unavailable — damaged/missing books must never appear in inventory
+                        using var zeroCmd = new MySqlCommand(@"
+        UPDATE Logbook 
+        SET TotalCopies = 0, 
+            Availability = 'Not Available',
+            BookStatus = @status
+        WHERE BookID = @bk", _connection);
+                        zeroCmd.Parameters.AddWithValue("@status", finalStatus);
+                        zeroCmd.Parameters.AddWithValue("@bk", bkId);
+                        await zeroCmd.ExecuteNonQueryAsync();
                     }
                 }
 
