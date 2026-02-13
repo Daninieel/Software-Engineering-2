@@ -204,6 +204,78 @@ namespace Soft_eng.Controllers
         }
 
         public IActionResult Addbooks() => View();
+       
+
+       
+        [HttpPost]
+        public async Task<IActionResult> AddBooks(LogBook book, bool fromAdmin = false)
+        {
+            // Remove Edition validation if it causes issues
+            ModelState.Remove("Edition");
+
+            if (!ModelState.IsValid)
+            {
+                // Show validation errors
+                var errors = string.Join(", ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+
+                TempData["ErrorMessage"] = $"Validation failed: {errors}";
+                return View("Addbooks", book);
+            }
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                // Set defaults
+                book.BookStatus = book.BookStatus ?? "Good";
+                book.Availability = "Available";
+                book.DateReceived = book.DateReceived ?? DateTime.Now;
+
+                string query = @"
+            INSERT INTO Logbook 
+            (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, 
+             Publisher, Year, Remarks, ShelfLocation, TotalCopies, BookStatus, Availability)
+            VALUES 
+            (@isbn, @source, @title, @received, @author, @pages, @edition, 
+             @publisher, @year, @remarks, @shelf, @total, @status, @avail)";
+
+                using var cmd = new MySqlCommand(query, _connection);
+
+                cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                cmd.Parameters.AddWithValue("@received", book.DateReceived);
+                cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                cmd.Parameters.AddWithValue("@publisher", book.Publisher ?? "");
+                cmd.Parameters.AddWithValue("@year", book.Year);
+                cmd.Parameters.AddWithValue("@remarks", book.Remarks ?? "");
+                cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                cmd.Parameters.AddWithValue("@total", book.TotalCopies);
+                cmd.Parameters.AddWithValue("@status", book.BookStatus);
+                cmd.Parameters.AddWithValue("@avail", book.Availability);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                TempData["SuccessMessage"] = "Book added successfully!";
+
+                // Redirect based on admin status
+                return RedirectToAction(fromAdmin ? "InventoryAdmin" : "Inventory");
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error adding book: {ex.Message}";
+                return View("Addbooks", book);
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
         public IActionResult ForgotPassword() => View();
 
         public async Task<IActionResult> RequestedBooks()
