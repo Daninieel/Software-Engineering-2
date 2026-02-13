@@ -8,9 +8,9 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
-using System.Text.Json;
-using DinkToPdf;
-using DinkToPdf.Contracts;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
@@ -21,13 +21,11 @@ namespace Soft_eng.Controllers
     {
         private readonly MySqlConnection _connection;
         private readonly IConfiguration _configuration;
-        private readonly IConverter _pdfConverter;
 
-        public HomeController(MySqlConnection connection, IConfiguration configuration, IConverter pdfConverter)
+        public HomeController(MySqlConnection connection, IConfiguration configuration)
         {
             _connection = connection;
             _configuration = configuration;
-            _pdfConverter = pdfConverter;
         }
 
         public IActionResult Login() => View();
@@ -937,15 +935,91 @@ namespace Soft_eng.Controllers
                 if (format.ToLower() == "pdf") return GeneratePDF(data, reportType);
                 return BadRequest("Invalid format");
             }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex)
+            {
+                return BadRequest($"Report error [{reportType}/{format}]: {ex.Message} | Inner: {ex.InnerException?.Message}");
+            }
         }
 
         private IActionResult GeneratePDF(DataTable data, string reportType)
         {
-            var doc = new HtmlToPdfDocument() { GlobalSettings = { ColorMode = ColorMode.Color, Orientation = Orientation.Portrait, PaperSize = PaperKind.A4 }, Objects = { new ObjectSettings() { HtmlContent = BuildHtmlString(data, reportType), WebSettings = { DefaultEncoding = "utf-8" } } } };
-            return File(_pdfConverter.Convert(doc), "application/pdf", $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
-        }
+            try
+            {
+                var pdfBytes = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.Letter);
+                        page.Margin(1, Unit.Centimetre);
+                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
 
+                        // Header
+                        page.Header().Column(col =>
+                        {
+                            col.Item().AlignCenter().Text("Saint Isidore Academy Library")
+                                .Bold().FontSize(14).FontColor("#c0392b");
+                            col.Item().AlignCenter().Text($"{GetReportTitle(reportType)} Report")
+                                .Bold().FontSize(11);
+                            col.Item().AlignCenter().Text($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}")
+                                .FontSize(8).FontColor("#666666");
+                            col.Item().PaddingTop(4).LineHorizontal(2).LineColor("#c0392b");
+                        });
+
+                        // Content - TABLE WITH CORRECTED SYNTAX
+                        page.Content().PaddingTop(10).Table(table =>
+                        {
+                            // Define columns evenly
+                            table.ColumnsDefinition(columns =>
+                            {
+                                for (int i = 0; i < data.Columns.Count; i++)
+                                    columns.RelativeColumn();
+                            });
+
+                            // CORRECTED: Header row - proper syntax
+                            table.Header(header =>
+                            {
+                                foreach (DataColumn col in data.Columns)
+                                {
+                                    header.Cell().Background("#c0392b").Padding(5)
+                                        .Text(col.ColumnName).Bold().FontColor("#ffffff").FontSize(8);
+                                }
+                            });
+
+                            // Data rows
+                            bool isEven = false;
+                            foreach (DataRow row in data.Rows)
+                            {
+                                string bg = isEven ? "#f9f9f9" : "#ffffff";
+                                foreach (var cell in row.ItemArray)
+                                {
+                                    table.Cell().Background(bg).Border(0.5f).BorderColor("#dddddd")
+                                        .Padding(4).Text(cell?.ToString() ?? "").FontSize(8);
+                                }
+                                isEven = !isEven;
+                            }
+                        });
+
+                        // Footer
+                        page.Footer().AlignCenter()
+                            .Text(x =>
+                            {
+                                x.Span("Total Records: ").Bold();
+                                x.Span(data.Rows.Count.ToString());
+                                x.Span("    |    Page ");
+                                x.CurrentPageNumber();
+                                x.Span(" of ");
+                                x.TotalPages();
+                            });
+                    });
+                }).GeneratePdf();
+
+                return File(pdfBytes, "application/pdf", $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"PDF generation failed: {ex.Message} | Inner: {ex.InnerException?.Message}");
+            }
+        }
         private string BuildHtmlString(DataTable data, string reportType)
         {
             StringBuilder html = new StringBuilder();
@@ -983,16 +1057,40 @@ namespace Soft_eng.Controllers
         private IActionResult GenerateCSV(DataTable data, string reportType)
         {
             StringBuilder csv = new StringBuilder();
-            csv.Append('\uFEFF'); csv.AppendLine($"Saint Isidore Academy Library - {GetReportTitle(reportType)} Report"); csv.AppendLine($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}"); csv.AppendLine();
+            csv.Append('\uFEFF');
+            csv.AppendLine($"Saint Isidore Academy Library - {GetReportTitle(reportType)} Report");
+            csv.AppendLine($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            csv.AppendLine();
+
             List<string> headers = new List<string>();
-            for (int i = 0; i < data.Columns.Count; i++) headers.Add(EscapeCSV(data.Columns[i].ColumnName));
+            for (int i = 0; i < data.Columns.Count; i++)
+                headers.Add(EscapeCSV(data.Columns[i].ColumnName));
             csv.AppendLine(string.Join(",", headers));
-            foreach (DataRow row in data.Rows) { List<string> values = new List<string>(); for (int i = 0; i < data.Columns.Count; i++) values.Add(EscapeCSV(row[i]?.ToString() ?? "")); csv.AppendLine(string.Join(",", values)); }
-            csv.AppendLine(); csv.AppendLine($"Total Records: {data.Rows.Count}");
-            return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+
+            foreach (DataRow row in data.Rows)
+            {
+                List<string> values = new List<string>();
+                for (int i = 0; i < data.Columns.Count; i++)
+                    values.Add(EscapeCSV(row[i]?.ToString() ?? ""));
+                csv.AppendLine(string.Join(",", values));
+            }
+
+            csv.AppendLine();
+            csv.AppendLine($"Total Records: {data.Rows.Count}");
+
+            return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8",
+                $"{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         }
 
-        private string GetReportTitle(string type) => type switch { "borrowedbooks" => "Borrowed Books", "fine" => "Fine", "requestedbooks" => "Requested Books", "archivedbooks" => "Archived Books", _ => "Report" };
+
+        private string GetReportTitle(string type) => type switch
+        {
+            "borrowedbooks" => "Borrowed Books",
+            "fine" => "Fine",
+            "requestedbooks" => "Requested Books",
+            "archivedbooks" => "Archived Books",
+            _ => "Report"
+        };
         private string EscapeCSV(string v) => (string.IsNullOrEmpty(v) || !v.Any(c => c == ',' || c == '"' || c == '\n' || c == '\r')) ? v : $"\"{v.Replace("\"", "\"\"")}\"";
         private string EscapeHTML(string v) => string.IsNullOrEmpty(v) ? "" : v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 

@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-    <PackageReference Include="DinkToPdf" Version="1.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.1">
@@ -19,6 +18,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.1" />
     <PackageReference Include="MySql.Data" Version="9.5.0" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <PackageReference Include="QuestPDF" Version="2025.12.4" />
   </ItemGroup>
 
 </Project>
