@@ -360,7 +360,6 @@ class SearchSuggestions {
     }
 }
 
-// Initialize suggestions for different pages
 document.addEventListener('DOMContentLoaded', function () {
     const url = window.location.pathname.toLowerCase();
     const searchInput = document.querySelector('.search-filter input');
@@ -373,8 +372,15 @@ document.addEventListener('DOMContentLoaded', function () {
     let suggestionInstance = null;
 
     // Determine page type and initialize appropriate suggestions
-    if (url.includes('inventory') || url.includes('dashboard') || url.includes('logbook')) {
-        // Dashboard & Logbook pages: Book Title, Author, ISBN, Shelf Location
+    if (url.includes('dashboard')) {
+        // Dashboard: Use global suggestions endpoint with all fields
+        suggestionInstance = new SearchSuggestions(
+            searchInput,
+            '/Home/GetDashboardSuggestions',
+            ['title', 'author', 'isbn', 'shelf', 'borrower']
+        );
+    } else if (url.includes('inventory') || url.includes('logbook')) {
+        // Inventory & Logbook pages: Book Title, Author, ISBN, Shelf Location
         suggestionInstance = new SearchSuggestions(
             searchInput,
             '/Home/GetInventorySuggestions',
