@@ -46,7 +46,7 @@ namespace Soft_eng.Models
         public decimal? FineAmount { get; set; }
 
         // Navigation properties for joins
-        public virtual LogBook? Book { get; set; }
+        public virtual LogBook? LogBook { get; set; }
         public virtual Borrower? Borrower { get; set; }
     }
 }

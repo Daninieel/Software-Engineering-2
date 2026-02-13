@@ -9,7 +9,7 @@ namespace Soft_eng.Models
         public int ArchiveID { get; set; }
 
         [Required]
-        [ForeignKey("Logbook")]
+        [ForeignKey("LogBook")]
         public int BookID { get; set; }
 
         [StringLength(255)]

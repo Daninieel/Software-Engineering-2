@@ -1,9 +1,11 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.RegularExpressions;
 
 namespace Soft_eng.Models
 {
+    [Table("Logbook")]
     public class LogBook
     {
         [Key]

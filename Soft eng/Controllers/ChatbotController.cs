@@ -156,7 +156,7 @@ EXAMPLES:
 
 User: ""How many copies of Harry Potter?""
 ###SQL_QUERY###
-SELECT SUM(TotalCopies) AS Total FROM LogBook WHERE BookTitle LIKE '%Harry Potter%';
+SELECT SUM(TotalCopies) AS Total FROM Logbook WHERE BookTitle LIKE '%Harry Potter%';
 ###END_SQL###
 ###RESPONSE###
 Let me check our inventory for Harry Potter books...
@@ -164,7 +164,7 @@ Let me check our inventory for Harry Potter books...
 
 User: ""Show book 1013""
 ###SQL_QUERY###
-SELECT * FROM LogBook WHERE BookID = 1013 LIMIT 1;
+SELECT * FROM Logbook WHERE BookID = 1013 LIMIT 1;
 ###END_SQL###
 ###RESPONSE###
 Let me retrieve the details for Book ID 1013...
@@ -355,7 +355,7 @@ Just ask naturally, like:
             if (lower == "how many books" || lower == "how many books?" || lower == "total books")
             {
                 return await ExecuteSimpleCount(
-                    "SELECT COUNT(*) FROM LogBook",
+                    "SELECT COUNT(*) FROM Logbook",
                     "We have **{0} books** in our library inventory."
                 );
             }
@@ -364,7 +364,7 @@ Just ask naturally, like:
             if (lower.Contains("how many available") || lower.Contains("available books"))
             {
                 return await ExecuteSimpleCount(
-                    "SELECT COUNT(*) FROM LogBook WHERE Availability = 'Available'",
+                    "SELECT COUNT(*) FROM Logbook WHERE Availability = 'Available'",
                     "**{0} books** are currently available for borrowing."
                 );
             }
@@ -409,7 +409,7 @@ Just ask naturally, like:
                 if (_connection.State != ConnectionState.Open)
                     await _connection.OpenAsync();
 
-                var query = "SELECT BookID, BookTitle, Author, ISBN, Availability, TotalCopies, ShelfLocation, BookStatus FROM LogBook WHERE BookID = @id LIMIT 1";
+                var query = "SELECT BookID, BookTitle, Author, ISBN, Availability, TotalCopies, ShelfLocation, BookStatus FROM Logbook WHERE BookID = @id LIMIT 1";
 
                 using var cmd = new MySqlCommand(query, _connection);
                 cmd.Parameters.AddWithValue("@id", bookId);
@@ -476,7 +476,7 @@ Just ask naturally, like:
                 if (_connection.State != ConnectionState.Open)
                     await _connection.OpenAsync();
 
-                var query = "SELECT BookTitle, SUM(TotalCopies) AS Total FROM LogBook WHERE BookTitle LIKE @title GROUP BY BookTitle LIMIT 1";
+                var query = "SELECT BookTitle, SUM(TotalCopies) AS Total FROM Logbook WHERE BookTitle LIKE @title GROUP BY BookTitle LIMIT 1";
 
                 using var cmd = new MySqlCommand(query, _connection);
                 cmd.Parameters.AddWithValue("@title", $"%{bookTitle}%");
