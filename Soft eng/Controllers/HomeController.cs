@@ -1,19 +1,21 @@
 ﻿using BCrypt.Net;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
-using Soft_eng.Models;
-using System.Data;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Mail;
-using System.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Soft_eng.Models;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Mail;
 using System.Security.Claims;
+using System.Text;
+using MySql.Data.Types;
 
 namespace Soft_eng.Controllers
 {
@@ -26,6 +28,57 @@ namespace Soft_eng.Controllers
         {
             _connection = connection;
             _configuration = configuration;
+        }
+
+        private DateTime? SafeGetDateTime(DbDataReader reader, string columnName)
+        {
+            try
+            {
+                int ordinal = reader.GetOrdinal(columnName);
+
+                if (reader.IsDBNull(ordinal))
+                    return null;
+
+                // Cast to MySqlDataReader to access MySQL-specific methods
+                if (reader is MySqlDataReader mySqlReader)
+                {
+                    try
+                    {
+                        // Use GetMySqlDateTime which doesn't throw on zero dates
+                        var mySqlDateTime = mySqlReader.GetMySqlDateTime(ordinal);
+
+                        // Check if it's a valid date
+                        if (mySqlDateTime.IsValidDateTime)
+                        {
+                            return mySqlDateTime.GetDateTime();
+                        }
+                        else
+                        {
+                            // It's a zero date (0000-00-00)
+                            return null;
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback: try getting as string and parsing
+                        try
+                        {
+                            string strValue = mySqlReader.GetString(ordinal);
+                            if (DateTime.TryParse(strValue, out DateTime dt))
+                                return dt;
+                        }
+                        catch { }
+
+                        return null;
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public IActionResult Login() => View();
@@ -43,13 +96,13 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                string updateOverdueSql = "UPDATE Loan SET OverdueStatus = 1 WHERE DateDue < CURDATE() AND ReturnStatus = 'Not Returned'";
+                string updateOverdueSql = "UPDATE Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID SET l.OverdueStatus = 1 WHERE l.DateDue < CURDATE() AND l.ReturnStatus = 'Not Returned' AND LOWER(b.BorrowerType) != 'teacher'";
                 using (var updateCmd = new MySqlCommand(updateOverdueSql, _connection))
                 {
                     await updateCmd.ExecuteNonQueryAsync();
                 }
 
-                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(TotalCopies), 0) FROM LogBook", _connection))
+                using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(TotalCopies), 0) FROM Logbook", _connection))
                     totalBooks = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                 using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Loan WHERE ReturnStatus = 'Not Returned'", _connection))
@@ -64,10 +117,10 @@ namespace Soft_eng.Controllers
                 using (var cmd = new MySqlCommand("SELECT IFNULL(SUM(FineAmount), 0) FROM Fine", _connection))
                     totalFineSum = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
 
-                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Missing'", _connection))
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Logbook WHERE BookStatus = 'Missing'", _connection))
                     totalMissing = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookStatus = 'Damaged'", _connection))
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Logbook WHERE BookStatus = 'Damaged'", _connection))
                     totalDamaged = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                 string overdueSql = @"SELECT l.BorrowerID, b.BorrowerName, l.DateBorrowed, IFNULL(f.FineAmount, 0) as FineAmount 
@@ -86,13 +139,13 @@ namespace Soft_eng.Controllers
                         {
                             UserID = reader.GetInt32("BorrowerID"),
                             Name = reader.GetString("BorrowerName"),
-                            DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"),
+                            DateBorrowed = SafeGetDateTime(reader, "DateBorrowed")?.ToString("MM/dd/yyyy") ?? "-",
                             Fine = reader.GetDecimal("FineAmount").ToString("N2")
                         });
                     }
                 }
 
-                string recentSql = @"SELECT lb.BookTitle FROM Loan l JOIN LogBook lb ON l.BookID = lb.BookID 
+                string recentSql = @"SELECT lb.BookTitle FROM Loan l JOIN Logbook lb ON l.BookID = lb.BookID 
                                      WHERE l.ReturnStatus = 'Not Returned' ORDER BY l.DateBorrowed DESC LIMIT 5";
 
                 using (var cmd = new MySqlCommand(recentSql, _connection))
@@ -135,6 +188,7 @@ namespace Soft_eng.Controllers
             return View();
         }
 
+
         public async Task<IActionResult> Dashboard()
         {
             var data = await GetDashboardViewModel();
@@ -151,6 +205,112 @@ namespace Soft_eng.Controllers
         }
 
         public IActionResult Addbooks() => View();
+
+
+
+        [HttpPost]
+        public async Task<IActionResult> AddBooks(LogBook book, bool fromAdmin = false)
+        {
+            ModelState.Remove("Edition");
+
+            if (!ModelState.IsValid)
+            {
+                var errors = string.Join(", ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+
+                TempData["ErrorMessage"] = $"Validation failed: {errors}";
+                return View("Addbooks", book);
+            }
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                book.BookStatus = book.BookStatus ?? "Good";
+                book.DateReceived = book.DateReceived ?? DateTime.Now;
+
+                if (book.BookStatus == "Damaged" || book.BookStatus == "Missing")
+                {
+                    book.Availability = "Not Available";
+                }
+                else
+                {
+                    book.Availability = "Available";
+                }
+
+                int numberOfCopies = book.TotalCopies;
+
+                // Insert each copy as a separate row
+                for (int i = 0; i < numberOfCopies; i++)
+                {
+                    string query = @"
+                INSERT INTO Logbook 
+                (ISBN, SourceType, BookTitle, DateReceived, Author, Pages, Edition, 
+                 Publisher, Year, Remarks, ShelfLocation, TotalCopies, BookStatus, Availability)
+                VALUES 
+                (@isbn, @source, @title, @received, @author, @pages, @edition, 
+                 @publisher, @year, @remarks, @shelf, 1, @status, @avail)";
+
+                    using var cmd = new MySqlCommand(query, _connection);
+
+                    cmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                    cmd.Parameters.AddWithValue("@source", book.SourceType ?? "");
+                    cmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                    cmd.Parameters.AddWithValue("@received", book.DateReceived);
+                    cmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                    cmd.Parameters.AddWithValue("@pages", book.Pages ?? 0);
+                    cmd.Parameters.AddWithValue("@edition", book.Edition ?? "");
+                    cmd.Parameters.AddWithValue("@publisher", book.Publisher ?? "");
+                    cmd.Parameters.AddWithValue("@year", book.Year);
+                    cmd.Parameters.AddWithValue("@remarks", book.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                    cmd.Parameters.AddWithValue("@status", book.BookStatus);
+                    cmd.Parameters.AddWithValue("@avail", book.Availability);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    if (book.BookStatus == "Damaged" || book.BookStatus == "Missing")
+                    {
+                        long newBookId = cmd.LastInsertedId;
+
+                        // Update this copy to have 0 TotalCopies since it's damaged/missing
+                        using var updateCopyCmd = new MySqlCommand(@"
+        UPDATE Logbook SET TotalCopies = 0 WHERE BookID = @id", _connection);
+                        updateCopyCmd.Parameters.AddWithValue("@id", newBookId);
+                        await updateCopyCmd.ExecuteNonQueryAsync();
+
+                        // Each copy gets its own archive entry
+                        using var archiveCmd = new MySqlCommand(@"
+        INSERT INTO ArchivedBooks
+            (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+        VALUES (@bookId, @title, @author, @isbn, @publisher, @shelf, 1, NOW(), @reason)", _connection);
+
+                        archiveCmd.Parameters.AddWithValue("@bookId", newBookId);
+                        archiveCmd.Parameters.AddWithValue("@title", book.BookTitle ?? "");
+                        archiveCmd.Parameters.AddWithValue("@author", book.Author ?? "");
+                        archiveCmd.Parameters.AddWithValue("@isbn", book.ISBN ?? "");
+                        archiveCmd.Parameters.AddWithValue("@publisher", book.Publisher ?? "");
+                        archiveCmd.Parameters.AddWithValue("@shelf", book.ShelfLocation ?? "");
+                        archiveCmd.Parameters.AddWithValue("@reason", book.BookStatus);
+                        await archiveCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                TempData["SuccessMessage"] = $"{numberOfCopies} cop{(numberOfCopies > 1 ? "ies" : "y")} added successfully!";
+                return RedirectToAction(fromAdmin ? "InventoryAdmin" : "Inventory");
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error adding book: {ex.Message}";
+                return View("Addbooks", book);
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
         public IActionResult ForgotPassword() => View();
 
         public async Task<IActionResult> RequestedBooks()
@@ -161,7 +321,7 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 using var cmd = new MySqlCommand("SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status, Remarks FROM Request ORDER BY DateRequested DESC", _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync()) requests.Add(new Request { RequestID = reader.GetInt32("RequestID"), RequesterName = reader.GetString("RequesterName"), RequestedTitle = reader.GetString("RequestedTitle"), DateRequested = reader.GetDateTime("DateRequested"), Status = reader.GetString("Status"), Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks") });
+                while (await reader.ReadAsync()) requests.Add(new Request { RequestID = reader.GetInt32("RequestID"), RequesterName = reader.GetString("RequesterName"), RequestedTitle = reader.GetString("RequestedTitle"), DateRequested = SafeGetDateTime(reader, "DateRequested") ?? DateTime.Now, Status = reader.GetString("Status"), Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks") });
             }
             finally { await _connection.CloseAsync(); }
             return View(requests);
@@ -175,7 +335,7 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 using var cmd = new MySqlCommand("SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status, Remarks FROM Request ORDER BY DateRequested DESC", _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync()) requests.Add(new Request { RequestID = reader.GetInt32("RequestID"), RequesterName = reader.GetString("RequesterName"), RequestedTitle = reader.GetString("RequestedTitle"), DateRequested = reader.GetDateTime("DateRequested"), Status = reader.GetString("Status"), Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks") });
+                while (await reader.ReadAsync()) requests.Add(new Request { RequestID = reader.GetInt32("RequestID"), RequesterName = reader.GetString("RequesterName"), RequestedTitle = reader.GetString("RequestedTitle"), DateRequested = SafeGetDateTime(reader, "DateRequested") ?? DateTime.Now, Status = reader.GetString("Status"), Remarks = reader.IsDBNull("Remarks") ? null : reader.GetString("Remarks") });
             }
             finally { await _connection.CloseAsync(); }
             return View(requests);
@@ -200,7 +360,7 @@ namespace Soft_eng.Controllers
         public IActionResult EditRequest(Request req)
         {
             if (_connection.State != ConnectionState.Open) _connection.Open();
-            using (MySqlCommand cmd = new MySqlCommand("UPDATE request SET RequesterName = @name, RequestedTitle = @title, DateRequested = @date, Remarks = @remarks WHERE RequestID = @id", _connection))
+            using (MySqlCommand cmd = new MySqlCommand("UPDATE Request SET RequesterName = @name, RequestedTitle = @title, DateRequested = @date, Remarks = @remarks WHERE RequestID = @id", _connection))
             {
                 cmd.Parameters.AddWithValue("@id", req.RequestID); cmd.Parameters.AddWithValue("@name", req.RequesterName); cmd.Parameters.AddWithValue("@title", req.RequestedTitle); cmd.Parameters.AddWithValue("@date", req.DateRequested); cmd.Parameters.AddWithValue("@remarks", req.Remarks);
                 cmd.ExecuteNonQuery();
@@ -212,7 +372,7 @@ namespace Soft_eng.Controllers
         public IActionResult EditRequestAdmin(Request req)
         {
             if (_connection.State != ConnectionState.Open) _connection.Open();
-            using (MySqlCommand cmd = new MySqlCommand("UPDATE request SET RequesterName = @name, RequestedTitle = @title, DateRequested = @date, Status = @status, Remarks = @remarks WHERE RequestID = @id", _connection))
+            using (MySqlCommand cmd = new MySqlCommand("UPDATE Request SET RequesterName = @name, RequestedTitle = @title, DateRequested = @date, Status = @status, Remarks = @remarks WHERE RequestID = @id", _connection))
             {
                 cmd.Parameters.AddWithValue("@id", req.RequestID); cmd.Parameters.AddWithValue("@name", req.RequesterName); cmd.Parameters.AddWithValue("@title", req.RequestedTitle); cmd.Parameters.AddWithValue("@date", req.DateRequested); cmd.Parameters.AddWithValue("@status", req.Status); cmd.Parameters.AddWithValue("@remarks", req.Remarks);
                 cmd.ExecuteNonQuery();
@@ -416,7 +576,7 @@ namespace Soft_eng.Controllers
                     return View("VerificationResult");
                 }
 
-                bool isAlreadyVerified = reader.GetBoolean("IsEmailVerified");
+                bool isAlreadyVerified = Convert.ToInt16(reader["IsEmailVerified"]) == 1;
                 if (isAlreadyVerified)
                 {
                     ViewBag.Message = "This email has already been verified. You can now log in to your account.";
@@ -425,7 +585,7 @@ namespace Soft_eng.Controllers
                 }
 
                 string storedToken = reader.GetString("VerificationToken");
-                DateTime tokenExpiry = reader.GetDateTime("TokenExpiry");
+                DateTime tokenExpiry = SafeGetDateTime(reader, "TokenExpiry") ?? DateTime.MinValue;
 
                 await reader.CloseAsync();
 
@@ -513,7 +673,7 @@ namespace Soft_eng.Controllers
                     return View();
                 }
 
-                bool isEmailVerified = reader.GetBoolean("IsEmailVerified");
+                bool isEmailVerified = Convert.ToInt16(reader["IsEmailVerified"]) == 1;
                 if (!isEmailVerified)
                 {
                     ViewBag.ErrorMessage = "Please verify your email before logging in. Check your inbox for the verification link.";
@@ -783,7 +943,7 @@ namespace Soft_eng.Controllers
                     }
 
                     string storedToken = reader.IsDBNull(0) ? "" : reader.GetString(0);
-                    DateTime? expiry = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
+                    DateTime? expiry = reader.IsDBNull(1) ? null : SafeGetDateTime(reader, "PasswordResetExpiry");
 
                     await reader.CloseAsync();
 
@@ -841,10 +1001,10 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 const string sql = @"SELECT f.FineID, f.LoanID, b.BorrowerName, lb.BookTitle, f.PaymentStatus, f.FineAmount, f.DatePaid
                                     FROM Fine f INNER JOIN Loan l ON f.LoanID = l.LoanID INNER JOIN Borrower b ON l.BorrowerID = b.BorrowerID
-                                    INNER JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY f.FineID DESC";
+                                    INNER JOIN Logbook lb ON l.BookID = lb.BookID ORDER BY f.FineID DESC";
                 using var cmd = new MySqlCommand(sql, _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync()) fines.Add(new { fineID = reader.GetInt32("FineID"), loanID = reader.GetInt32("LoanID"), borrowerName = reader.GetString("BorrowerName"), bookTitle = reader.GetString("BookTitle"), paymentStatus = reader.GetString("PaymentStatus"), fineAmount = reader.GetDecimal("FineAmount"), datePaid = reader.IsDBNull("DatePaid") ? "-" : reader.GetDateTime("DatePaid").ToString("MM/dd/yyyy") });
+                while (await reader.ReadAsync()) fines.Add(new { fineID = reader.GetInt32("FineID"), loanID = reader.GetInt32("LoanID"), borrowerName = reader.GetString("BorrowerName"), bookTitle = reader.GetString("BookTitle"), paymentStatus = reader.GetString("PaymentStatus"), fineAmount = reader.GetDecimal("FineAmount"), datePaid = reader.IsDBNull("DatePaid") ? "-" : SafeGetDateTime(reader, "DatePaid")?.ToString("MM/dd/yyyy") ?? "-" });
             }
             catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
             finally { await _connection.CloseAsync(); }
@@ -894,6 +1054,20 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 bool isOverdue = (status == "Yes");
 
+                // Fetch BorrowerType to check if teacher
+                string borrowerType = "Student";
+                using (var typeCmd = new MySqlCommand("SELECT b.BorrowerType FROM Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID WHERE l.LoanID = @loanId", _connection))
+                {
+                    typeCmd.Parameters.AddWithValue("@loanId", loanId);
+                    var typeResult = await typeCmd.ExecuteScalarAsync();
+                    if (typeResult != null) borrowerType = typeResult.ToString();
+                }
+
+                if (borrowerType.Trim().ToLower() == "teacher" && isOverdue)
+                {
+                    return Json(new { success = false, error = "Teachers cannot be marked as overdue or have fines." });
+                }
+
                 using (var cmd = new MySqlCommand("UPDATE Loan SET OverdueStatus = @status WHERE LoanID = @loanId", _connection))
                 {
                     cmd.Parameters.AddWithValue("@status", isOverdue);
@@ -904,9 +1078,9 @@ namespace Soft_eng.Controllers
                 if (isOverdue)
                 {
                     const string insertSql = @"INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
-                             SELECT @loanId, 'Unpaid', 5.00, 5.00
-                             FROM DUAL 
-                             WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')";
+                     SELECT @loanId, 'Unpaid', 5.00, 5.00
+                     FROM DUAL 
+                     WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')";
                     using var insCmd = new MySqlCommand(insertSql, _connection);
                     insCmd.Parameters.AddWithValue("@loanId", loanId);
                     await insCmd.ExecuteNonQueryAsync();
@@ -1040,8 +1214,8 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 string query = reportType switch
                 {
-                    "borrowedbooks" => "SELECT l.LoanID, b.BorrowerName, lb.BookTitle, l.DateDue, l.DateReturned, CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus FROM Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY l.LoanID DESC",
-                    "fine" => "SELECT f.FineID, l.LoanID, b.BorrowerName, lb.BookTitle, f.PaymentStatus, f.FineAmount FROM Fine f JOIN Loan l ON f.LoanID = l.LoanID JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY f.FineID DESC",
+                    "borrowedbooks" => "SELECT l.LoanID, b.BorrowerName, lb.BookTitle, l.DateDue, l.DateReturned, CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus FROM Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN Logbook lb ON l.BookID = lb.BookID ORDER BY l.LoanID DESC",
+                    "fine" => "SELECT f.FineID, l.LoanID, b.BorrowerName, lb.BookTitle, f.PaymentStatus, f.FineAmount FROM Fine f JOIN Loan l ON f.LoanID = l.LoanID JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN Logbook lb ON l.BookID = lb.BookID ORDER BY f.FineID DESC",
                     "requestedbooks" => "SELECT RequestID, RequesterName, RequestedTitle, DateRequested, Status, Remarks FROM Request ORDER BY RequestID DESC",
                     "archivedbooks" => "SELECT a.ArchiveID, a.BookID, a.BookTitle, a.Author, a.ISBN, a.Publisher, a.ShelfLocation, a.TotalCopies, a.DateArchived, a.ArchiveReason FROM ArchivedBooks a ORDER BY a.DateArchived DESC",
                     _ => throw new ArgumentException("Invalid report type")
@@ -1106,7 +1280,7 @@ namespace Soft_eng.Controllers
                 // These books still exist in LogBook but won't appear in inventory
                 using var cmd = new MySqlCommand(@"
             SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived, BookStatus
-            FROM LogBook 
+            FROM Logbook 
             WHERE (BookStatus NOT IN ('Damaged', 'Missing') OR BookStatus IS NULL)
               AND TotalCopies > 0
             ORDER BY BookID DESC", _connection);
@@ -1122,7 +1296,7 @@ namespace Soft_eng.Controllers
                         Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
                         ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
                         Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability"),
-                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived")
+                        DateReceived = SafeGetDateTime(reader, "DateReceived")
                     });
                 }
             }
@@ -1149,7 +1323,7 @@ namespace Soft_eng.Controllers
 
                 string sqlQuery = @"
             SELECT BookID, BookTitle, Author, ShelfLocation, Availability, DateReceived 
-            FROM LogBook 
+            FROM Logbook 
             WHERE (BookID LIKE @q 
                OR BookTitle LIKE @q 
                OR Author LIKE @q 
@@ -1173,7 +1347,7 @@ namespace Soft_eng.Controllers
                         Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
                         ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
                         Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability"),
-                        DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived")
+                        DateReceived = SafeGetDateTime(reader, "DateReceived")
                     });
                 }
             }
@@ -1183,19 +1357,171 @@ namespace Soft_eng.Controllers
             ViewBag.FromAdmin = fromAdmin;
             return fromAdmin ? View("InventoryAdmin", results) : View("Inventory", results);
         }
+
+        [HttpGet]
+        [HttpPost]
+        public async Task<IActionResult> GlobalSearch(string query, bool fromAdmin = false)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return fromAdmin ? RedirectToAction("AdminDashboard") : RedirectToAction("Dashboard");
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                // Priority 1: Check if it's a book (exact title match)
+                using (var exactBookCmd = new MySqlCommand(
+                    @"SELECT BookID FROM Logbook 
+              WHERE BookTitle = @exactQuery 
+              AND (BookStatus NOT IN ('Damaged', 'Missing') OR BookStatus IS NULL)
+              AND TotalCopies > 0
+              LIMIT 1",
+                    _connection))
+                {
+                    exactBookCmd.Parameters.AddWithValue("@exactQuery", query);
+                    var exactBook = await exactBookCmd.ExecuteScalarAsync();
+
+                    if (exactBook != null)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("SearchBooks", new { query, fromAdmin = true })
+                            : RedirectToAction("SearchBooks", new { query, fromAdmin = false });
+                    }
+                }
+
+                // Priority 2: Check if it's a book (partial match - title, author, ISBN)
+                using (var bookCmd = new MySqlCommand(
+                    @"SELECT COUNT(*) FROM Logbook 
+              WHERE (BookTitle LIKE @q OR Author LIKE @q OR ISBN LIKE @q)
+              AND (BookStatus NOT IN ('Damaged', 'Missing') OR BookStatus IS NULL)
+              AND TotalCopies > 0
+              LIMIT 1",
+                    _connection))
+                {
+                    bookCmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    int bookCount = Convert.ToInt32(await bookCmd.ExecuteScalarAsync());
+
+                    if (bookCount > 0)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("SearchBooks", new { query, fromAdmin = true })
+                            : RedirectToAction("SearchBooks", new { query, fromAdmin = false });
+                    }
+                }
+
+                // Priority 3: Check if it's a borrower (exact match)
+                using (var exactBorrowerCmd = new MySqlCommand(
+                    "SELECT BorrowerID FROM Borrower WHERE BorrowerName = @exactQuery LIMIT 1",
+                    _connection))
+                {
+                    exactBorrowerCmd.Parameters.AddWithValue("@exactQuery", query);
+                    var exactBorrower = await exactBorrowerCmd.ExecuteScalarAsync();
+
+                    if (exactBorrower != null)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("BorrowedBooksAdmin")
+                            : RedirectToAction("BorrowedBooks");
+                    }
+                }
+
+                // Priority 4: Check if it's a borrower (partial match)
+                using (var borrowerCmd = new MySqlCommand(
+                    "SELECT COUNT(*) FROM Borrower WHERE BorrowerName LIKE @q LIMIT 1",
+                    _connection))
+                {
+                    borrowerCmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    int borrowerCount = Convert.ToInt32(await borrowerCmd.ExecuteScalarAsync());
+
+                    if (borrowerCount > 0)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("BorrowedBooksAdmin")
+                            : RedirectToAction("BorrowedBooks");
+                    }
+                }
+
+                // Priority 5: Check if it's in Requested Books
+                using (var requestedCmd = new MySqlCommand(
+                    "SELECT COUNT(*) FROM Request WHERE RequestedTitle LIKE @q OR RequesterName LIKE @q LIMIT 1",
+                    _connection))
+                {
+                    requestedCmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    int requestedCount = Convert.ToInt32(await requestedCmd.ExecuteScalarAsync());
+
+                    if (requestedCount > 0)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("RequestedBooksAdmin")
+                            : RedirectToAction("RequestedBooks");
+                    }
+                }
+
+                // Priority 6: Check if it's in Fine records
+                using (var fineCmd = new MySqlCommand(
+                    @"SELECT COUNT(*) FROM Fine f 
+              JOIN Loan l ON f.LoanID = l.LoanID 
+              JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
+              JOIN Logbook lb ON l.BookID = lb.BookID 
+              WHERE lb.BookTitle LIKE @q OR b.BorrowerName LIKE @q 
+              LIMIT 1",
+                    _connection))
+                {
+                    fineCmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    int fineCount = Convert.ToInt32(await fineCmd.ExecuteScalarAsync());
+
+                    if (fineCount > 0)
+                    {
+                        return fromAdmin
+                            ? RedirectToAction("FineAdmin")
+                            : RedirectToAction("Fine");
+                    }
+                }
+
+                // Default: No results found - redirect to inventory search
+                return fromAdmin
+                    ? RedirectToAction("SearchBooks", new { query, fromAdmin = true })
+                    : RedirectToAction("SearchBooks", new { query, fromAdmin = false });
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
         public async Task<IActionResult> EditBook(int id, bool fromAdmin = false)
         {
             LogBook? book = null;
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT * FROM LogBook WHERE BookID = @id", _connection);
+                using var cmd = new MySqlCommand("SELECT * FROM Logbook WHERE BookID = @id", _connection);
                 cmd.Parameters.AddWithValue("@id", id);
                 using var reader = await cmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync()) book = new LogBook { BookID = reader.GetInt32("BookID"), ISBN = reader.GetString("ISBN"), BookTitle = reader.GetString("BookTitle"), Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"), Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"), Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"), Year = reader.IsDBNull("Year") ? (DateTime?)null : reader.GetDateTime("Year"), Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"), Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"), SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"), DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived"), BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"), TotalCopies = reader.GetInt32("TotalCopies"), ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"), Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability") };
+                if (await reader.ReadAsync())
+                {
+                    book = new LogBook
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        ISBN = reader.GetString("ISBN"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"),
+                        Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"),
+                        Year = SafeGetDateTime(reader, "Year"),
+                        Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"),
+                        Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"),
+                        SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"),
+                        DateReceived = SafeGetDateTime(reader, "DateReceived"),
+                        BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"),
+                        TotalCopies = reader.GetInt32("TotalCopies"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability")
+                    };
+                }
             }
             finally { await _connection.CloseAsync(); }
-            ViewBag.FromAdmin = fromAdmin; return View(book);
+            ViewBag.FromAdmin = fromAdmin;
+            return View(book);
         }
 
         [HttpPost]
@@ -1231,7 +1557,7 @@ namespace Soft_eng.Controllers
                     int currentTotalCopies = 0;
 
                     using (var getBookCmd = new MySqlCommand(
-                        "SELECT BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies FROM LogBook WHERE BookID = @bk",
+                        "SELECT BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies FROM Logbook WHERE BookID = @bk",
                         _connection))
                     {
                         getBookCmd.Parameters.AddWithValue("@bk", book.BookID);
@@ -1272,7 +1598,7 @@ namespace Soft_eng.Controllers
                     // Step 3: Update LogBook - CANNOT DELETE because of FK constraint!
                     // Mark the book as Damaged with 0 copies
                     using (var updateCmd = new MySqlCommand(@"
-                UPDATE logbook 
+                UPDATE Logbook 
                 SET BookStatus = 'Damaged', 
                     Availability = 'Not Available',
                     TotalCopies = 0
@@ -1299,7 +1625,7 @@ namespace Soft_eng.Controllers
                     int currentTotalCopies = 0;
 
                     using (var getBookCmd = new MySqlCommand(
-                        "SELECT BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies FROM LogBook WHERE BookID = @bk",
+                        "SELECT BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies FROM Logbook WHERE BookID = @bk",
                         _connection))
                     {
                         getBookCmd.Parameters.AddWithValue("@bk", book.BookID);
@@ -1339,7 +1665,7 @@ namespace Soft_eng.Controllers
 
                     // Update LogBook - mark as missing with 0 copies
                     using (var updateCmd = new MySqlCommand(@"
-                UPDATE logbook 
+                UPDATE Logbook 
                 SET BookStatus = 'Missing', 
                     Availability = 'Not Available',
                     TotalCopies = 0
@@ -1370,6 +1696,8 @@ namespace Soft_eng.Controllers
                 string finalAvailability;
                 if (finalBookStatus == "Good" || finalBookStatus == "Available")
                 {
+                    // Ensure copies cannot be zero on an active good book
+                    if (book.TotalCopies <= 0) book.TotalCopies = 1;
                     finalAvailability = (book.TotalCopies > currentBorrowedCount) ? "Available" : "Not Available";
                     finalBookStatus = "Good";
                 }
@@ -1380,7 +1708,7 @@ namespace Soft_eng.Controllers
 
                 // Update the book normally
                 using (var cmd = new MySqlCommand(@"
-            UPDATE logbook 
+            UPDATE Logbook 
             SET ISBN=@isbn, 
                 SourceType=@source, 
                 BookTitle=@title, 
@@ -1440,27 +1768,95 @@ namespace Soft_eng.Controllers
             try
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT * FROM LogBook WHERE BookID = @id", _connection);
+                using var cmd = new MySqlCommand("SELECT * FROM Logbook WHERE BookID = @id", _connection);
                 cmd.Parameters.AddWithValue("@id", id);
                 using var reader = await cmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync()) book = new LogBook { BookID = reader.GetInt32("BookID"), ISBN = reader.GetString("ISBN"), BookTitle = reader.GetString("BookTitle"), Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"), Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"), Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"), Year = reader.IsDBNull("Year") ? (DateTime?)null : reader.GetDateTime("Year"), Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"), Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"), SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"), DateReceived = reader.IsDBNull("DateReceived") ? (DateTime?)null : reader.GetDateTime("DateReceived"), BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"), TotalCopies = reader.GetInt32("TotalCopies"), ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"), Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability") };
+                if (await reader.ReadAsync())
+                {
+                    book = new LogBook
+                    {
+                        BookID = reader.GetInt32("BookID"),
+                        ISBN = reader.GetString("ISBN"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        Author = reader.IsDBNull("Author") ? "" : reader.GetString("Author"),
+                        Pages = reader.IsDBNull("Pages") ? 0 : reader.GetInt32("Pages"),
+                        Edition = reader.IsDBNull("Edition") ? "" : reader.GetString("Edition"),
+                        Year = SafeGetDateTime(reader, "Year"),
+                        Publisher = reader.IsDBNull("Publisher") ? "" : reader.GetString("Publisher"),
+                        Remarks = reader.IsDBNull("Remarks") ? "" : reader.GetString("Remarks"),
+                        SourceType = reader.IsDBNull("SourceType") ? "" : reader.GetString("SourceType"),
+                        DateReceived = SafeGetDateTime(reader, "DateReceived"),
+                        BookStatus = reader.IsDBNull("BookStatus") ? "" : reader.GetString("BookStatus"),
+                        TotalCopies = reader.GetInt32("TotalCopies"),
+                        ShelfLocation = reader.IsDBNull("ShelfLocation") ? "" : reader.GetString("ShelfLocation"),
+                        Availability = reader.IsDBNull("Availability") ? "" : reader.GetString("Availability")
+                    };
+                }
             }
             finally { await _connection.CloseAsync(); }
-            ViewBag.FromAdmin = fromAdmin; return View(book);
+            ViewBag.FromAdmin = fromAdmin;
+            return View(book);
         }
-
         [HttpGet]
         public async Task<IActionResult> GetBorrowedBooks(bool fromAdmin = false)
         {
             var borrowed = new List<object>();
+
             try
             {
-                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
-                using var cmd = new MySqlCommand("SELECT l.LoanID, l.BookID, l.BorrowerID, b.BorrowerName, b.BorrowerType, lb.BookTitle, l.DateBorrowed, l.DateDue, l.DateReturned, CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus, l.ReturnStatus, l.BookStatus, lb.BookStatus as CurrentBookStatus FROM Loan l JOIN Borrower b ON l.BorrowerID = b.BorrowerID JOIN LogBook lb ON l.BookID = lb.BookID ORDER BY l.LoanID DESC", _connection);
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                string query = @"
+            SELECT 
+                l.LoanID, 
+                l.BookID, 
+                l.BorrowerID, 
+                b.BorrowerName, 
+                b.BorrowerType, 
+                lb.BookTitle, 
+                l.DateBorrowed, 
+                l.DateDue, 
+                l.DateReturned, 
+                CASE WHEN l.OverdueStatus = 1 THEN 'Yes' ELSE 'No' END as OverdueStatus, 
+                l.ReturnStatus, 
+                l.BookStatus, 
+                lb.BookStatus as CurrentBookStatus 
+            FROM Loan l 
+            JOIN Borrower b ON l.BorrowerID = b.BorrowerID 
+            JOIN Logbook lb ON l.BookID = lb.BookID 
+            ORDER BY l.LoanID DESC";
+
+                using var cmd = new MySqlCommand(query, _connection);
                 using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync()) borrowed.Add(new { LoanID = reader.GetInt32("LoanID"), BookID = reader.GetInt32("BookID"), BorrowerID = reader.GetInt32("BorrowerID"), BorrowerName = reader.GetString("BorrowerName"), BorrowerType = reader.GetString("BorrowerType"), BookTitle = reader.GetString("BookTitle"), DateBorrowed = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"), BorrowDate = reader.GetDateTime("DateBorrowed").ToString("MM/dd/yyyy"), DueDate = reader.GetDateTime("DateDue").ToString("MM/dd/yyyy"), DateReturned = reader.IsDBNull("DateReturned") ? "-" : reader.GetDateTime("DateReturned").ToString("MM/dd/yyyy"), OverdueStatus = reader.GetString("OverdueStatus"), ReturnStatus = reader.IsDBNull("ReturnStatus") ? "Not Returned" : reader.GetString("ReturnStatus"), BookStatus = reader.IsDBNull("CurrentBookStatus") ? (reader.IsDBNull("BookStatus") ? "Good" : reader.GetString("BookStatus")) : reader.GetString("CurrentBookStatus") });
+
+                while (await reader.ReadAsync())
+                {
+                    borrowed.Add(new
+                    {
+                        LoanID = reader.GetInt32("LoanID"),
+                        BookID = reader.GetInt32("BookID"),
+                        BorrowerID = reader.GetInt32("BorrowerID"),
+                        BorrowerName = reader.GetString("BorrowerName"),
+                        BorrowerType = reader.GetString("BorrowerType"),
+                        BookTitle = reader.GetString("BookTitle"),
+                        DateBorrowed = SafeGetDateTime(reader, "DateBorrowed")?.ToString("MM/dd/yyyy") ?? "-",
+                        BorrowDate = SafeGetDateTime(reader, "DateBorrowed")?.ToString("MM/dd/yyyy") ?? "-",
+                        DueDate = SafeGetDateTime(reader, "DateDue")?.ToString("MM/dd/yyyy") ?? "-",
+                        DateReturned = SafeGetDateTime(reader, "DateReturned")?.ToString("MM/dd/yyyy") ?? "-",
+                        OverdueStatus = reader.GetString("OverdueStatus"),
+                        ReturnStatus = reader.IsDBNull("ReturnStatus") ? "Not Returned" : reader.GetString("ReturnStatus"),
+                        BookStatus = reader.IsDBNull("CurrentBookStatus")
+                            ? (reader.IsDBNull("BookStatus") ? "Good" : reader.GetString("BookStatus"))
+                            : reader.GetString("CurrentBookStatus")
+                    });
+                }
             }
-            finally { await _connection.CloseAsync(); }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
             return Json(borrowed);
         }
 
@@ -1476,7 +1872,7 @@ namespace Soft_eng.Controllers
                 {
                     if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
-                    using var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM LogBook WHERE BookTitle = @t", _connection);
+                    using var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM Logbook WHERE BookTitle = @t", _connection);
                     checkCmd.Parameters.AddWithValue("@t", bookTitle);
                     long count = Convert.ToInt64(await checkCmd.ExecuteScalarAsync());
 
@@ -1502,7 +1898,7 @@ namespace Soft_eng.Controllers
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                using (var updateCmd = new MySqlCommand("UPDATE LogBook SET Availability = 'Borrowed' WHERE BookID = @bkId", _connection))
+                using (var updateCmd = new MySqlCommand("UPDATE Logbook SET Availability = 'Borrowed' WHERE BookID = @bkId", _connection))
                 {
                     updateCmd.Parameters.AddWithValue("@bkId", bkId);
                     await updateCmd.ExecuteNonQueryAsync();
@@ -1537,7 +1933,7 @@ namespace Soft_eng.Controllers
             bool close = false; if (_connection.State != ConnectionState.Open) { await _connection.OpenAsync(); close = true; }
             try
             {
-                using var cmd = new MySqlCommand("SELECT BookID FROM LogBook WHERE BookTitle = @t AND Availability = 'Available' LIMIT 1", _connection); cmd.Parameters.AddWithValue("@t", title);
+                using var cmd = new MySqlCommand("SELECT BookID FROM Logbook WHERE BookTitle = @t AND Availability = 'Available' LIMIT 1", _connection); cmd.Parameters.AddWithValue("@t", title);
                 var res = await cmd.ExecuteScalarAsync(); return res != null ? Convert.ToInt32(res) : 0;
             }
             finally { if (close) await _connection.CloseAsync(); }
@@ -1560,7 +1956,7 @@ namespace Soft_eng.Controllers
                     return Json(new { success = false, error = "Please provide date returned for the teacher." });
                 }
 
-                using var findBk = new MySqlCommand("SELECT BookID FROM LogBook WHERE BookTitle = @t LIMIT 1", _connection);
+                using var findBk = new MySqlCommand("SELECT BookID FROM Logbook WHERE BookTitle = @t LIMIT 1", _connection);
                 findBk.Parameters.AddWithValue("@t", bookTitle);
                 var res = await findBk.ExecuteScalarAsync();
                 if (res == null) return Json(new { success = false, error = "Book not found." });
@@ -1568,9 +1964,14 @@ namespace Soft_eng.Controllers
                 int bkId = Convert.ToInt32(res);
                 DateTime due = borrowDate.AddDays(4);
 
-                // Get the OverdueStatus value from the Request Form (from the modal)
+
                 string overdueFromModal = Request.Form["overdueStatus"];
                 bool isOverdue = overdueFromModal == "Yes";
+
+                if (borrowerType.Trim().ToLower() == "teacher")
+                {
+                    isOverdue = false;
+                }
 
                 string updateQuery = "UPDATE Loan SET BookID=@bk, BorrowerID=@br, DateBorrowed=@db, DateDue=@dd, BookStatus=@bs, OverdueStatus=@os";
                 if (!string.IsNullOrEmpty(returnStatus))
@@ -1605,10 +2006,37 @@ namespace Soft_eng.Controllers
 
                 if (!string.IsNullOrEmpty(bookStatus) && bookStatus != "Borrowed")
                 {
-                    using var lb = new MySqlCommand("UPDATE LogBook SET BookStatus=@s WHERE BookID=@bk", _connection);
+                    using var lb = new MySqlCommand("UPDATE Logbook SET BookStatus=@s WHERE BookID=@bk", _connection);
                     lb.Parameters.AddWithValue("@s", bookStatus);
                     lb.Parameters.AddWithValue("@bk", bkId);
                     await lb.ExecuteNonQueryAsync();
+
+      
+                    if (bookStatus == "Missing" || bookStatus == "Damaged")
+                    {
+                        using var archiveCmd = new MySqlCommand(@"
+            INSERT INTO ArchivedBooks
+                (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
+            SELECT
+                BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, 1, NOW(), @reason
+            FROM Logbook
+            WHERE BookID = @bk
+            ON DUPLICATE KEY UPDATE
+                DateArchived = NOW(),
+                ArchiveReason = @reason", _connection);
+                        archiveCmd.Parameters.AddWithValue("@bk", bkId);
+                        archiveCmd.Parameters.AddWithValue("@reason", bookStatus);
+                        await archiveCmd.ExecuteNonQueryAsync();
+
+                        // Decrement TotalCopies by 1 since this copy is now lost/damaged
+                        using var decCmd = new MySqlCommand(@"
+            UPDATE Logbook 
+            SET TotalCopies = GREATEST(TotalCopies - 1, 0),
+                Availability = 'Not Available'
+            WHERE BookID = @bk", _connection);
+                        decCmd.Parameters.AddWithValue("@bk", bkId);
+                        await decCmd.ExecuteNonQueryAsync();
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(returnStatus) && returnStatus == "Returned")
@@ -1617,25 +2045,48 @@ namespace Soft_eng.Controllers
                         ? bookStatus
                         : "Available";
 
-                    using var updateAvail = new MySqlCommand(
-                        "UPDATE LogBook SET Availability=@a, BookStatus=@bs WHERE BookID=@bk", _connection);
-                    updateAvail.Parameters.AddWithValue("@a", finalStatus);
-                    updateAvail.Parameters.AddWithValue("@bs", finalStatus);
-                    updateAvail.Parameters.AddWithValue("@bk", bkId);
-                    await updateAvail.ExecuteNonQueryAsync();
-
                     if (finalStatus == "Damaged" || finalStatus == "Missing")
                     {
+                        // 1. Insert ONLY 1 copy into ArchivedBooks
                         using var archiveCmd = new MySqlCommand(@"
             INSERT INTO ArchivedBooks
                 (BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, DateArchived, ArchiveReason)
             SELECT
-                BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, TotalCopies, NOW(), @reason
-            FROM LogBook
+                BookID, BookTitle, Author, ISBN, Publisher, ShelfLocation, 1, NOW(), @reason
+            FROM Logbook
             WHERE BookID = @bk", _connection);
                         archiveCmd.Parameters.AddWithValue("@bk", bkId);
                         archiveCmd.Parameters.AddWithValue("@reason", finalStatus);
                         await archiveCmd.ExecuteNonQueryAsync();
+
+                        // 2. Decrement Logbook TotalCopies by 1
+                        using var decCmd = new MySqlCommand(@"
+            UPDATE Logbook 
+            SET TotalCopies = GREATEST(TotalCopies - 1, 0)
+            WHERE BookID = @bk", _connection);
+                        decCmd.Parameters.AddWithValue("@bk", bkId);
+                        await decCmd.ExecuteNonQueryAsync();
+
+                        // 3. Re-evaluate Availability & Status based on remaining copies
+                        using var reevalCmd = new MySqlCommand(@"
+            UPDATE Logbook
+            SET Availability = CASE WHEN TotalCopies > (SELECT COUNT(*) FROM Loan WHERE BookID = @bk AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')) THEN 'Available' ELSE 'Not Available' END,
+                BookStatus = CASE WHEN TotalCopies > 0 THEN 'Good' ELSE @reason END
+            WHERE BookID = @bk", _connection);
+                        reevalCmd.Parameters.AddWithValue("@bk", bkId);
+                        reevalCmd.Parameters.AddWithValue("@reason", finalStatus);
+                        await reevalCmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        // Make sure it goes back to available correctly
+                        using var updateAvail = new MySqlCommand(@"
+            UPDATE Logbook 
+            SET Availability = CASE WHEN TotalCopies > (SELECT COUNT(*) FROM Loan WHERE BookID = @bk AND (ReturnStatus IS NULL OR ReturnStatus != 'Returned')) THEN 'Available' ELSE 'Not Available' END, 
+                BookStatus='Good' 
+            WHERE BookID=@bk", _connection);
+                        updateAvail.Parameters.AddWithValue("@bk", bkId);
+                        await updateAvail.ExecuteNonQueryAsync();
                     }
                 }
 
@@ -1674,7 +2125,7 @@ namespace Soft_eng.Controllers
                 bool isRet = !string.IsNullOrEmpty(dateReturned);
                 using (var cmd = new MySqlCommand(isRet ? "UPDATE Loan SET DateReturned=@dr, ReturnStatus='Returned' WHERE LoanID=@id" : "UPDATE Loan SET DateReturned=NULL, ReturnStatus='Not Returned' WHERE LoanID=@id", _connection))
                 { cmd.Parameters.AddWithValue("@id", loanId); if (isRet) cmd.Parameters.AddWithValue("@dr", DateTime.Parse(dateReturned)); await cmd.ExecuteNonQueryAsync(); }
-                using (var ub = new MySqlCommand("UPDATE LogBook SET Availability=@s WHERE BookID=@bk", _connection)) { ub.Parameters.AddWithValue("@s", isRet ? "Available" : "Borrowed"); ub.Parameters.AddWithValue("@bk", bkId); await ub.ExecuteNonQueryAsync(); }
+                using (var ub = new MySqlCommand("UPDATE Logbook SET Availability=@s WHERE BookID=@bk", _connection)) { ub.Parameters.AddWithValue("@s", isRet ? "Available" : "Borrowed"); ub.Parameters.AddWithValue("@bk", bkId); await ub.ExecuteNonQueryAsync(); }
                 return Json(new { success = true });
             }
             catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
@@ -1690,7 +2141,7 @@ namespace Soft_eng.Controllers
                 using var gBk = new MySqlCommand("SELECT BookID FROM Loan WHERE LoanID = @id", _connection); gBk.Parameters.AddWithValue("@id", loanId);
                 int bkId = Convert.ToInt32(await gBk.ExecuteScalarAsync());
                 using (var cmd = new MySqlCommand("UPDATE Loan SET DateReturned=@dr, ReturnStatus='Returned' WHERE LoanID=@id", _connection)) { cmd.Parameters.AddWithValue("@dr", DateTime.Now); cmd.Parameters.AddWithValue("@id", loanId); await cmd.ExecuteNonQueryAsync(); }
-                using (var ub = new MySqlCommand("UPDATE LogBook SET Availability='Available' WHERE BookID=@bk", _connection)) { ub.Parameters.AddWithValue("@bk", bkId); await ub.ExecuteNonQueryAsync(); }
+                using (var ub = new MySqlCommand("UPDATE Logbook SET Availability='Available' WHERE BookID=@bk", _connection)) { ub.Parameters.AddWithValue("@bk", bkId); await ub.ExecuteNonQueryAsync(); }
                 return Json(new { success = true });
             }
             catch (Exception ex) { return Json(new { success = false, error = ex.Message }); }
@@ -1705,7 +2156,7 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 using var gBk = new MySqlCommand("SELECT BookID FROM Loan WHERE LoanID = @id", _connection); gBk.Parameters.AddWithValue("@id", loanId);
                 var bkId = await gBk.ExecuteScalarAsync();
-                if (bkId != null) { using var rb = new MySqlCommand("UPDATE LogBook SET Availability='Available' WHERE BookID=@bk", _connection); rb.Parameters.AddWithValue("@bk", bkId); await rb.ExecuteNonQueryAsync(); }
+                if (bkId != null) { using var rb = new MySqlCommand("UPDATE Logbook SET Availability='Available' WHERE BookID=@bk", _connection); rb.Parameters.AddWithValue("@bk", bkId); await rb.ExecuteNonQueryAsync(); }
                 using var cmd = new MySqlCommand("DELETE FROM Loan WHERE LoanID=@id", _connection); cmd.Parameters.AddWithValue("@id", loanId);
                 return Json(new { success = await cmd.ExecuteNonQueryAsync() > 0 });
             }
@@ -1723,7 +2174,7 @@ namespace Soft_eng.Controllers
         [HttpGet]
         public async Task<IActionResult> GetBookTitleSuggestions(string query)
         {
-            try { if (_connection.State != ConnectionState.Open) await _connection.OpenAsync(); var sug = new List<string>(); using var cmd = new MySqlCommand("SELECT BookTitle FROM LogBook WHERE BookTitle LIKE @q AND Availability='Available' LIMIT 10", _connection); cmd.Parameters.AddWithValue("@q", $"%{query}%"); using var reader = await cmd.ExecuteReaderAsync(); while (await reader.ReadAsync()) sug.Add(reader.GetString("BookTitle")); return Json(sug); }
+            try { if (_connection.State != ConnectionState.Open) await _connection.OpenAsync(); var sug = new List<string>(); using var cmd = new MySqlCommand("SELECT BookTitle FROM Logbook WHERE BookTitle LIKE @q AND Availability='Available' LIMIT 10", _connection); cmd.Parameters.AddWithValue("@q", $"%{query}%"); using var reader = await cmd.ExecuteReaderAsync(); while (await reader.ReadAsync()) sug.Add(reader.GetString("BookTitle")); return Json(sug); }
             finally { await _connection.CloseAsync(); }
         }
 
@@ -1751,7 +2202,7 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 var suggestions = new List<string>();
 
-                using var cmd = new MySqlCommand($"SELECT DISTINCT {selectField} FROM LogBook WHERE {selectField} LIKE @q AND {selectField} IS NOT NULL AND {selectField} != '' LIMIT 10", _connection);
+                using var cmd = new MySqlCommand($"SELECT DISTINCT {selectField} FROM Logbook WHERE {selectField} LIKE @q AND {selectField} IS NOT NULL AND {selectField} != '' LIMIT 10", _connection);
                 cmd.Parameters.AddWithValue("@q", $"%{query}%");
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -1779,7 +2230,7 @@ namespace Soft_eng.Controllers
                 };
                 string tablePart = field == "borrower"
                     ? "Borrower b"
-                    : "LogBook lb";
+                    : "Logbook lb";
                 string whereClause = field == "borrower"
                     ? "WHERE b.BorrowerName LIKE @q AND b.BorrowerName IS NOT NULL AND b.BorrowerName != ''"
                     : "WHERE lb.BookTitle LIKE @q AND lb.BookTitle IS NOT NULL AND lb.BookTitle != ''";
@@ -1857,7 +2308,7 @@ namespace Soft_eng.Controllers
                         publisher = reader.IsDBNull(reader.GetOrdinal("Publisher")) ? "" : reader.GetString("Publisher"),
                         shelfLocation = reader.IsDBNull(reader.GetOrdinal("ShelfLocation")) ? "" : reader.GetString("ShelfLocation"),
                         totalCopies = reader.GetInt32("TotalCopies"),
-                        dateArchived = reader.GetDateTime("DateArchived").ToString("MM/dd/yyyy"),
+                        dateArchived = SafeGetDateTime(reader, "DateArchived")?.ToString("MM/dd/yyyy") ?? "-",
                         archiveReason = reader.GetString("ArchiveReason")
                     });
                 }
@@ -1908,16 +2359,15 @@ namespace Soft_eng.Controllers
                 // Step 3: Calculate availability
                 string availability = (archivedCopies > borrowedCount) ? "Available" : "Not Available";
 
-                // Step 4: Restore the book in LogBook with correct TotalCopies
                 using (var restoreCmd = new MySqlCommand(@"
-            UPDATE LogBook
-            SET BookStatus = 'Good', 
-                Availability = @avail,
-                TotalCopies = @copies
-            WHERE BookID = @bk", _connection))
+    UPDATE Logbook
+    SET BookStatus = CASE WHEN TotalCopies + @copies > 0 THEN 'Good' ELSE BookStatus END, 
+        Availability = CASE WHEN TotalCopies + @copies > @borrowed THEN 'Available' ELSE 'Not Available' END,
+        TotalCopies = TotalCopies + @copies
+    WHERE BookID = @bk", _connection))
                 {
                     restoreCmd.Parameters.AddWithValue("@bk", bookId);
-                    restoreCmd.Parameters.AddWithValue("@avail", availability);
+                    restoreCmd.Parameters.AddWithValue("@borrowed", borrowedCount);
                     restoreCmd.Parameters.AddWithValue("@copies", archivedCopies);
                     await restoreCmd.ExecuteNonQueryAsync();
                 }
@@ -1949,7 +2399,7 @@ namespace Soft_eng.Controllers
             {
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
                 var suggestions = new List<string>();
-                using var cmd = new MySqlCommand("SELECT DISTINCT lb.BookTitle FROM Fine f JOIN Loan l ON f.LoanID = l.LoanID JOIN LogBook lb ON l.BookID = lb.BookID WHERE lb.BookTitle LIKE @q AND lb.BookTitle IS NOT NULL AND lb.BookTitle != '' LIMIT 10", _connection);
+                using var cmd = new MySqlCommand("SELECT DISTINCT lb.BookTitle FROM Fine f JOIN Loan l ON f.LoanID = l.LoanID JOIN Logbook lb ON l.BookID = lb.BookID WHERE lb.BookTitle LIKE @q AND lb.BookTitle IS NOT NULL AND lb.BookTitle != '' LIMIT 10", _connection);
                 cmd.Parameters.AddWithValue("@q", $"%{query}%");
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -1962,5 +2412,126 @@ namespace Soft_eng.Controllers
             }
             finally { await _connection.CloseAsync(); }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardSuggestions(string query, string field)
+        {
+            try
+            {
+                if (_connection.State != ConnectionState.Open)
+                    await _connection.OpenAsync();
+
+                var suggestions = new List<string>();
+                string selectField = field switch
+                {
+                    "author" => "Author",
+                    "isbn" => "ISBN",
+                    "shelf" => "ShelfLocation",
+                    "borrower" => "BorrowerName",
+                    _ => "BookTitle"
+                };
+
+                if (field == "borrower")
+                {
+                    using var cmd = new MySqlCommand(
+                        $"SELECT DISTINCT BorrowerName FROM Borrower WHERE BorrowerName LIKE @q AND BorrowerName IS NOT NULL AND BorrowerName != '' LIMIT 10",
+                        _connection);
+                    cmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        string value = reader.GetString(0);
+                        if (!string.IsNullOrWhiteSpace(value))
+                            suggestions.Add(value);
+                    }
+                }
+                else
+                {
+                    using var cmd = new MySqlCommand(
+                        $"SELECT DISTINCT {selectField} FROM Logbook WHERE {selectField} LIKE @q AND {selectField} IS NOT NULL AND {selectField} != '' LIMIT 10",
+                        _connection);
+                    cmd.Parameters.AddWithValue("@q", $"%{query}%");
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        string value = reader.GetString(0);
+                        if (!string.IsNullOrWhiteSpace(value))
+                            suggestions.Add(value);
+                    }
+                }
+
+                return Json(suggestions);
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> TestConnection()
+        {
+            try
+            {
+                await _connection.OpenAsync();
+
+                using var cmd = new MySqlCommand("SELECT DateBorrowed FROM Loan LIMIT 1", _connection);
+                using var reader = await cmd.ExecuteReaderAsync() as MySqlDataReader;
+
+                if (await reader.ReadAsync())
+                {
+                    var mySqlDt = reader.GetMySqlDateTime(0);
+                    return Content($"IsValid: {mySqlDt.IsValidDateTime}, Value: {mySqlDt}");
+                }
+
+                return Content("No data");
+            }
+            catch (Exception ex)
+            {
+                return Content($"Error: {ex.Message}\n\nStack: {ex.StackTrace}");
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> TestAllDates()
+        {
+            var results = new List<string>();
+
+            try
+            {
+                await _connection.OpenAsync();
+
+                using var cmd = new MySqlCommand("SELECT LoanID, DateBorrowed, DateDue, DateReturned FROM Loan LIMIT 10", _connection);
+                using var reader = await cmd.ExecuteReaderAsync() as MySqlDataReader;
+
+                while (await reader.ReadAsync())
+                {
+                    var loanId = reader.GetInt32(0);
+
+                    // Test each date column
+                    var dateBorrowed = SafeGetDateTime(reader, "DateBorrowed");
+                    var dateDue = SafeGetDateTime(reader, "DateDue");
+                    var dateReturned = SafeGetDateTime(reader, "DateReturned");
+
+                    results.Add($"Loan {loanId}: Borrowed={dateBorrowed?.ToString("MM/dd/yyyy") ?? "NULL"}, Due={dateDue?.ToString("MM/dd/yyyy") ?? "NULL"}, Returned={dateReturned?.ToString("MM/dd/yyyy") ?? "NULL"}");
+                }
+
+                return Content(string.Join("<br>", results));
+            }
+            catch (Exception ex)
+            {
+                return Content($"Error: {ex.Message}<br><br>{ex.StackTrace}");
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+        }
     }
+
+
 }

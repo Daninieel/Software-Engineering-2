@@ -1,6 +1,8 @@
 ﻿let selectedRequest = null;
 let allRequests = [];
 let filteredRequests = [];
+let currentPage = 1;
+const rowsPerPage = 10;
 
 
 function openViewRequestModal(id, name, title, date, status, remarks) {
@@ -54,6 +56,14 @@ function initializeRequests() {
                 rowElement: row
             });
         });
+
+        // ✅ Sort by RequestID descending (latest = highest ID first)
+        allRequests.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
+        // ✅ Re-append rows to tbody in sorted order so DOM matches
+        const tbody = table.querySelector("tbody");
+        allRequests.forEach(req => tbody.appendChild(req.rowElement));
+
         filteredRequests = [...allRequests];
     }
     setupRequestSearchListener();
@@ -70,24 +80,22 @@ function setupRequestSearchListener() {
 
 function filterRequests(query) {
     if (!query) {
-        filteredRequests = [...allRequests];
+        filteredRequests = [...allRequests]; // already sorted
     } else {
         filteredRequests = allRequests.filter(req => {
             const id = req.id.toLowerCase();
             const name = req.name.toLowerCase();
             const title = req.title.toLowerCase();
-            
-            return id.includes(query) || 
-                   name.includes(query) || 
-                   title.includes(query);
-        });
-    }
-    
 
-    allRequests.forEach(req => {
-        const isInFiltered = filteredRequests.some(f => f.id === req.id);
-        req.rowElement.style.display = isInFiltered ? '' : 'none';
-    });
+            return id.includes(query) ||
+                name.includes(query) ||
+                title.includes(query);
+        });
+        // filter() preserves allRequests sort order — no need to re-sort
+    }
+
+    currentPage = 1;
+    displayPage(1); // ✅ Re-render with correct filtered + sorted rows
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -120,7 +128,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (event.target === eModal) eModal.style.display = "none";
     };
 
-
     const tableBody = document.querySelector("#requestsTable tbody");
 
     if (tableBody) {
@@ -144,42 +151,43 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-
-    const rowsPerPage = 10;
-    const rows = Array.from(document.querySelectorAll("#requestsTable tbody tr"));
     const pageList = document.querySelector(".page-list");
     const gotoInput = document.querySelector(".goto-input");
     const navArrows = document.querySelectorAll(".nav-arrow");
-
     const prevBtn = navArrows[0];
     const nextBtn = navArrows[1];
 
-    let currentPage = 1;
-    const totalPages = Math.ceil(rows.length / rowsPerPage);
-
-    function displayPage(page) {
+    // ✅ displayPage is now filter-aware — uses filteredRequests, not raw rows
+    window.displayPage = function (page) {
         selectedRequest = null;
         document.querySelectorAll(".request-row").forEach(r =>
             r.classList.remove("selected")
         );
 
+        const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+
         if (page < 1) page = 1;
-        if (page > totalPages) page = totalPages;
+        if (page > totalPages && totalPages > 0) page = totalPages;
         currentPage = page;
 
-        rows.forEach(row => row.style.display = "none");
+        // Hide all rows first
+        allRequests.forEach(req => req.rowElement.style.display = "none");
 
+        // Show only current page of filtered rows
         const start = (page - 1) * rowsPerPage;
         const end = start + rowsPerPage;
-
-        rows.slice(start, end).forEach(row => row.style.display = "");
+        filteredRequests.slice(start, end).forEach(req => req.rowElement.style.display = "");
 
         updatePaginationUI();
-    }
+    };
 
     function updatePaginationUI() {
         if (!pageList) return;
         pageList.innerHTML = "";
+
+        // ✅ totalPages based on filteredRequests so search updates page count correctly
+        const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+        if (totalPages === 0) return;
 
         let pagesToShow = [];
 
@@ -243,6 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (nextBtn) {
         nextBtn.addEventListener("click", e => {
             e.preventDefault();
+            const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
             if (currentPage < totalPages) displayPage(currentPage + 1);
         });
     }
@@ -255,7 +264,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    if (rows.length > 0) {
+    if (allRequests.length > 0) {
         displayPage(1);
     }
 });

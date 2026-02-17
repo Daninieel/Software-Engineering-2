@@ -612,15 +612,19 @@ async function saveBookChanges() {
         alert("Please fill in all required fields.");
         return;
     }
+// Allow saving without date returned if book is Missing
+    const isMissing = bookStatus === 'Missing';
 
     // Validation: If Return Status is "Not Returned", don't make any changes
-    if (returnStatus === 'Not Returned' || !returnStatus) {
+    // UNLESS the book is being marked as Missing
+    if (!isMissing && (returnStatus === 'Not Returned' || !returnStatus)) {
         alert("No changes will be made for 'Not Returned' status.");
         return;
     }
 
     // Validation: If Return Status is "Returned", Date Returned must be filled
-    if (returnStatus === 'Returned' && !dateReturned) {
+    // Skip this check only if book is Missing
+    if (!isMissing && returnStatus === 'Returned' && !dateReturned) {
         alert("Please also select the date in Date Returned.");
         return;
     }

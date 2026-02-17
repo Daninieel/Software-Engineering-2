@@ -93,10 +93,13 @@
             <h2>Dashboard</h2>
 
             <div class="dashboard-header">
-                <div class="search-filter">
-                    <input type="text" class="search-box" placeholder="Search by Title, Author, etc.">
-                </div>
-            </div>
+    <div class="search-filter">
+        <form method="post" asp-action="GlobalSearch" asp-controller="Home" style="width: 100%;">
+            <input type="text" name="query" class="search-box" placeholder="Search books or borrowers..." required />
+            <input type="hidden" name="fromAdmin" value="false" />
+        </form>
+    </div>
+</div>
 
             <div class="stats-container">
                 <div class="row-1">
@@ -209,7 +212,6 @@
         </main>
     </div>
 
-    <!-- Logout Confirmation Modal -->
     <div id="logoutModal" style="
         display: none;
         position: fixed;
@@ -313,7 +315,6 @@
             document.getElementById('logoutForm').submit();
         }
 
-        // Close modal if user clicks on the dark background outside the box
         document.getElementById('logoutModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeLogoutModal();

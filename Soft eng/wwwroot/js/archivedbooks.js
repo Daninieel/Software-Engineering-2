@@ -18,7 +18,7 @@ async function loadArchivedBooks() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        allArchivedBooks = data;
+        allArchivedBooks = data.sort((a, b) => b.archiveID - a.archiveID);
         allFilteredBooks = [...data];
         changePage(1);
     } catch (err) {
