@@ -50,7 +50,7 @@
                 DatePaid: document.getElementById('detailDatePaid').value || null
             };
 
-            fetch('/Home/EditFine', {
+            fetch('/Loan/EditFine', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(formData)

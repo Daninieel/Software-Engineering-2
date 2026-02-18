@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 async function loadArchivedBooks() {
     try {
-        const response = await fetch('/Home/GetArchivedBooks');
+        const response = await fetch('/Inventory/GetArchivedBooks');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -80,7 +80,7 @@ function setupGenerateReportButton() {
 // NEW: Generate Report Function
 function generateReport(format) {
     const reportType = 'archivedbooks'; // You'll need to add this endpoint in your controller
-    const url = `/Home/GenerateReport?reportType=${reportType}&format=${format}`;
+    const url = `/Report/GenerateReport?reportType=${reportType}&format=${format}`;
 
     // Close the modal
     const reportModal = document.getElementById('reportModal');
@@ -222,7 +222,7 @@ function closeRestoreModal() {
 async function confirmRestore() {
     if (!selectedArchiveId) return;
     try {
-        const response = await fetch('/Home/RestoreArchivedBook', {
+        const response = await fetch('/Inventory/RestoreArchivedBook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ archiveId: selectedArchiveId })

@@ -59,7 +59,7 @@ if (reportModal) {
 }
 
 function generateReport(reportType, format) {
-    const url = `/Home/GenerateReport?reportType=${reportType}&format=${format}`;
+    const url = `/Report/GenerateReport?reportType=${reportType}&format=${format}`;
     window.location.href = url;
     
     if (reportModal) {

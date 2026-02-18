@@ -1,0 +1,224 @@
+@{
+    ViewBag.Title = "Archived Books";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archived Books</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/inventory.admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/report-modal.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/search-suggestions.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="top-header">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+            </div>
+            <a href="/dashboard/Dashboard" style="text-decoration: none; color: white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+        <div class="user-area">
+            <div class="welcome-text" id="welcomeText"></div>
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
+            </div>
+        </div>
+    </header>
+
+<div class="main-layout">
+  <aside class="sidebar" id="sidebar">
+    <nav>
+        <ul>
+            <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                <a asp-controller="Dashboard" asp-action="Dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+
+            <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                <a asp-controller="Inventory" asp-action="Inventory">
+                    <i class="fas fa-book"></i> Logbook
+                </a>
+            </li>
+
+            <li class="dropdown-item">
+                <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                    <i class="fas fa-layer-group"></i> Book Management
+                    <i class="fas fa-chevron-down arrow-icon"></i>
+                </a>
+                <ul class="submenu" id="bookManagementSubmenuLib">
+                    <li><a asp-controller="Inventory" asp-action="Addbooks"><i class="fas fa-plus"></i> Add Books</a></li>
+                    <li><a asp-controller="Loan" asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                    <li><a asp-controller="Request" asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                    <li><a asp-controller="Inventory" asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
+                </ul>
+            </li>
+
+            <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                <a asp-controller="Loan" asp-action="Fine">
+                    <i class="fas fa-money-bill-wave"></i> Fine
+                </a>
+            </li>
+
+            <li>
+                <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                    <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="logout-text">Log Out</span>
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </nav>
+</aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="content-area">
+            <h2>Archived Books</h2>
+
+            <div class="search-filter">
+                <input type="text" id="searchInput" placeholder="Search by Title, Author, Reason..." />
+            </div>
+            <div class="table-card">
+                <table id="archivedTable">
+                    <thead>
+                        <tr>
+                            <th>Archive Id</th>
+                            <th>Book Id</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Shelf Location</th>
+                            <th>Reason</th>
+                            <th>Date Archived</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archivedTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:20px;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-section" style="display:flex; justify-content:center; margin:20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow" id="prevBtn">&lt;</a>
+                    <ul class="page-list"></ul>
+                    <a href="#" class="nav-arrow" id="nextBtn">&gt;</a>
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-area">
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
+            </div>
+        </main>
+    </div>
+
+    
+  
+    <div id="reportModal" class="report-modal">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore Modal -->
+    <div id="restoreModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:12px; padding:40px 36px 32px; width:360px; max-width:90%; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.2); font-family:'Poppins',sans-serif;">
+            <div style="width:56px; height:56px; background:#d4edda; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px;">
+                <i class="fas fa-undo" style="color:#2ecc71; font-size:22px;"></i>
+            </div>
+            <p style="font-size:18px; font-weight:600; color:#333; margin:0 0 8px;">Restore this book?</p>
+            <p style="font-size:13px; color:#777; margin:0 0 24px;">This will mark the book as Available in the inventory.</p>
+            <div style="display:flex; justify-content:center; gap:14px;">
+                <button onclick="confirmRestore()" style="background:#2ecc71; color:white; border:none; border-radius:6px; padding:10px 28px; font-size:14px; font-weight:600; cursor:pointer; font-family:'Poppins',sans-serif;">Yes</button>
+                <button onclick="closeRestoreModal()" style="background:#2980b9; color:white; border:none; border-radius:6px; padding:10px 28px; font-size:14px; font-weight:600; cursor:pointer; font-family:'Poppins',sans-serif;">No</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:12px; padding:40px 36px 32px; width:360px; max-width:90%; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.2); font-family:'Poppins',sans-serif;">
+            <div style="width:56px; height:56px; background:#fff3cd; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px;">
+                <i class="fas fa-sign-out-alt" style="color:#d4a017; font-size:22px;"></i>
+            </div>
+            <p style="font-size:18px; font-weight:600; color:#333; margin:0 0 8px;">Do you wish to logout?</p>
+            <p style="font-size:13px; color:#777; margin:0 0 24px;">You will need to log in again to access the system.</p>
+            <div style="display:flex; justify-content:center; gap:14px;">
+                <button onclick="confirmLogout()" style="background:#e74c3c; color:white; border:none; border-radius:6px; padding:10px 28px; font-size:14px; font-weight:600; cursor:pointer;">Yes</button>
+                <button onclick="closeLogoutModal()" style="background:#2980b9; color:white; border:none; border-radius:6px; padding:10px 28px; font-size:14px; font-weight:600; cursor:pointer;">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/archivedbooks.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+                    const menu = document.getElementById('bookManagementSubmenu');
+        const btn = document.getElementById('bookManagementBtn');
+            if (menu && btn) {
+                menu.classList.add('show');
+                btn.classList.add('active');
+                const arrow = btn.querySelector('.arrow-icon');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            }
+        });
+
+        function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
+        function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
+        function confirmLogout() { document.getElementById('logoutForm').submit(); }
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) closeLogoutModal();
+        });
+    </script>
+
+</body>
+</html>

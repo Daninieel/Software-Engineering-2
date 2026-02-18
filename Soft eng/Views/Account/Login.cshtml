@@ -1,0 +1,84 @@
+﻿@{
+    ViewBag.Title = "Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Saint Isidore Academy</title>
+    <link rel="stylesheet" href="~/css/login.css" />
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-container">
+            <img src="~/images/school_logo.jpg" alt="Saint Isidore Academy Logo" />
+        </div>
+
+        <form id="loginForm" asp-action="Login" asp-controller="Account" method="post">
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="login-error">
+                    @ViewBag.ErrorMessage
+                </div>
+            }
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text"
+                       name="email"
+                       class="@(ViewBag.ErrorMessage != null ? "input-error" : "")"
+                       required />
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <div class="password-wrap" style="display:flex;align-items:center;gap:8px;">
+                    <input type="password"
+                           id="password" name="password"
+                           class="@(ViewBag.ErrorMessage != null ? "input-error" : "")"
+                           required />
+
+
+                    <button type="button" class="toggle-password" data-target="password"
+                            aria-label="Toggle password visibility"
+                            style="background:none;border:none;padding:4px;">
+                        <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+
+                        <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             style="display:none">
+                            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.42 21.42 0 0 1 5-5.94"></path>
+                            <path d="M1 1l22 22"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <a href="@Url.Action("ForgotPassword", "Account")" class="forgot-password">
+                    Forgot Password?
+                </a>
+            </div>
+
+            <button type="submit" class="btn-login">Log In</button>
+
+            <div class="footer-text">
+                <span>Don't have an account?</span>
+                <a href="@Url.Action("Register", "Account")">Create Account</a>
+            </div>
+
+        </form>
+    </div>
+
+    <script src="~/js/login.js"></script>
+    <script src="~/js/passwordToggle.js"></script>
+</body>
+</html>

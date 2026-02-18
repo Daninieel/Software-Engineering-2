@@ -376,35 +376,35 @@ document.addEventListener('DOMContentLoaded', function () {
         // Dashboard: Use global suggestions endpoint with all fields
         suggestionInstance = new SearchSuggestions(
             searchInput,
-            '/Home/GetDashboardSuggestions',
+            '/Dashboard/GetDashboardSuggestions',
             ['title', 'author', 'isbn', 'shelf', 'borrower']
         );
     } else if (url.includes('inventory') || url.includes('logbook')) {
         // Inventory & Logbook pages: Book Title, Author, ISBN, Shelf Location
         suggestionInstance = new SearchSuggestions(
             searchInput,
-            '/Home/GetInventorySuggestions',
+            '/Inventory/GetInventorySuggestions',
             ['title', 'author', 'isbn', 'shelf']
         );
     } else if (url.includes('borrowedbooks')) {
         // Borrowed Books page: Title and Borrower
         suggestionInstance = new SearchSuggestions(
             searchInput,
-            '/Home/GetBorrowedBooksSuggestions',
+            '/Loan/GetBorrowedBooksSuggestions',
             ['title', 'borrower']
         );
     } else if (url.includes('requestedbooks')) {
         // Requested Books page: Title and Borrower
         suggestionInstance = new SearchSuggestions(
             searchInput,
-            '/Home/GetRequestedBooksSuggestions',
+            '/Request/GetRequestedBooksSuggestions',
             ['title', 'borrower']
         );
     } else if (url.includes('fine')) {
         // Fine page: Title only
         suggestionInstance = new SearchSuggestions(
             searchInput,
-            '/Home/GetFineSuggestions',
+            '/Loan/GetFineSuggestions',
             ['title']
         );
     }

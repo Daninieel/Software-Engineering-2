@@ -52,13 +52,13 @@ function setupModalAutocomplete() {
     if (bookTitleInput) {
         // We use the existing SearchSuggestions class
         // Passing 'title' as field, connected to GetBookTitleSuggestions endpoint
-        new SearchSuggestions(bookTitleInput, '/Home/GetBookTitleSuggestions', ['title']);
+        new SearchSuggestions(bookTitleInput, '/Loan/GetBookTitleSuggestions', ['title']);
     }
 
     // Borrower Name Suggestions
     const borrowerNameInput = document.getElementById('borrowerName');
     if (borrowerNameInput) {
-        new SearchSuggestions(borrowerNameInput, '/Home/GetBorrowerSuggestions', ['borrower']);
+        new SearchSuggestions(borrowerNameInput, '/Loan/GetBorrowerSuggestions', ['borrower']);
     }
 }
 
@@ -241,7 +241,7 @@ function setupDateValidation() {
 async function loadBorrowedBooks() {
     try {
         showLoadingState();
-        const response = await fetch('/Home/GetBorrowedBooks');
+        const response = await fetch('/Loan/GetBorrowedBooks');
         if (!response.ok) throw new Error('Failed to load data');
 
         const books = await response.json();
@@ -405,7 +405,7 @@ async function handleIssueBookSubmit(e) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Issuing...';
 
-        const response = await fetch('/Home/AddBorrowedBook', {
+        const response = await fetch('/Loan/AddBorrowedBook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
@@ -650,7 +650,7 @@ async function saveBookChanges() {
             overdueStatus: overdueStatus
         });
 
-        const response = await fetch('/Home/UpdateBorrowedBook', {
+        const response = await fetch('/Loan/UpdateBorrowedBook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: params
@@ -699,7 +699,7 @@ window.toggleOverdueStatus = async function (loanId, button) {
     const newStatus = 'Yes';
 
     try {
-        const response = await fetch('/Home/UpdateOverdueStatus', {
+        const response = await fetch('/Loan/UpdateOverdueStatus', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ loanId: loanId, status: newStatus })
@@ -723,7 +723,7 @@ window.toggleOverdueStatus = async function (loanId, button) {
 window.showBookDetails = showBookDetails;
 
 async function updateOverdueStatus(loanId, status) {
-    return fetch('/Home/UpdateOverdueStatus', {
+    return fetch('/Loan/UpdateOverdueStatus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ loanId: loanId, status: status })
@@ -731,7 +731,7 @@ async function updateOverdueStatus(loanId, status) {
 }
 
 async function updateDateReturned(loanId, dateReturned) {
-    return fetch('/Home/UpdateDateReturned', {
+    return fetch('/Loan/UpdateDateReturned', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ loanId: loanId, dateReturned: dateReturned })

@@ -76,7 +76,7 @@
             const isAdmin = !!document.getElementById('adminEditBtn') || window.location.pathname.toLowerCase().includes("admin");
 
             if (selected) {
-                const baseUrl = window.editBookUrl || "/Home/EditBook";
+                const baseUrl = window.editBookUrl || "/Request/EditBook";
                 window.location.href = `${baseUrl}?id=${selected.value}&fromAdmin=${isAdmin}`;
             } else {
                 alert("Please select a book to edit.");

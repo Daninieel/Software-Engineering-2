@@ -1,0 +1,466 @@
+﻿@{
+    ViewBag.Title = "BorrowedBooks";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Borrowed Books</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/borrowedbooks.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/report-modal.css">
+    <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/search-suggestions.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        /* Custom Dropdown Styling */
+        #issueBookForm select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+            color: #333;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+            padding-right: 40px;
+        }
+
+            #issueBookForm select:focus {
+                border-color: #3498db;
+            }
+
+        /* Placeholder styling for details modal selects */
+        .detail-select option[disabled] {
+            color: #999;
+            display: none;
+        }
+
+        /* Make the select look like a placeholder when the empty value is selected */
+        .detail-select:has(option[value=""]:checked) {
+            color: #757575;
+        }
+
+        /* Ensure table is responsive */
+        .table-card {
+            overflow-x: auto;
+        }
+
+        #borrowedBooksTable {
+            min-width: 900px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="top-header">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+           </div>
+            <a href="/dashboard/Dashboard" style="text-decoration: none; color: white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+
+        <div class="user-area">
+            <div class="welcome-text" id="welcomeText"></div>
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+
+    <aside class="sidebar" id="sidebar">
+    <nav>
+        <ul>
+            <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                <a asp-controller="Dashboard" asp-action="Dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+
+            <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                <a asp-controller="Inventory" asp-action="Inventory">
+                    <i class="fas fa-book"></i> Logbook
+                </a>
+            </li>
+
+            <li class="dropdown-item">
+                <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                    <i class="fas fa-layer-group"></i> Book Management
+                    <i class="fas fa-chevron-down arrow-icon"></i>
+                </a>
+                <ul class="submenu" id="bookManagementSubmenuLib">
+                    <li><a asp-controller="Inventory" asp-action="Addbooks"><i class="fas fa-plus"></i> Add Books</a></li>
+                    <li><a asp-controller="Loan" asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                    <li><a asp-controller="Request" asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                    <li><a asp-controller="Inventory" asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
+                </ul>
+            </li>
+
+            <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                <a asp-controller="Loan" asp-action="Fine">
+                    <i class="fas fa-money-bill-wave"></i> Fine
+                </a>
+            </li>
+
+            <li>
+                <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                    <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="logout-text">Log Out</span>
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </nav>
+</aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="content-area page-content">
+            <h2>Borrowed Books</h2>
+
+            <div class="search-filter">
+                <input type="text" id="borrowedSearch" placeholder="Search by Title, Borrower, etc.">
+            </div>
+
+            <div class="table-card">
+                <table id="borrowedBooksTable">
+                    <thead>
+                        <tr>
+                            <th>Loan ID</th>
+                            <th>Borrower Name</th>
+                            <th>Title</th>
+                            <th>Due Date</th>
+                            <th>Date Returned</th>
+                            <th>Overdue Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow" id="prevBtn">&lt;</a>
+
+                    <ul class="page-list">
+                    </ul>
+
+                    <a href="#" class="nav-arrow" id="nextBtn">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-area">
+                <button class="btn btn-blue" id="issueBookBtn">Issue Book</button>
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
+            </div>
+        </main>
+
+    </div>
+
+
+    <div id="issueBookModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <div class="modal-header">
+                <h2>Borrow Book</h2>
+                <p>Input the details of the borrowed book</p>
+            </div>
+            <form id="issueBookForm">
+                <div class="form-group">
+                    <label for="borrowerName">BORROWER NAME</label>
+                    <input type="text" id="borrowerName" name="borrowerName" placeholder="Dela Cruz, Juan" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="borrowerType">BORROWER TYPE</label>
+                    <select id="borrowerType" name="borrowerType" required>
+                        <option value="Student">STUDENT</option>
+                        <option value="Teacher">TEACHER</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookTitle">BOOK TITLE</label>
+                    <input type="text" id="bookTitle" name="bookTitle" placeholder="Enter book title" required>
+                </div>
+                <div class="form-group">
+                    <label for="borrowDate">BORROWER DATE</label>
+                    <input type="date" id="borrowDate" name="borrowDate" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-issue">Issue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="detailsModal" class="details-modal">
+        <div class="details-modal-content">
+            <button class="close-details-modal">&times;</button>
+            <div class="details-modal-header">
+                <h2>Details</h2>
+                <p>View and edit borrowed book information</p>
+            </div>
+
+            <div class="details-form">
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Loan ID</div>
+                        <div class="read-only-field" id="detailLoanId">-</div>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Borrower ID</div>
+                        <div class="read-only-field" id="detailBorrowerId">-</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book ID</div>
+                        <div class="read-only-field" id="detailBookId">-</div>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Due Date</div>
+                        <input type="date" class="detail-input" id="detailDueDate">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Borrower Name</div>
+                        <input type="text" class="detail-input" id="detailBorrowerName" placeholder="Enter borrower name">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Borrowed</div>
+                        <input type="date" class="detail-input" id="detailBorrowDate">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book Title</div>
+                        <input type="text" class="detail-input" id="detailBookTitle" placeholder="Enter book title">
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Date Returned</div>
+                        <input type="date" class="detail-input" id="detailDateReturned" placeholder="Select date">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Overdue Status</div>
+                        <select class="detail-select" id="detailOverdueStatus">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Return Status</div>
+                        <select class="detail-select" id="detailReturnStatus">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Not Returned">Not Returned</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="detail-group">
+                        <div class="detail-label">Book Status</div>
+                        <select class="detail-select" id="detailBookStatus">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Good">Good</option>
+                            <option value="Damaged">Damaged</option>
+                            <option value="Missing">Missing</option>
+                        </select>
+                    </div>
+                    <div class="detail-group">
+                        <div class="detail-label">Fine Amount</div>
+                        <input type="text" class="detail-input" id="detailFineAmount" value="-" placeholder="Enter amount (e.g., 50.00)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-modal-footer">
+                <div class="footer-buttons">
+                    <button type="button" class="btn-back" id="btnBack">Back</button>
+                    <button type="button" class="btn-edit" id="btnEdit">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportModal" class="report-modal">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px 36px 32px;
+            width: 360px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            font-family: 'Poppins', sans-serif;
+        ">
+            <div style="
+                width: 56px;
+                height: 56px;
+                background-color: #fff3cd;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 18px;
+            ">
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="
+                font-size: 18px;
+                font-weight: 600;
+                color: #333333;
+                margin: 0 0 8px;
+            ">Do you wish to logout?</p>
+            <p style="
+                font-size: 13px;
+                color: #777777;
+                margin: 0 0 24px;
+            ">You will need to log in again to access the system.</p>
+            <div style="
+                display: flex;
+                justify-content: center;
+                gap: 14px;
+            ">
+                <button onclick="confirmLogout();" style="
+                    background-color: #e74c3c;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+
+                <button onclick="closeLogoutModal();" style="
+                    background-color: #2980b9;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/reportGeneration.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/borrowedbooks.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            document.getElementById('logoutForm').submit();
+        }
+
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+    </script>
+
+</body>
+</html>

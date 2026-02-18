@@ -1,0 +1,338 @@
+@{
+    ViewBag.Title = "Admin Dashboard";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Saint Isidore Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/dashboard.admin.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/search-suggestions.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+    <header class="top-header admin">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="Logo">
+</div>
+            <a href="/dashboard/Dashboard" style="text-decoration: none; color: white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+
+        <div class="user-area">
+            <div class="welcome-text" id="welcomeText"></div>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+     <div class="main-layout">
+    <aside class="sidebar" id="sidebar">
+    <nav>
+        <ul>
+            <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
+                <a asp-controller="Dashboard" asp-action="AdminDashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+
+            <li class="@(ViewBag.Title == "Inventory Admin" ? "active" : "")">
+                <a asp-controller="Inventory" asp-action="Inventory" asp-route-fromAdmin="true">
+                    <i class="fas fa-book"></i> Logbook
+                </a>
+            </li>
+
+            <li class="dropdown-item">
+                <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                    <i class="fas fa-layer-group"></i> Book Management
+                    <i class="fas fa-chevron-down arrow-icon"></i>
+                </a>
+                <ul class="submenu" id="bookManagementSubmenuLib">
+                    <li><a asp-controller="Inventory" asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
+                    <li><a asp-controller="Loan" asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                    <li><a asp-controller="Request" asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                    <li><a asp-controller="Inventory" asp-action="ArchivedBooksAdmin"><i class="fas fa-archive"></i> Archived Books</a></li>
+                </ul>
+            </li>
+
+            <li class="@(ViewBag.Title == "Fine Admin" || ViewBag.Title == "Fine" ? "active" : "")">
+                <a asp-controller="Loan" asp-action="FineAdmin">
+                    <i class="fas fa-money-bill-wave"></i> Fine
+                </a>
+            </li>
+
+            <li>
+                <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                    <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="logout-text">Log Out</span>
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </nav>
+</aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="content-area page-content">
+            <h2>Dashboard</h2>
+
+            <div class="dashboard-header">
+    <div class="search-filter">
+        <form method="post" asp-action="GlobalSearch" asp-controller="Dashboard" style="width: 100%;">
+            <input type="text" name="query" class="search-box" placeholder="Search books or borrowers..." required />
+            <input type="hidden" name="fromAdmin" value="false" />
+        </form>
+    </div>
+</div>
+
+            <div class="stats-container">
+                <div class="row-1">
+                    <div class="total-books-box">
+                        <div class="total-books-label">Total Books</div>
+                        <div class="total-books-value">@ViewBag.TotalBooks</div>
+                    </div>
+                </div>
+
+                <div class="row-2">
+                    <div class="stat-box">
+                        <div class="stat-label">Borrowed Books</div>
+                        <div class="stat-value">@ViewBag.TotalBorrowed</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Returned Books</div>
+                        <div class="stat-value">@ViewBag.TotalReturned</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Overdue Books</div>
+                        <div class="stat-value">@ViewBag.TotalOverdue</div>
+                    </div>
+                </div>
+
+                <div class="row-3">
+                    <div class="stat-box">
+                        <div class="stat-label">Missing Books</div>
+                        <div class="stat-value">@ViewBag.TotalMissing</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Damaged Books</div>
+                        <div class="stat-value">@ViewBag.TotalDamaged</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Fine</div>
+                        <div class="stat-value">&#8369;@ViewBag.TotalFine</div>
+                    </div>
+                </div>
+
+                <div class="row-4">
+                    <div class="table-card">
+                        <h3>Overdue History</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>UserID</th>
+                                        <th>Name</th>
+                                        <th>Date Borrowed</th>
+                                        <th>Fine</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (ViewBag.OverdueList != null && ViewBag.OverdueList.Count > 0)
+                                    {
+                                        foreach (var item in ViewBag.OverdueList)
+                                        {
+                                            <tr>
+                                                <td>@item.UserID</td>
+                                                <td>@item.Name</td>
+                                                <td>@item.DateBorrowed</td>
+                                                <td>&#8369;@item.Fine</td>
+                                                <td style="color: #e74c3c; font-weight: 600;">Overdue</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="no-data">No overdue records</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-card">
+                        <h3>Recent Borrowed Books</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (ViewBag.RecentList != null && ViewBag.RecentList.Count > 0)
+                                    {
+                                        foreach (var item in ViewBag.RecentList)
+                                        {
+                                            <tr>
+                                                <td>@item.Title</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td class="no-data">No recent borrowed books</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="logoutModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px 36px 32px;
+            width: 360px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            font-family: 'Poppins', sans-serif;
+        ">
+            <div style="
+                width: 56px;
+                height: 56px;
+                background-color: #fff3cd;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 18px;
+            ">
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="
+                font-size: 18px;
+                font-weight: 600;
+                color: #333333;
+                margin: 0 0 8px;
+            ">Do you wish to logout?</p>
+            <p style="
+                font-size: 13px;
+                color: #777777;
+                margin: 0 0 24px;
+            ">You will need to log in again to access the system.</p>
+            <div style="
+                display: flex;
+                justify-content: center;
+                gap: 14px;
+            ">
+                <button onclick="confirmLogout();" style="
+                    background-color: #e74c3c;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+
+                <button onclick="closeLogoutModal();" style="
+                    background-color: #2980b9;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+    <script>
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            document.getElementById('logoutForm').submit();
+        }
+
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+    </script>
+
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/dashboard-search.js"></script>
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+
+</body>
+</html>

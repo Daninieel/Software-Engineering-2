@@ -1,0 +1,382 @@
+﻿@model IEnumerable<Soft_eng.Models.Request>
+
+@{
+    ViewBag.Title = "RequestedBooks";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Requested Books</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <link rel="stylesheet" href="~/css/requestedbooks.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/report-modal.css">
+    <link rel="stylesheet" href="~/css/chatbot.css">
+    <link rel="stylesheet" href="~/css/pagination.css">
+    <link rel="stylesheet" href="~/css/search-suggestions.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+    <header class="top-header">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="SIA Logo">
+           </div>
+            <a href="/dashboard/Dashboard" style="text-decoration: none; color: white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+
+        <div class="user-area">
+            <div class="welcome-text" id="welcomeText"></div>
+            <div class="user-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/6858/6858504.png" alt="User Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+    <aside class="sidebar" id="sidebar">
+    <nav>
+        <ul>
+            <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                <a asp-controller="Dashboard" asp-action="Dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+
+            <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                <a asp-controller="Inventory" asp-action="Inventory">
+                    <i class="fas fa-book"></i> Logbook
+                </a>
+            </li>
+
+            <li class="dropdown-item">
+                <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                    <i class="fas fa-layer-group"></i> Book Management
+                    <i class="fas fa-chevron-down arrow-icon"></i>
+                </a>
+                <ul class="submenu" id="bookManagementSubmenuLib">
+                    <li><a asp-controller="Inventory" asp-action="Addbooks"><i class="fas fa-plus"></i> Add Books</a></li>
+                    <li><a asp-controller="Loan" asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                    <li><a asp-controller="Request" asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                    <li><a asp-controller="Inventory" asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
+                </ul>
+            </li>
+
+            <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                <a asp-controller="Loan" asp-action="Fine">
+                    <i class="fas fa-money-bill-wave"></i> Fine
+                </a>
+            </li>
+
+            <li>
+                <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                    <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="logout-text">Log Out</span>
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </nav>
+</aside>
+
+        <main class="content-area page-content">
+            <h2>Requested Books</h2>
+
+            <div class="search-filter">
+                <input type="text" placeholder="Search by Title, Borrower, etc.">
+                <div class="filter-dropdown">
+                </div>
+            </div>
+            <div class="table-card">
+                <div class="table-wrapper">
+                    <table id="requestsTable">
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Requester Name</th>
+                                <th>Requested Title</th>
+                                <th>Date Requested</th>
+                                <th>Status</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var req in Model)
+                            {
+                                <tr class="request-row"
+                                    data-id="@req.RequestID"
+                                    data-name="@req.RequesterName"
+                                    data-title="@req.RequestedTitle"
+                                    data-date="@req.DateRequested.ToString("yyyy-MM-dd")"
+                                    data-status="@req.Status"
+                                    data-remarks="@(req.Remarks ?? "")">
+
+                                    <td>@req.RequestID</td>
+                                    <td>@req.RequesterName</td>
+                                    <td>@req.RequestedTitle</td>
+                                    <td>@req.DateRequested.ToString("yyyy-MM-dd")</td>
+                                    <td>@req.Status</td>
+                                    <td>
+                                        <button class="btn-see-more"
+                                                onclick='openViewRequestModal(
+                                                @req.RequestID,
+                                                @Html.Raw(Json.Serialize(req.RequesterName)),
+                                                @Html.Raw(Json.Serialize(req.RequestedTitle)),
+                                                "@req.DateRequested.ToString("yyyy-MM-dd")",
+                                                @Html.Raw(Json.Serialize(req.Status)),
+                                                @Html.Raw(Json.Serialize(req.Remarks ?? ""))
+                                            )'>
+                                            See More
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+
+            <div class="pagination-section" style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="pagination-wrapper">
+                    <a href="#" class="nav-arrow">&lt;</a>
+
+                    <ul class="page-list">
+                        <li><a href="#" class="page-link active">1</a></li>
+                    </ul>
+
+                    <a href="#" class="nav-arrow">&gt;</a>
+
+                    <div class="goto-container">
+                        <span class="goto-text">Go to</span>
+                        <input type="text" class="goto-input">
+                        <span class="goto-text">Page</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-area">
+                <button class="btn btn-blue" id="addRequestBtn">Add Request</button>
+                <button class="btn btn-green" id="generateReportBtn">Generate Report</button>
+                <button class="btn btn-red" onclick="openEditRequest()">Edit Request</button>
+            </div>
+        </main>
+    </div>
+
+    <div id="addRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>New Book Request</h2>
+            <p>Input the details of the book requested</p>
+            <form asp-action="AddRequest" asp-controller="Request" method="post">
+                <label>Requester Name</label>
+                <input type="text" name="RequesterName" required>
+                <label>Book Title</label>
+                <input type="text" name="RequestedTitle" required>
+                <label>Date Requested</label>
+                <input type="date" name="DateRequested" required>
+                <label>Remarks</label>
+                <textarea name="Remarks"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-red" id="cancelRequestBtn">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="viewRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>Request Details</h2>
+            <p><strong>Request ID:</strong> <span id="viewRequestID"></span></p>
+            <p><strong>Requester Name:</strong> <span id="viewRequesterName"></span></p>
+            <p><strong>Requested Title:</strong> <span id="viewRequestedTitle"></span></p>
+            <p><strong>Date Requested:</strong> <span id="viewDateRequested"></span></p>
+            <p><strong>Status:</strong> <span id="viewStatus"></span></p>
+            <label><strong>Remarks</strong></label>
+            <textarea id="viewRemarks" readonly></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-red" onclick="closeViewRequestModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Request</h2>
+            <form asp-action="EditRequest" asp-controller="Request" method="post">
+                <input type="hidden" name="RequestID" id="editRequestID" />
+                <label>Requester Name</label>
+                <input type="text" name="RequesterName" id="editRequesterName" required />
+                <label>Requested Title</label>
+                <input type="text" name="RequestedTitle" id="editRequestedTitle" required />
+                <label>Date Requested</label>
+                <input type="date" name="DateRequested" id="editDateRequested" required />
+                <label>Status</label>
+                <input type="text" id="editStatus" readonly style="background-color: #f0f0f0;" />
+                <label>Remarks</label>
+                <textarea name="Remarks" id="editRemarks"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-red" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="reportModal" class="report-modal" style="display:none;">
+        <div class="report-modal-content">
+            <button id="closeReportModal" class="close-report-modal">&times;</button>
+            <h2>Select Report Format</h2>
+            <p>Choose the format for your report:</p>
+            <div class="report-format-buttons">
+                <button class="report-format-btn pdf" data-format="pdf">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="report-format-btn csv" data-format="csv">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+
+    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/reportGeneration.js"></script>
+    <script src="~/js/chatbot.js"></script>
+    <script src="~/js/request.js"></script>
+    <script src="~/js/search-suggestions.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    ">
+        <div style="
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px 36px 32px;
+            width: 360px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            font-family: 'Poppins', sans-serif;
+        ">
+            <div style="
+                width: 56px;
+                height: 56px;
+                background-color: #fff3cd;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 18px;
+            ">
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="
+                font-size: 18px;
+                font-weight: 600;
+                color: #333333;
+                margin: 0 0 8px;
+            ">Do you wish to logout?</p>
+            <p style="
+                font-size: 13px;
+                color: #777777;
+                margin: 0 0 24px;
+            ">You will need to log in again to access the system.</p>
+            <div style="
+                display: flex;
+                justify-content: center;
+                gap: 14px;
+            ">
+                <button onclick="confirmLogout();" style="
+                    background-color: #e74c3c;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+
+                <button onclick="closeLogoutModal();" style="
+                    background-color: #2980b9;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 28px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Poppins', sans-serif;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            document.getElementById('logoutForm').submit();
+        }
+
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeLogoutModal();
+            }
+        });
+    </script>
+
+</body>
+</html>

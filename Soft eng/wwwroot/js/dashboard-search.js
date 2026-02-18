@@ -34,7 +34,7 @@ function performDashboardSearch(query) {
         document.querySelector('.sidebar.admin') !== null;
 
     // Redirect to GlobalSearch instead of SearchBooks
-    const searchUrl = `/Home/GlobalSearch?query=${encodeURIComponent(query)}&fromAdmin=${isAdmin}`;
+    const searchUrl = `/Dashboard/GlobalSearch?query=${encodeURIComponent(query)}&fromAdmin=${isAdmin}`;
     window.location.href = searchUrl;
 }
 

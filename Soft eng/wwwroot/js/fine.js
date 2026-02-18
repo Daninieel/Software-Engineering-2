@@ -47,14 +47,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (pdfBtn) {
         pdfBtn.addEventListener('click', () => {
-            window.location.href = `/Home/GenerateReport?reportType=fine&format=pdf`;
+            window.location.href = `/Report/GenerateReport?reportType=fine&format=pdf`;
             closeReportModal();
         });
     }
 
     if (csvBtn) {
         csvBtn.addEventListener('click', () => {
-            window.location.href = `/Home/GenerateReport?reportType=fine&format=csv`;
+            window.location.href = `/Report/GenerateReport?reportType=fine&format=csv`;
             closeReportModal();
         });
     }
@@ -110,7 +110,7 @@ function closeReportModal() {
 async function loadFines() {
     try {
         if (fineTableBody) fineTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px;">Loading...</td></tr>`;
-        const response = await fetch('/Home/GetFines');
+        const response = await fetch('/Loan/GetFines');
         if (!response.ok) throw new Error('Failed to fetch fines');
 
         const data = await response.json();
@@ -247,7 +247,7 @@ function saveFineChanges() {
     formData.append('totalFineAmount', document.getElementById('detailFineAmount').value);
     formData.append('DatePaid', document.getElementById('detailDatePaid').value);
 
-    fetch('/Home/EditFine', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
+    fetch('/Loan/EditFine', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
         .then(res => res.json())
         .then(data => { if (data.success) { alert("Update Successful!"); closeFineModal(); loadFines(); } else alert("Error: " + data.error); })
         .catch(err => { console.error(err); alert("Failed to update fine."); });
