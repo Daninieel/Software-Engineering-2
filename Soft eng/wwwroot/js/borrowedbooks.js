@@ -639,6 +639,8 @@ async function saveBookChanges() {
         btnEdit.disabled = true;
         btnEdit.textContent = 'Saving...';
 
+        const fineAmount = document.getElementById('detailFineAmount').value;
+
         const params = new URLSearchParams({
             loanId: loanId,
             borrowerName: borrowerName,
@@ -647,7 +649,8 @@ async function saveBookChanges() {
             bookStatus: bookStatus,
             returnStatus: returnStatus,
             dateReturned: dateReturned,
-            overdueStatus: overdueStatus
+            overdueStatus: overdueStatus,
+            fineAmount: fineAmount   
         });
 
         const response = await fetch('/Loan/UpdateBorrowedBook', {

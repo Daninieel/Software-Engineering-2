@@ -369,6 +369,36 @@
             }
         });
     </script>
+    <script>
+        document.getElementById('addBookForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
 
+            const submitBtn = this.querySelector('.btn-green');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Adding...';
+
+            try {
+                const response = await fetch('/Inventory/AddBooks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(new FormData(this))
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    this.reset();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('An unexpected error occurred.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Add Books';
+            }
+        });
+    </script>
 </body>
 </html>

@@ -117,13 +117,11 @@ namespace Soft_eng.Controllers
                     }
                 }
 
-                TempData["SuccessMessage"] = $"{numberOfCopies} cop{(numberOfCopies > 1 ? "ies" : "y")} added successfully!";
-                return RedirectToAction("Inventory", new { fromAdmin });
+                return Json(new { success = true, message = $"{numberOfCopies} cop{(numberOfCopies > 1 ? "ies" : "y")} added successfully!" });
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error adding book: {ex.Message}";
-                return View("Addbooks", book);
+                return Json(new { success = false, message = $"Error adding book: {ex.Message}" });
             }
             finally { await _connection.CloseAsync(); }
         }
