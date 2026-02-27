@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let stream = null;
     let isScanning = false;
-    let scanTimeout = null;
     let selectedFields = { title: '', author: '', publisher: '', edition: '', year: '' };
     let allDetections = [];
     let currentSide = 'front';
@@ -47,220 +46,114 @@ document.addEventListener('DOMContentLoaded', () => {
     let startY = 0;
     let tempCanvasRef = null;
 
-    // Mobile-specific variables
     let isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     let mobileMode = 'draw';
     let lastTouchDistance = 0;
     let mobileToggleBtn = null;
 
-    // Initialize ZXing barcode reader
     let codeReader = null;
+    let scanningInterval = null;
+    let detectionHistory = [];
+    const CONFIRMATION_THRESHOLD = 1;
+    const SCAN_INTERVAL = 600;
+
+    let preprocessCanvas = null;
+    let preprocessCtx = null;
+
+    // ── ZXing ────────────────────────────────────────────────────────
 
     async function initializeZXing() {
-        if (!codeReader) {
-            try {
-                const { BrowserMultiFormatReader } = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@latest/umd/index.min.js');
-                codeReader = new BrowserMultiFormatReader();
-                console.log('✓ ZXing barcode reader initialized');
-            } catch (err) {
-                console.error('✗ Failed to load ZXing:', err);
-                console.log('→ Will use OCR fallback only');
+        if (codeReader) return true;
+        try {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@zxing/library@latest';
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (window.ZXing) {
+                codeReader = new ZXing.BrowserMultiFormatReader();
+                console.log('✓ ZXing initialized successfully');
+                return true;
+            } else {
+                throw new Error('ZXing not loaded');
             }
+        } catch (err) {
+            console.error('✗ Failed to initialize ZXing:', err);
+            showValidation('Scanner initialization failed. Please refresh the page.', 'error');
+            return false;
         }
     }
 
-    // Initialize on page load
     initializeZXing();
 
-    // ═══════════════════════════════════════════════════════════════════
-    // STAGE 1: ZXING BARCODE READER (Primary Method)
-    // ═══════════════════════════════════════════════════════════════════
+    // ── Preprocessing helpers ────────────────────────────────────────
 
-    /**
-     * Try to read barcode using ZXing library
-     * This is MUCH faster and more accurate than OCR
-     */
-    async function tryBarcodeReader(imageSource) {
-        if (!codeReader) {
-            console.log('→ ZXing not available, skipping barcode detection');
-            return null;
-        }
-
-        try {
-            console.log('🔍 Stage 1: Trying ZXing barcode reader...');
-
-            let imageUrl;
-            if (typeof imageSource === 'string') {
-                imageUrl = imageSource;
-            } else {
-                // Convert File/Blob to data URL
-                imageUrl = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.readAsDataURL(imageSource);
-                });
-            }
-
-            // Try multiple preprocessing for barcode reading
-            const strategies = [
-                { name: 'original', transform: null },
-                { name: 'high-contrast', transform: applyHighContrast },
-                { name: 'inverted', transform: invertColors },
-                { name: 'sharpened', transform: sharpenImage }
-            ];
-
-            for (const strategy of strategies) {
-                try {
-                    console.log(`  → Trying barcode read: ${strategy.name}`);
-
-                    let processedUrl = imageUrl;
-                    if (strategy.transform) {
-                        processedUrl = await strategy.transform(imageUrl);
-                    }
-
-                    const result = await codeReader.decodeFromImageUrl(processedUrl);
-
-                    if (result) {
-                        const barcode = result.getText();
-                        console.log(`  → Raw barcode: ${barcode}`);
-
-                        // Extract ISBN from barcode text
-                        const isbn = extractIsbnFromBarcode(barcode);
-
-                        if (isbn) {
-                            console.log(`  ✓ SUCCESS with ${strategy.name}: ${isbn}`);
-                            return isbn;
-                        }
-                    }
-                } catch (err) {
-                    // Continue to next strategy
-                }
-            }
-
-            console.log('  ✗ ZXing barcode reader found no ISBN');
-            return null;
-
-        } catch (err) {
-            console.log('  ✗ ZXing error:', err.message);
-            return null;
+    function initializePreprocessCanvas() {
+        if (!preprocessCanvas) {
+            preprocessCanvas = document.createElement('canvas');
+            preprocessCtx = preprocessCanvas.getContext('2d', { willReadFrequently: true });
         }
     }
 
-    /**
-     * Extract clean ISBN from barcode text
-     */
-    function extractIsbnFromBarcode(barcode) {
-        const cleaned = barcode.replace(/[^0-9X]/gi, '');
-
-        // Try ISBN-13 (978 or 979 prefix)
-        const isbn13Match = cleaned.match(/^(978|979)\d{10}$/);
-        if (isbn13Match) return isbn13Match[0];
-
-        // Try ISBN-10
-        const isbn10Match = cleaned.match(/^\d{9}[0-9X]$/i);
-        if (isbn10Match) return isbn10Match[0];
-
-        return null;
+    function captureVideoFrame() {
+        initializePreprocessCanvas();
+        preprocessCanvas.width = video.videoWidth;
+        preprocessCanvas.height = video.videoHeight;
+        preprocessCtx.save();
+        if (isDesktopCamera) {
+            preprocessCtx.translate(preprocessCanvas.width, 0);
+            preprocessCtx.scale(-1, 1);
+        }
+        preprocessCtx.drawImage(video, 0, 0);
+        preprocessCtx.restore();
+        return preprocessCanvas;
     }
 
-    /**
-     * Image transformations to help barcode reading
-     */
-    async function applyHighContrast(imageUrl) {
-        return transformImage(imageUrl, (ctx, canvas) => {
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                const val = avg > 127 ? 255 : 0;
-                data[i] = data[i + 1] = data[i + 2] = val;
-            }
-
-            ctx.putImageData(imgData, 0, 0);
-        });
+    function cloneCanvas(original) {
+        const clone = document.createElement('canvas');
+        clone.width = original.width;
+        clone.height = original.height;
+        clone.getContext('2d').drawImage(original, 0, 0);
+        return clone;
     }
 
-    async function invertColors(imageUrl) {
-        return transformImage(imageUrl, (ctx, canvas) => {
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = 255 - data[i];
-                data[i + 1] = 255 - data[i + 1];
-                data[i + 2] = 255 - data[i + 2];
-            }
-
-            ctx.putImageData(imgData, 0, 0);
-        });
-    }
-
-    async function sharpenImage(imageUrl) {
-        return transformImage(imageUrl, (ctx, canvas) => {
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-            const width = canvas.width;
-            const height = canvas.height;
-
-            const output = new Uint8ClampedArray(data);
-            const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-
-            for (let y = 1; y < height - 1; y++) {
-                for (let x = 1; x < width - 1; x++) {
-                    for (let c = 0; c < 3; c++) {
-                        let sum = 0;
-                        for (let ky = -1; ky <= 1; ky++) {
-                            for (let kx = -1; kx <= 1; kx++) {
-                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
-                                const kernelIdx = (ky + 1) * 3 + (kx + 1);
-                                sum += data[idx] * kernel[kernelIdx];
-                            }
-                        }
-                        const idx = (y * width + x) * 4 + c;
-                        output[idx] = Math.max(0, Math.min(255, sum));
-                    }
-                }
-            }
-
-            const newImgData = ctx.createImageData(width, height);
-            newImgData.data.set(output);
-            ctx.putImageData(newImgData, 0, 0);
-        });
-    }
-
-    async function transformImage(imageUrl, transformFn) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                transformFn(ctx, canvas);
-
-                resolve(canvas.toDataURL('image/jpeg', 0.92));
-            };
-            img.src = imageUrl;
-        });
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // STAGE 2: OCR FALLBACK (When Barcode Reader Fails)
-    // ═══════════════════════════════════════════════════════════════════
-
-    function calculateOtsuThreshold(data) {
-        const histogram = new Array(256).fill(0);
+    function toGrayscale(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
         for (let i = 0; i < data.length; i += 4) {
-            histogram[data[i]]++;
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            data[i] = data[i + 1] = data[i + 2] = gray;
         }
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+
+    function enhanceContrast(canvas, factor = 1.5) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, Math.max(0, factor * (data[i] - 128) + 128));
+            data[i + 1] = Math.min(255, Math.max(0, factor * (data[i + 1] - 128) + 128));
+            data[i + 2] = Math.min(255, Math.max(0, factor * (data[i + 2] - 128) + 128));
+        }
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+
+    function adaptiveThreshold(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const histogram = new Array(256).fill(0);
+        for (let i = 0; i < data.length; i += 4) histogram[data[i]]++;
         const total = data.length / 4;
         let sum = 0;
         for (let i = 0; i < 256; i++) sum += i * histogram[i];
-
         let sumB = 0, wB = 0, maxVariance = 0, threshold = 128;
         for (let i = 0; i < 256; i++) {
             wB += histogram[i];
@@ -271,383 +164,746 @@ document.addEventListener('DOMContentLoaded', () => {
             const mB = sumB / wB;
             const mF = (sum - sumB) / wF;
             const variance = wB * wF * (mB - mF) ** 2;
-            if (variance > maxVariance) {
-                maxVariance = variance;
-                threshold = i;
-            }
+            if (variance > maxVariance) { maxVariance = variance; threshold = i; }
         }
-        return threshold;
-    }
-
-    function preprocessRaw(canvas) {
-        return canvas;
-    }
-
-    function preprocessGrayscale(sourceCanvas) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = sourceCanvas.width;
-        canvas.height = sourceCanvas.height;
-        ctx.drawImage(sourceCanvas, 0, 0);
-
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            data[i] = data[i + 1] = data[i + 2] = gray;
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-        return canvas;
-    }
-
-    function preprocessGaussian(sourceCanvas) {
-        const canvas = preprocessGrayscale(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-
-        tempCtx.filter = 'blur(2px)';
-        tempCtx.drawImage(canvas, 0, 0);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(tempCanvas, 0, 0);
-
-        return canvas;
-    }
-
-    function preprocessCLAHE(sourceCanvas) {
-        const canvas = preprocessGrayscale(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-
-        const tileSize = 8;
-        const clipLimit = 2.0;
-        const width = canvas.width;
-        const height = canvas.height;
-
-        for (let ty = 0; ty < height; ty += tileSize) {
-            for (let tx = 0; tx < width; tx += tileSize) {
-                const histogram = new Array(256).fill(0);
-                const tileW = Math.min(tileSize, width - tx);
-                const tileH = Math.min(tileSize, height - ty);
-
-                for (let y = ty; y < ty + tileH; y++) {
-                    for (let x = tx; x < tx + tileW; x++) {
-                        const idx = (y * width + x) * 4;
-                        histogram[data[idx]]++;
-                    }
-                }
-
-                const totalPixels = tileW * tileH;
-                const clipValue = (clipLimit * totalPixels) / 256;
-                let clipped = 0;
-                for (let i = 0; i < 256; i++) {
-                    if (histogram[i] > clipValue) {
-                        clipped += histogram[i] - clipValue;
-                        histogram[i] = clipValue;
-                    }
-                }
-                const redistribute = clipped / 256;
-                for (let i = 0; i < 256; i++) {
-                    histogram[i] += redistribute;
-                }
-
-                const lut = new Array(256);
-                let sum = 0;
-                for (let i = 0; i < 256; i++) {
-                    sum += histogram[i];
-                    lut[i] = Math.round((sum / totalPixels) * 255);
-                }
-
-                for (let y = ty; y < ty + tileH; y++) {
-                    for (let x = tx; x < tx + tileW; x++) {
-                        const idx = (y * width + x) * 4;
-                        const val = lut[data[idx]];
-                        data[idx] = data[idx + 1] = data[idx + 2] = val;
-                    }
-                }
-            }
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-        return canvas;
-    }
-
-    function preprocessEdgeEnhance(sourceCanvas) {
-        const canvas = preprocessGrayscale(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        const width = canvas.width;
-        const height = canvas.height;
-
-        const output = new Uint8ClampedArray(data);
-        const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
-
-        for (let y = 1; y < height - 1; y++) {
-            for (let x = 1; x < width - 1; x++) {
-                let sumX = 0;
-
-                for (let ky = -1; ky <= 1; ky++) {
-                    for (let kx = -1; kx <= 1; kx++) {
-                        const idx = ((y + ky) * width + (x + kx)) * 4;
-                        const kernelIdx = (ky + 1) * 3 + (kx + 1);
-                        sumX += data[idx] * sobelX[kernelIdx];
-                    }
-                }
-
-                const magnitude = Math.abs(sumX);
-                const idx = (y * width + x) * 4;
-
-                const enhanced = Math.min(255, data[idx] * 0.7 + magnitude * 0.3);
-                output[idx] = output[idx + 1] = output[idx + 2] = enhanced;
-            }
-        }
-
-        const newImgData = ctx.createImageData(width, height);
-        newImgData.data.set(output);
-        ctx.putImageData(newImgData, 0, 0);
-        return canvas;
-    }
-
-    function preprocessOtsu(sourceCanvas) {
-        const canvas = preprocessGaussian(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-
-        const threshold = calculateOtsuThreshold(data);
-
         for (let i = 0; i < data.length; i += 4) {
             const val = data[i] < threshold ? 0 : 255;
             data[i] = data[i + 1] = data[i + 2] = val;
         }
-
-        ctx.putImageData(imgData, 0, 0);
+        ctx.putImageData(imageData, 0, 0);
         return canvas;
     }
 
-    function preprocessMorphClose(sourceCanvas) {
-        const canvas = preprocessGrayscale(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
+    function sharpen(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
         const width = canvas.width;
         const height = canvas.height;
-
+        const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
         const output = new Uint8ClampedArray(data);
-
-        for (let y = 0; y < height; y++) {
+        for (let y = 1; y < height - 1; y++) {
             for (let x = 1; x < width - 1; x++) {
-                const idx = (y * width + x) * 4;
-                const left = (y * width + (x - 1)) * 4;
-                const right = (y * width + (x + 1)) * 4;
-                const maxVal = Math.max(data[idx], data[left], data[right]);
-                output[idx] = output[idx + 1] = output[idx + 2] = maxVal;
+                for (let c = 0; c < 3; c++) {
+                    let sum = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                            const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                            sum += data[idx] * kernel[kernelIdx];
+                        }
+                    }
+                    const idx = (y * width + x) * 4 + c;
+                    output[idx] = Math.max(0, Math.min(255, sum));
+                }
+            }
+        }
+        const newImageData = ctx.createImageData(width, height);
+        newImageData.data.set(output);
+        ctx.putImageData(newImageData, 0, 0);
+        return canvas;
+    }
+
+    function gaussianBlur(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.filter = 'blur(1px)';
+        tempCtx.drawImage(canvas, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempCanvas, 0, 0);
+        return canvas;
+    }
+
+    function invertColors(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i];
+            data[i + 1] = 255 - data[i + 1];
+            data[i + 2] = 255 - data[i + 2];
+        }
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+
+    function cropToCenter(canvas, widthPercent = 0.8, heightPercent = 0.5) {
+        const cropCanvas = document.createElement('canvas');
+        const cropCtx = cropCanvas.getContext('2d');
+        const cropWidth = canvas.width * widthPercent;
+        const cropHeight = canvas.height * heightPercent;
+        const x = (canvas.width - cropWidth) / 2;
+        const y = (canvas.height - cropHeight) / 2;
+        cropCanvas.width = cropWidth;
+        cropCanvas.height = cropHeight;
+        cropCtx.drawImage(canvas, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        return cropCanvas;
+    }
+
+    function clahe(canvas, tileSize = 32, clipLimit = 3.0) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        const gray = new Float32Array(width * height);
+        for (let i = 0; i < gray.length; i++) gray[i] = data[i * 4];
+
+        const tilesX = Math.ceil(width / tileSize);
+        const tilesY = Math.ceil(height / tileSize);
+        const luts = [];
+
+        for (let ty = 0; ty < tilesY; ty++) {
+            luts[ty] = [];
+            for (let tx = 0; tx < tilesX; tx++) {
+                const x0 = tx * tileSize, x1 = Math.min(x0 + tileSize, width);
+                const y0 = ty * tileSize, y1 = Math.min(y0 + tileSize, height);
+                const n = (x1 - x0) * (y1 - y0);
+
+                const hist = new Float32Array(256);
+                for (let py = y0; py < y1; py++)
+                    for (let px = x0; px < x1; px++)
+                        hist[Math.round(gray[py * width + px])]++;
+
+                const excess = clipLimit * (n / 256);
+                let redistribute = 0;
+                for (let i = 0; i < 256; i++) {
+                    if (hist[i] > excess) { redistribute += hist[i] - excess; hist[i] = excess; }
+                }
+                const perBin = redistribute / 256;
+                for (let i = 0; i < 256; i++) hist[i] += perBin;
+
+                const lut = new Uint8Array(256);
+                let cdf = 0, cdfMin = -1;
+                for (let i = 0; i < 256; i++) {
+                    cdf += hist[i];
+                    if (cdfMin < 0 && cdf > 0) cdfMin = cdf;
+                    lut[i] = Math.round(((cdf - cdfMin) / (n - cdfMin)) * 255);
+                }
+                luts[ty][tx] = lut;
             }
         }
 
-        const data2 = new Uint8ClampedArray(output);
-        for (let y = 0; y < height; y++) {
-            for (let x = 1; x < width - 1; x++) {
-                const idx = (y * width + x) * 4;
-                const left = (y * width + (x - 1)) * 4;
-                const right = (y * width + (x + 1)) * 4;
-                const minVal = Math.min(data2[idx], data2[left], data2[right]);
-                output[idx] = output[idx + 1] = output[idx + 2] = minVal;
-            }
-        }
-
-        const newImgData = ctx.createImageData(width, height);
-        newImgData.data.set(output);
-        ctx.putImageData(newImgData, 0, 0);
-        return canvas;
-    }
-
-    function preprocessUpscale2x(sourceCanvas) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = sourceCanvas.width * 2;
-        canvas.height = sourceCanvas.height * 2;
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
-        return canvas;
-    }
-
-    function preprocessUpscaleCLAHE(sourceCanvas) {
-        const upscaled = preprocessUpscale2x(sourceCanvas);
-        return preprocessCLAHE(upscaled);
-    }
-
-    function preprocessAdaptiveThreshold(sourceCanvas) {
-        const canvas = preprocessGrayscale(sourceCanvas);
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        const width = canvas.width;
-        const height = canvas.height;
-
-        const blockSize = 15;
-        const C = 10;
-
-        const output = new Uint8ClampedArray(data);
-
+        const result = new Uint8ClampedArray(data.length);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                let sum = 0;
-                let count = 0;
-
-                for (let ky = -blockSize; ky <= blockSize; ky++) {
-                    for (let kx = -blockSize; kx <= blockSize; kx++) {
-                        const ny = y + ky;
-                        const nx = x + kx;
-                        if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-                            const idx = (ny * width + nx) * 4;
-                            sum += data[idx];
-                            count++;
-                        }
-                    }
-                }
-
-                const mean = sum / count;
+                const v = Math.round(gray[y * width + x]);
+                const txf = (x / tileSize) - 0.5;
+                const tyf = (y / tileSize) - 0.5;
+                const tx0 = Math.max(0, Math.floor(txf));
+                const ty0 = Math.max(0, Math.floor(tyf));
+                const tx1 = Math.min(tilesX - 1, tx0 + 1);
+                const ty1 = Math.min(tilesY - 1, ty0 + 1);
+                const wx = Math.max(0, Math.min(1, txf - tx0));
+                const wy = Math.max(0, Math.min(1, tyf - ty0));
+                const mapped = Math.round(
+                    luts[ty0][tx0][v] * (1 - wx) * (1 - wy) +
+                    luts[ty0][tx1][v] * wx * (1 - wy) +
+                    luts[ty1][tx0][v] * (1 - wx) * wy +
+                    luts[ty1][tx1][v] * wx * wy
+                );
                 const idx = (y * width + x) * 4;
-                const val = data[idx] > (mean - C) ? 255 : 0;
-                output[idx] = output[idx + 1] = output[idx + 2] = val;
+                result[idx] = result[idx + 1] = result[idx + 2] = mapped;
+                result[idx + 3] = 255;
             }
         }
-
-        const newImgData = ctx.createImageData(width, height);
-        newImgData.data.set(output);
-        ctx.putImageData(newImgData, 0, 0);
+        imageData.data.set(result);
+        ctx.putImageData(imageData, 0, 0);
         return canvas;
     }
 
-    /**
-     * OCR fallback with multiple strategies
-     */
-    async function tryOCRFallback(imageSource) {
-        console.log('🔍 Stage 2: Trying OCR fallback (slower)...');
+    function sobel(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const { width, height } = canvas;
+        const src = ctx.getImageData(0, 0, width, height).data;
+        const out = new Uint8ClampedArray(src.length);
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                const tl = src[((y - 1) * width + (x - 1)) * 4], tc = src[((y - 1) * width + x) * 4], tr = src[((y - 1) * width + (x + 1)) * 4];
+                const ml = src[(y * width + (x - 1)) * 4], mr = src[(y * width + (x + 1)) * 4];
+                const bl = src[((y + 1) * width + (x - 1)) * 4], bc = src[((y + 1) * width + x) * 4], br = src[((y + 1) * width + (x + 1)) * 4];
+                const gx = -tl - 2 * ml - bl + tr + 2 * mr + br;
+                const gy = -tl - 2 * tc - tr + bl + 2 * bc + br;
+                const mag = Math.min(255, Math.sqrt(gx * gx + gy * gy));
+                const i = (y * width + x) * 4;
+                out[i] = out[i + 1] = out[i + 2] = mag;
+                out[i + 3] = 255;
+            }
+        }
+        const imageData = ctx.createImageData(width, height);
+        imageData.data.set(out);
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = typeof imageSource === 'string' ? imageSource : URL.createObjectURL(imageSource);
-
-        return new Promise(resolve => {
-            img.onload = async () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
-                const strategies = [
-                    { name: 'raw', fn: preprocessRaw },
-                    { name: 'grayscale', fn: preprocessGrayscale },
-                    { name: 'gaussian', fn: preprocessGaussian },
-                    { name: 'clahe', fn: preprocessCLAHE },
-                    { name: 'edge', fn: preprocessEdgeEnhance },
-                    { name: 'otsu', fn: preprocessOtsu },
-                    { name: 'morph', fn: preprocessMorphClose },
-                    { name: 'upscale2x', fn: preprocessUpscale2x },
-                    { name: 'upscale-clahe', fn: preprocessUpscaleCLAHE },
-                    { name: 'adaptive', fn: preprocessAdaptiveThreshold }
-                ];
-
-                for (const strategy of strategies) {
-                    try {
-                        console.log(`  → Trying OCR: ${strategy.name}`);
-                        const processed = strategy.fn(canvas);
-
-                        const { data: { text } } = await Tesseract.recognize(
-                            processed.toDataURL('image/jpeg', 0.92),
-                            'eng',
-                            {
-                                tessedit_char_whitelist: '0123456789X-',
-                                tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT
-                            }
-                        );
-
-                        const cleaned = text.replace(/[^0-9X]/g, '');
-
-                        const isbn13Match = cleaned.match(/(978|979)\d{10}/);
-                        const isbn10Match = cleaned.match(/\d{9}[0-9X]/);
-
-                        const match = isbn13Match || isbn10Match;
-
-                        if (match) {
-                            console.log(`  ✓ SUCCESS with OCR ${strategy.name}: ${match[0]}`);
-                            resolve(match[0]);
-                            return;
-                        }
-                    } catch (err) {
-                        console.log(`  ✗ OCR ${strategy.name} failed:`, err.message);
+    function _morphOp(canvas, op, kernelSize) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const { width, height } = canvas;
+        const src = ctx.getImageData(0, 0, width, height).data;
+        const out = new Uint8ClampedArray(src.length);
+        const half = Math.floor(kernelSize / 2);
+        const pick = op === 'dilate' ? Math.max : Math.min;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let val = op === 'dilate' ? 0 : 255;
+                for (let ky = -half; ky <= half; ky++) {
+                    for (let kx = -half; kx <= half; kx++) {
+                        const ny = Math.max(0, Math.min(height - 1, y + ky));
+                        const nx = Math.max(0, Math.min(width - 1, x + kx));
+                        val = pick(val, src[(ny * width + nx) * 4]);
                     }
                 }
+                const i = (y * width + x) * 4;
+                out[i] = out[i + 1] = out[i + 2] = val;
+                out[i + 3] = 255;
+            }
+        }
+        const imageData = ctx.createImageData(width, height);
+        imageData.data.set(out);
+        ctx.putImageData(imageData, 0, 0);
+    }
 
-                console.log('  ✗ All OCR strategies failed');
-                resolve(null);
+    function morphClose(canvas, kernelSize = 3) {
+        _morphOp(canvas, 'dilate', kernelSize);
+        _morphOp(canvas, 'erode', kernelSize);
+        return canvas;
+    }
+
+    function upscale(canvas, factor = 2) {
+        const out = document.createElement('canvas');
+        out.width = canvas.width * factor;
+        out.height = canvas.height * factor;
+        const ctx = out.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, out.width, out.height);
+        return out;
+    }
+
+    // Convert canvas to HTMLImageElement then decode — the most reliable ZXing path
+    function decodeCanvas(canvas) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                codeReader.decodeFromImageElement(img).then(resolve).catch(reject);
             };
-            img.onerror = () => {
-                console.log('  ✗ Image load error');
-                resolve(null);
-            };
+            img.onerror = reject;
+            img.src = canvas.toDataURL('image/png');
         });
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // HYBRID ISBN EXTRACTION (Barcode First, OCR Fallback)
-    // ═══════════════════════════════════════════════════════════════════
+    async function scanWithPreprocessing() {
+        if (!isScanning || !video.videoWidth || !video.videoHeight) return null;
 
-    /**
-     * Main ISBN extraction with two-stage approach:
-     * 1. Try ZXing barcode reader (fast, accurate)
-     * 2. Fallback to OCR with 10 strategies (slow, thorough)
-     */
-    async function processImageAndGetIsbn(imageSource) {
-        console.log('═══════════════════════════════════════════════════════');
-        console.log('Starting ISBN extraction with hybrid approach');
-        console.log('═══════════════════════════════════════════════════════');
+        const rawFrame = captureVideoFrame();
 
-        // Stage 1: Try barcode reader first
-        let isbn = await tryBarcodeReader(imageSource);
-        if (isbn) {
-            console.log('✓ ISBN FOUND via barcode reader:', isbn);
-            console.log('═══════════════════════════════════════════════════════');
-            return isbn;
+        // Build all processed canvases
+        const variants = [
+            { name: 'raw', get: () => cloneCanvas(rawFrame) },
+            { name: 'grayscale', get: () => { const c = cloneCanvas(rawFrame); return toGrayscale(c); } },
+            { name: 'otsu', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); return adaptiveThreshold(c); } },
+            { name: 'clahe', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); return clahe(c, 32, 3.0); } },
+            { name: 'contrast', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); return enhanceContrast(c, 1.8); } },
+            { name: 'morph', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); adaptiveThreshold(c); return morphClose(c, 3); } },
+            { name: 'inverted', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); adaptiveThreshold(c); return invertColors(c); } },
+            { name: 'sharpen', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); sharpen(c); return enhanceContrast(c, 1.5); } },
+            { name: 'blur+otsu', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); gaussianBlur(c); return adaptiveThreshold(c); } },
+            { name: 'cropped', get: () => { const c = cloneCanvas(rawFrame); const cr = cropToCenter(c, 0.8, 0.4); toGrayscale(cr); return enhanceContrast(cr, 2.0); } },
+            { name: 'aggressive', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); gaussianBlur(c); sharpen(c); enhanceContrast(c, 2.2); return adaptiveThreshold(c); } },
+            { name: 'upscale2x', get: () => upscale(cloneCanvas(rawFrame), 2) },
+            { name: 'upscale2x+clahe', get: () => { const up = upscale(cloneCanvas(rawFrame), 2); toGrayscale(up); return clahe(up, 32, 3.0); } },
+            { name: 'sobel', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); return sobel(c); } },
+            { name: 'gaussian', get: () => { const c = cloneCanvas(rawFrame); toGrayscale(c); return gaussianBlur(c); } },
+        ];
+
+        // Race all strategies in parallel — first valid ISBN wins
+        const racePromises = variants.map(v =>
+            new Promise((resolve, reject) => {
+                let canvas;
+                try { canvas = v.get(); } catch { return reject(); }
+                decodeCanvas(canvas)
+                    .then(result => {
+                        const isbn = extractIsbnFromBarcode(result.getText());
+                        if (isbn) { console.log(`✓ ISBN via strategy: ${v.name}`); resolve(isbn); }
+                        else reject();
+                    })
+                    .catch(reject);
+            })
+        );
+
+        try {
+            return await Promise.any(racePromises);
+        } catch {
+            return null;
         }
+    }
 
-        // Stage 2: Fallback to OCR
-        isbn = await tryOCRFallback(imageSource);
-        if (isbn) {
-            console.log('✓ ISBN FOUND via OCR fallback:', isbn);
-            console.log('═══════════════════════════════════════════════════════');
-            return isbn;
-        }
-
-        console.log('✗ NO ISBN FOUND - Both methods exhausted');
-        console.log('═══════════════════════════════════════════════════════');
+    function extractIsbnFromBarcode(barcode) {
+        const cleaned = barcode.replace(/[^0-9X]/gi, '');
+        const isbn13Match = cleaned.match(/^(978|979)\d{10}$/);
+        if (isbn13Match) return isbn13Match[0];
+        const isbn10Match = cleaned.match(/^\d{9}[0-9X]$/i);
+        if (isbn10Match) return isbn10Match[0];
         return null;
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // BOOK COVER OCR (Unchanged - for text extraction)
-    // ═══════════════════════════════════════════════════════════════════
+    // ── Continuous scanning ──────────────────────────────────────────
+
+    let scanHandled = false;
+
+    function startContinuousScanning() {
+        if (!codeReader || !isScanning) return;
+        scanHandled = false;
+        createScanningIndicator();
+
+        let attemptCount = 0;
+
+        scanningInterval = setInterval(async () => {
+            if (!isScanning || scanHandled) {
+                clearInterval(scanningInterval);
+                return;
+            }
+
+            attemptCount++;
+            updateScanningIndicator(`🔍 Scanning... (attempt ${attemptCount})`);
+
+            const isbn = await scanWithPreprocessing();
+
+            if (isbn) {
+                addToDetectionHistory(isbn);
+
+                const confirmedIsbn = getConfirmedIsbn();
+                if (confirmedIsbn && !scanHandled) {
+                    scanHandled = true;
+                    console.log('✓ ISBN CONFIRMED:', confirmedIsbn);
+                    await handleSuccessfulScan(confirmedIsbn);
+                } else if (!scanHandled) {
+                    updateScanningIndicator(`📖 Detected: ${isbn} (confirming...)`);
+                }
+            }
+        }, SCAN_INTERVAL);
+    }
+
+    function addToDetectionHistory(isbn) {
+        const now = Date.now();
+        detectionHistory = detectionHistory.filter(d => now - d.time < 2000);
+        detectionHistory.push({ isbn, time: now });
+        console.log(`Detection history: ${detectionHistory.map(d => d.isbn).join(', ')}`);
+    }
+
+    function getConfirmedIsbn() {
+        if (detectionHistory.length < CONFIRMATION_THRESHOLD) return null;
+        const counts = {};
+        detectionHistory.forEach(d => { counts[d.isbn] = (counts[d.isbn] || 0) + 1; });
+        for (const [isbn, count] of Object.entries(counts)) {
+            if (count >= CONFIRMATION_THRESHOLD) return isbn;
+        }
+        return null;
+    }
+
+    async function handleSuccessfulScan(isbn) {
+        stopCamera();
+        isbnInput.value = isbn;
+        showValidation('📖 ISBN detected! Loading book details...', 'success');
+        const success = await fetchBookData(isbn);
+        if (success) {
+            showValidation('✓ Book details loaded successfully!', 'success');
+            highlightFilledFields();
+        } else {
+            showValidation('ISBN found but no book data available. Enter details manually.', 'info');
+        }
+    }
+
+    // ── UI feedback ──────────────────────────────────────────────────
+
+    function createScanningIndicator() {
+        const old = document.getElementById('scanningIndicator');
+        if (old) old.remove();
+
+        const indicator = document.createElement('div');
+        indicator.id = 'scanningIndicator';
+        indicator.style.cssText = `
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(46, 204, 113, 0.95);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+            animation: pulse 1.5s ease-in-out infinite;
+        `;
+        indicator.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="scanner-beam"></div>
+                <span>🔍 Scanning for ISBN...</span>
+            </div>
+        `;
+        cameraModal.appendChild(indicator);
+
+        if (!document.getElementById('scannerStyles')) {
+            const style = document.createElement('style');
+            style.id = 'scannerStyles';
+            style.textContent = `
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.7; }
+                }
+                .scanner-beam {
+                    width: 20px;
+                    height: 20px;
+                    border: 3px solid white;
+                    border-radius: 4px;
+                    border-left-color: transparent;
+                    border-right-color: transparent;
+                    animation: rotate 1s linear infinite;
+                }
+                @keyframes rotate {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    function updateScanningIndicator(message) {
+        const indicator = document.getElementById('scanningIndicator');
+        if (indicator) {
+            const span = indicator.querySelector('span');
+            if (span) span.textContent = message;
+        }
+    }
+
+    function removeScanningIndicator() {
+        const indicator = document.getElementById('scanningIndicator');
+        if (indicator) indicator.remove();
+    }
+
+    function highlightFilledFields() {
+        [titleInput, authorInput, publisherInput, pagesInput].forEach(el => {
+            if (el?.value) {
+                const originalBorder = el.style.borderColor;
+                el.style.borderColor = '#27ae60';
+                el.style.transition = 'border-color 0.3s ease';
+                setTimeout(() => {
+                    el.style.borderColor = originalBorder || '';
+                }, 2000);
+            }
+        });
+    }
+
+    // ── Camera ───────────────────────────────────────────────────────
+
+    async function getCameras() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        videoSourceSelect.innerHTML = '';
+        devices.filter(d => d.kind === 'videoinput').forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.text = d.label || `Camera ${videoSourceSelect.length + 1}`;
+            videoSourceSelect.appendChild(opt);
+        });
+    }
+
+    async function startCamera(deviceId = null) {
+        const initialized = await initializeZXing();
+        if (!initialized) return;
+
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        isDesktopCamera = !isMobile;
+
+        // Check if any camera device exists first
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cameras = devices.filter(d => d.kind === 'videoinput');
+            if (cameras.length === 0) {
+                showNoCameraFallback();
+                return;
+            }
+        } catch (_) { }
+
+        // Fallback chain: try best quality first, relax on each failure
+        const constraintOptions = [];
+
+        if (deviceId) {
+            constraintOptions.push(
+                { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+                { video: { deviceId: { exact: deviceId } } }
+            );
+        } else if (isMobile) {
+            constraintOptions.push(
+                { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+                { video: { facingMode: { ideal: 'environment' } } },
+                { video: true }
+            );
+        } else {
+            constraintOptions.push(
+                { video: { width: { ideal: 1280 }, height: { ideal: 720 } } },
+                { video: true }
+            );
+        }
+
+        let lastErr = null;
+        for (const constraints of constraintOptions) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (err) {
+                lastErr = err;
+                console.warn('Camera constraint failed, trying fallback:', err.message);
+                stream = null;
+            }
+        }
+
+        if (!stream) {
+            console.error('Camera error:', lastErr);
+            const name = lastErr?.name || '';
+            if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                showNoCameraFallback();
+            } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                showValidation('Camera permission denied. Allow camera access in your browser settings.', 'error');
+                cameraModal.style.display = 'none';
+            } else {
+                showValidation(`Camera unavailable (${name || lastErr?.message || 'unknown error'}).`, 'error');
+                cameraModal.style.display = 'none';
+            }
+            return;
+        }
+
+        video.srcObject = stream;
+        video.style.transform = isDesktopCamera ? 'scaleX(-1)' : 'scaleX(1)';
+
+        if (videoSourceSelect.options.length === 0) {
+            await getCameras();
+        }
+
+        video.onloadedmetadata = () => {
+            video.play().then(() => {
+                isScanning = true;
+                detectionHistory = [];
+                startContinuousScanning();
+            }).catch(err => {
+                console.error('video.play() failed:', err);
+                showValidation('Could not start video preview.', 'error');
+            });
+        };
+    }
+
+    function showNoCameraFallback() {
+        // Keep modal open but replace video with a helpful message + manual ISBN entry
+        const videoWrapper = video.parentElement || cameraModal;
+        video.style.display = 'none';
+
+        const existing = document.getElementById('noCameraMsg');
+        if (existing) existing.remove();
+
+        const msg = document.createElement('div');
+        msg.id = 'noCameraMsg';
+        msg.style.cssText = `
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px; padding: 40px 30px; color: #fff; text-align: center;
+        `;
+        msg.innerHTML = `
+            <div style="font-size:56px;">📷</div>
+            <div style="font-size:18px; font-weight:bold;">No camera detected</div>
+            <div style="font-size:14px; opacity:0.85; max-width:320px;">
+                Connect a webcam or use one of the options below to look up a book by ISBN.
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:320px;">
+                <div style="display:flex; gap:8px;">
+                    <input id="noCameraIsbn" type="text" placeholder="Enter ISBN manually"
+                        style="flex:1; padding:10px 14px; border-radius:8px; border:none; font-size:15px; outline:none;" />
+                    <button id="noCameraSearch"
+                        style="padding:10px 18px; background:#27ae60; color:#fff; border:none; border-radius:8px; font-size:15px; cursor:pointer; font-weight:bold;">
+                        Search
+                    </button>
+                </div>
+                <button id="noCameraUpload"
+                    style="padding:10px; background:#3498db; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer;">
+                    📁 Upload barcode image
+                </button>
+            </div>
+        `;
+        videoWrapper.appendChild(msg);
+
+        document.getElementById('noCameraSearch').addEventListener('click', async () => {
+            const val = document.getElementById('noCameraIsbn').value.trim();
+            if (!val) return;
+            if (!isValidIsbn(val)) {
+                alert('Invalid ISBN format. Enter a 10 or 13 digit ISBN.');
+                return;
+            }
+            document.getElementById('noCameraSearch').textContent = '...';
+            document.getElementById('noCameraSearch').disabled = true;
+            const cleaned = val.replace(/[^0-9X]/gi, '');
+            isbnInput.value = cleaned;
+            const success = await fetchBookData(cleaned);
+            stopCamera();
+            video.style.display = '';
+            if (success) {
+                showValidation('✓ Book details loaded successfully!', 'success');
+                highlightFilledFields();
+            } else {
+                showValidation('No book found for this ISBN.', 'error');
+            }
+        });
+
+        document.getElementById('noCameraIsbn').addEventListener('keypress', e => {
+            if (e.key === 'Enter') document.getElementById('noCameraSearch').click();
+        });
+
+        document.getElementById('noCameraUpload').addEventListener('click', () => {
+            stopCamera();
+            video.style.display = '';
+            fileUpload.click();
+        });
+
+        console.warn('No camera found — showing manual fallback UI');
+    }
+
+    function stopCamera() {
+        isScanning = false;
+        detectionHistory = [];
+
+        if (scanningInterval) {
+            clearInterval(scanningInterval);
+            scanningInterval = null;
+        }
+
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+
+        removeScanningIndicator();
+        cameraModal.style.display = 'none';
+    }
+
+    // ── Book data ────────────────────────────────────────────────────
+
+    async function fetchBookData(isbn) {
+        const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`;
+        const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=details&format=json`;
+
+        // Fire both requests simultaneously
+        const [googleResult, olResult] = await Promise.allSettled([
+            fetch(googleUrl).then(r => r.json()),
+            fetch(olUrl).then(r => r.json())
+        ]);
+
+        let title = '', author = '', publisher = '', pages = '', date = '', desc = '';
+
+        // Parse Google Books
+        if (googleResult.status === 'fulfilled') {
+            const data = googleResult.value;
+            if (data.totalItems > 0) {
+                const info = data.items[0].volumeInfo;
+                title = info.title || '';
+                author = info.authors?.join(', ') || '';
+                publisher = info.publisher || '';
+                pages = info.pageCount || '';
+                date = info.publishedDate || '';
+                desc = info.description || '';
+                console.log('✓ Google Books hit');
+            }
+        }
+
+        // Parse OpenLibrary — fill any gaps left by Google
+        if (olResult.status === 'fulfilled') {
+            const data = olResult.value;
+            const key = `ISBN:${isbn}`;
+            if (data[key]) {
+                const d = data[key].details;
+                if (!title) title = d.title || '';
+                if (!author) author = d.authors?.map(a => a.name).join(', ') || '';
+                if (!publisher) publisher = d.publishers?.[0] || '';
+                if (!pages) pages = d.number_of_pages || '';
+                if (!date) date = d.publish_date || '';
+                console.log('✓ OpenLibrary hit');
+            }
+        }
+
+        if (!title && !author && !publisher) {
+            console.warn('✗ No book data found in either API for ISBN:', isbn);
+            return false;
+        }
+
+        fillForm(title, author, publisher, pages, date, desc);
+        return true;
+    }
+
+    function fillForm(title, author, publisher, pages, date, desc) {
+        if (title) titleInput.value = title;
+        if (author) authorInput.value = author;
+        if (publisher) publisherInput.value = publisher;
+        if (pages) pagesInput.value = pages;
+        if (date) {
+            const y = date.match(/\d{4}/);
+            if (y) yearInput.value = `${y[0]}-01-01`;
+        }
+        if (desc) remarksInput.value = desc.substring(0, 600);
+    }
+
+    // ── Validation ───────────────────────────────────────────────────
+
+    function isValidIsbn(val) {
+        const clean = val.replace(/[^0-9X]/gi, '');
+        return (/^\d{9}[0-9X]$/i.test(clean) || /^(978|979)\d{10}$/.test(clean));
+    }
+
+    function showValidation(msg, type = 'info') {
+        if (!isbnValidation) return;
+        isbnValidation.textContent = msg;
+        isbnValidation.className = `validation-message ${type}`;
+        if (type !== 'error') {
+            setTimeout(() => {
+                isbnValidation.textContent = '';
+                isbnValidation.className = 'validation-message';
+            }, 5000);
+        }
+    }
+
+    // ── Book cover OCR preprocessing ─────────────────────────────────
+
+    function calculateOtsuThreshold(data) {
+        const histogram = new Array(256).fill(0);
+        for (let i = 0; i < data.length; i += 4) histogram[data[i]]++;
+        const total = data.length / 4;
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * histogram[i];
+        let sumB = 0, wB = 0, maxVariance = 0, threshold = 128;
+        for (let i = 0; i < 256; i++) {
+            wB += histogram[i];
+            if (wB === 0) continue;
+            const wF = total - wB;
+            if (wF === 0) break;
+            sumB += i * histogram[i];
+            const mB = sumB / wB;
+            const mF = (sum - sumB) / wF;
+            const variance = wB * wF * (mB - mF) ** 2;
+            if (variance > maxVariance) { maxVariance = variance; threshold = i; }
+        }
+        return threshold;
+    }
 
     function preprocessForBookCoverOCR(sourceCanvas) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-
         const scale = 3;
         canvas.width = sourceCanvas.width * scale;
         canvas.height = sourceCanvas.height * scale;
-
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
 
@@ -657,12 +913,10 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i], g = data[i + 1], b = data[i + 2];
             let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-
             const max = Math.max(r, g, b);
             const min = Math.min(r, g, b);
             const sat = max === 0 ? 0 : (max - min) / max;
             if (sat > 0.35) gray *= 1.12;
-
             gray = Math.max(0, Math.min(255, Math.round(gray)));
             data[i] = data[i + 1] = data[i + 2] = gray;
         }
@@ -677,24 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return canvas;
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // REST OF THE CODE (All existing functionality unchanged)
-    // ═══════════════════════════════════════════════════════════════════
-
-    function captureVideoFrame() {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-
-        if (isDesktopCamera) {
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(video, 0, 0);
-        return canvas.toDataURL('image/jpeg');
-    }
+    // ── Cover canvas interactions ────────────────────────────────────
 
     function applyTransform() {
         const ctx = coverCanvas.getContext('2d');
@@ -822,7 +1059,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ctx = coverCanvas.getContext('2d');
         ctx.drawImage(tempCanvasRef, 0, 0);
-
         ctx.strokeStyle = '#3498db';
         ctx.lineWidth = 3;
         ctx.setLineDash([6, 4]);
@@ -853,7 +1089,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     coverCanvas.addEventListener('touchstart', e => {
         e.preventDefault();
-
         const touches = e.touches;
 
         if (touches.length === 2) {
@@ -865,7 +1100,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (touches.length === 1) {
             const pos = getTouchPos(touches[0]);
-
             if (mobileMode === 'pan') {
                 isPanning = true;
                 lastPanX = pos.clientX;
@@ -875,7 +1109,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 startX = pos.x;
                 startY = pos.y;
                 isDrawing = true;
-
                 tempCanvasRef = document.createElement('canvas');
                 tempCanvasRef.width = coverCanvas.width;
                 tempCanvasRef.height = coverCanvas.height;
@@ -886,26 +1119,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     coverCanvas.addEventListener('touchmove', e => {
         e.preventDefault();
-
         const touches = e.touches;
 
         if (touches.length === 2 && lastTouchDistance > 0) {
             const currentDistance = getTouchDistance(touches[0], touches[1]);
             const scaleFactor = currentDistance / lastTouchDistance;
-
             const rect = coverCanvas.getBoundingClientRect();
             const centerX = (touches[0].clientX + touches[1].clientX) / 2;
             const centerY = (touches[0].clientY + touches[1].clientY) / 2;
-
             const mouseX = (centerX - rect.left) / zoomLevel + panX;
             const mouseY = (centerY - rect.top) / zoomLevel + panY;
-
             const oldZoom = zoomLevel;
             zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * scaleFactor));
-
             panX = mouseX - (mouseX - panX) * (zoomLevel / oldZoom);
             panY = mouseY - (mouseY - panY) * (zoomLevel / oldZoom);
-
             lastTouchDistance = currentDistance;
             applyTransform();
             return;
@@ -928,10 +1155,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isDrawing) {
                 const currentX = pos.x;
                 const currentY = pos.y;
-
                 const ctx = coverCanvas.getContext('2d');
                 ctx.drawImage(tempCanvasRef, 0, 0);
-
                 ctx.strokeStyle = '#3498db';
                 ctx.lineWidth = 3;
                 ctx.setLineDash([6, 4]);
@@ -958,12 +1183,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isDrawing) {
             isDrawing = false;
-
             const touch = e.changedTouches[0];
             const pos = getTouchPos(touch);
             const endX = pos.x;
             const endY = pos.y;
-
             await processSelection(startX, startY, endX, endY);
         }
     }, { passive: false });
@@ -1045,7 +1268,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         mobileToggleBtn = document.createElement('button');
         mobileToggleBtn.id = 'mobileToggleBtn';
-
         mobileToggleBtn.style.cssText = `
             position: fixed;
             bottom: 30px;
@@ -1065,13 +1287,11 @@ document.addEventListener('DOMContentLoaded', () => {
             display: none;
             white-space: nowrap;
         `;
-
         mobileToggleBtn.innerHTML = '✏️ DRAW';
 
         mobileToggleBtn.addEventListener('click', () => {
             mobileMode = mobileMode === 'draw' ? 'pan' : 'draw';
             updateMobileCursor();
-
             if (mobileMode === 'draw') {
                 mobileToggleBtn.innerHTML = '✏️ DRAW';
                 mobileToggleBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
@@ -1088,7 +1308,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateMobileCursor() {
         if (!isMobileDevice) return;
-
         if (mobileMode === 'draw') {
             coverCanvas.style.cursor = 'crosshair';
         } else {
@@ -1104,7 +1323,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const instructions = isMobileDevice
                 ? 'Tap the button below to switch modes<br>DRAW mode: Drag to select text<br>PAN mode: Drag to move image<br>Pinch to zoom'
                 : 'Draw rectangles around text areas<br>Shift+drag to pan • Scroll to zoom';
-
             detectedTextList.innerHTML = `
                 <div style="text-align:center; padding:20px; color:#3498db;">
                     <b>${currentSide.toUpperCase()} COVER</b><br>
@@ -1286,6 +1504,138 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
     }
 
+    // ── File upload ──────────────────────────────────────────────────
+
+    async function tryBarcodeReaderFromImage(imageSource) {
+        if (!codeReader) {
+            console.log('→ ZXing not available, skipping barcode detection');
+            return null;
+        }
+
+        try {
+            console.log('🔍 Trying ZXing barcode reader on uploaded image...');
+
+            let imageUrl;
+            if (typeof imageSource === 'string') {
+                imageUrl = imageSource;
+            } else {
+                imageUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(imageSource);
+                });
+            }
+
+            const strategies = [
+                { name: 'original', transform: null },
+                { name: 'high-contrast', transform: applyHighContrastImage },
+                { name: 'inverted', transform: invertColorsImage },
+                { name: 'sharpened', transform: sharpenImageFile }
+            ];
+
+            for (const strategy of strategies) {
+                try {
+                    console.log(`  → Trying barcode read: ${strategy.name}`);
+                    let processedUrl = imageUrl;
+                    if (strategy.transform) {
+                        processedUrl = await strategy.transform(imageUrl);
+                    }
+                    const result = await codeReader.decodeFromImageUrl(processedUrl);
+                    if (result) {
+                        const barcode = result.getText();
+                        console.log(`  → Raw barcode: ${barcode}`);
+                        const isbn = extractIsbnFromBarcode(barcode);
+                        if (isbn) {
+                            console.log(`  ✓ SUCCESS with ${strategy.name}: ${isbn}`);
+                            return isbn;
+                        }
+                    }
+                } catch (err) {
+                    // Continue to next strategy
+                }
+            }
+
+            console.log('  ✗ ZXing barcode reader found no ISBN');
+            return null;
+        } catch (err) {
+            console.log('  ✗ ZXing error:', err.message);
+            return null;
+        }
+    }
+
+    async function applyHighContrastImage(imageUrl) {
+        return transformImageFile(imageUrl, (ctx, canvas) => {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                const val = avg > 127 ? 255 : 0;
+                data[i] = data[i + 1] = data[i + 2] = val;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        });
+    }
+
+    async function invertColorsImage(imageUrl) {
+        return transformImageFile(imageUrl, (ctx, canvas) => {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];
+                data[i + 1] = 255 - data[i + 1];
+                data[i + 2] = 255 - data[i + 2];
+            }
+            ctx.putImageData(imgData, 0, 0);
+        });
+    }
+
+    async function sharpenImageFile(imageUrl) {
+        return transformImageFile(imageUrl, (ctx, canvas) => {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+            const output = new Uint8ClampedArray(data);
+            const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    for (let c = 0; c < 3; c++) {
+                        let sum = 0;
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                                const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                                sum += data[idx] * kernel[kernelIdx];
+                            }
+                        }
+                        const idx = (y * width + x) * 4 + c;
+                        output[idx] = Math.max(0, Math.min(255, sum));
+                    }
+                }
+            }
+            const newImgData = ctx.createImageData(width, height);
+            newImgData.data.set(output);
+            ctx.putImageData(newImgData, 0, 0);
+        });
+    }
+
+    async function transformImageFile(imageUrl, transformFn) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                transformFn(ctx, canvas);
+                resolve(canvas.toDataURL('image/jpeg', 0.92));
+            };
+            img.src = imageUrl;
+        });
+    }
+
     fileUpload.addEventListener('change', async e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1298,22 +1648,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isBarcode) {
                 const btn = document.querySelector('.btn-blue') || searchIsbnBtn;
                 const orig = btn.innerText;
-
-                btn.innerText = "Scanning ISBN...";
+                btn.innerText = 'Scanning ISBN...';
                 btn.disabled = true;
 
-                const isbn = await processImageAndGetIsbn(file);
+                const isbn = await tryBarcodeReaderFromImage(file);
 
                 if (isbn) {
                     isbnInput.value = isbn;
                     const success = await fetchBookData(isbn);
                     alert(
                         success
-                            ? "✓ Book details loaded successfully!"
-                            : "ISBN found but no match in database. Try entering details manually."
+                            ? '✓ Book details loaded successfully!'
+                            : 'ISBN found but no match in database. Try entering details manually.'
                     );
                 } else {
-                    alert("✗ No valid ISBN detected.\n\nTips:\n• Ensure barcode is visible and in focus\n• Try better lighting\n• Hold camera steady\n• Or enter ISBN manually");
+                    alert('✗ No valid ISBN detected.\n\nTips:\n• Ensure barcode is visible and in focus\n• Try better lighting\n• Hold camera steady\n• Or enter ISBN manually');
                 }
 
                 btn.innerText = orig;
@@ -1321,7 +1670,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             } else {
                 const isFront = confirm('OK = Front Cover\nCancel = Exit');
-
                 if (isFront) {
                     await processCoverImage(file, 'front');
                     break;
@@ -1334,186 +1682,26 @@ document.addEventListener('DOMContentLoaded', () => {
         fileUpload.value = '';
     });
 
-    async function startAutoScan() {
-        if (!isScanning) return;
-        const isbn = await processImageAndGetIsbn(captureVideoFrame());
-        if (isbn) {
-            isbnInput.value = isbn;
-            const success = await fetchBookData(isbn);
-            if (success) stopCamera();
-        }
-        if (isScanning) scanTimeout = setTimeout(startAutoScan, 2000);
-    }
+    // ── Event listeners ──────────────────────────────────────────────
 
-    captureBtn.addEventListener('click', async () => {
-        if (!isScanning) return;
-        captureBtn.innerText = "Scanning...";
-        captureBtn.disabled = true;
-
-        const isbn = await processImageAndGetIsbn(captureVideoFrame());
-        if (isbn) {
-            isbnInput.value = isbn;
-            const success = await fetchBookData(isbn);
-            if (success) stopCamera();
-            else {
-                captureBtn.innerText = "Capture";
-                captureBtn.disabled = false;
-            }
-        } else {
-            alert("No ISBN detected.\n\nTips:\n• Adjust angle and distance\n• Improve lighting\n• Hold camera steady");
-            captureBtn.innerText = "Capture";
-            captureBtn.disabled = false;
-        }
-    });
-
-    async function fetchBookData(isbn) {
-        const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`;
-        const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=details&format=json`;
-
-        try {
-            let res = await fetch(googleUrl);
-            let data = await res.json();
-            if (data.totalItems > 0) {
-                const info = data.items[0].volumeInfo;
-                fillForm(
-                    info.title,
-                    info.authors?.join(', ') || '',
-                    info.publisher || '',
-                    info.pageCount || '',
-                    info.publishedDate || '',
-                    info.description || ''
-                );
-                return true;
-            }
-
-            res = await fetch(olUrl);
-            data = await res.json();
-            const key = `ISBN:${isbn}`;
-            if (data[key]) {
-                const d = data[key].details;
-                fillForm(
-                    d.title || '',
-                    d.authors?.map(a => a.name).join(', ') || '',
-                    d.publishers?.[0] || '',
-                    d.number_of_pages || '',
-                    d.publish_date || '',
-                    ''
-                );
-                return true;
-            }
-            return false;
-        } catch {
-            return false;
-        }
-    }
-
-    function fillForm(title, author, publisher, pages, date, desc) {
-        if (title) titleInput.value = title;
-        if (author) authorInput.value = author;
-        if (publisher) publisherInput.value = publisher;
-        if (pages) pagesInput.value = pages;
-        if (date) {
-            const y = date.match(/\d{4}/);
-            if (y) yearInput.value = `${y[0]}-01-01`;
-        }
-        if (desc) remarksInput.value = desc.substring(0, 600);
-    }
-
-    async function getCameras() {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        videoSourceSelect.innerHTML = '';
-        devices.filter(d => d.kind === 'videoinput').forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.deviceId;
-            opt.text = d.label || `Camera ${videoSourceSelect.length + 1}`;
-            videoSourceSelect.appendChild(opt);
-        });
-    }
-
-    async function startCamera(deviceId = null) {
-        if (stream) stream.getTracks().forEach(t => t.stop());
-
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        isDesktopCamera = !isMobile;
-
-        let constraints;
-        if (deviceId) {
-            constraints = {
-                video: {
-                    deviceId: { exact: deviceId },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-        } else if (isMobile) {
-            constraints = {
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                }
-            };
-        } else {
-            constraints = {
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-        }
-
-        try {
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = stream;
-
-            video.style.transform = isDesktopCamera ? "scaleX(-1)" : "scaleX(1)";
-
-            if (videoSourceSelect.options.length === 0) await getCameras();
-            video.onloadedmetadata = () => {
-                isScanning = true;
-                startAutoScan();
-            };
-        } catch (err) {
-            console.error("Camera error:", err);
-            alert("Camera access denied or unavailable.");
-        }
-    }
-
-    scanIsbnBtn.addEventListener('click', () => {
+    scanIsbnBtn?.addEventListener('click', () => {
         cameraModal.style.display = 'flex';
         startCamera();
     });
 
-    videoSourceSelect.addEventListener('change', () => startCamera(videoSourceSelect.value));
-
-    const stopCamera = () => {
-        isScanning = false;
-        clearTimeout(scanTimeout);
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        cameraModal.style.display = 'none';
-        captureBtn.innerText = "Capture";
-        captureBtn.disabled = false;
-    };
-
-    closeCameraBtn.addEventListener('click', stopCamera);
-
-    function isValidIsbn(val) {
-        const clean = val.replace(/[^0-9X]/gi, '');
-        return (/^\d{9}[0-9X]$/i.test(clean) || /^(978|979)\d{10}$/.test(clean));
-    }
-
-    function showValidation(msg, type = 'info') {
-        isbnValidation.textContent = msg;
-        isbnValidation.className = `validation-message ${type}`;
-        if (type !== 'error') {
-            setTimeout(() => {
-                isbnValidation.textContent = '';
-                isbnValidation.className = 'validation-message';
-            }, 5000);
+    videoSourceSelect?.addEventListener('change', () => {
+        if (isScanning) {
+            startCamera(videoSourceSelect.value);
         }
+    });
+
+    closeCameraBtn?.addEventListener('click', stopCamera);
+
+    if (captureBtn) {
+        captureBtn.style.display = 'none';
     }
 
-    searchIsbnBtn.addEventListener('click', async () => {
+    searchIsbnBtn?.addEventListener('click', async () => {
         const val = isbnInput.value.trim();
         if (!val) return showValidation('Enter an ISBN', 'error');
         if (!isValidIsbn(val)) return showValidation('Invalid ISBN format', 'error');
@@ -1527,12 +1715,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (success) {
             showValidation('Book found ✓', 'success');
-            [titleInput, authorInput, publisherInput].forEach(el => {
-                if (el?.value) {
-                    el.style.borderColor = '#27ae60';
-                    setTimeout(() => el.style.borderColor = '', 2200);
-                }
-            });
+            highlightFilledFields();
         } else {
             showValidation('No book found for this ISBN', 'error');
         }
@@ -1541,19 +1724,18 @@ document.addEventListener('DOMContentLoaded', () => {
         searchIsbnBtn.classList.remove('loading');
     });
 
-    isbnInput.addEventListener('input', e => {
+    isbnInput?.addEventListener('input', e => {
         const v = e.target.value.trim();
         if (v && !isValidIsbn(v)) {
-            isbnValidation.textContent = 'Invalid ISBN format';
-            isbnValidation.className = 'validation-message error';
+            showValidation('Invalid ISBN format', 'error');
         } else {
             isbnValidation.textContent = '';
             isbnValidation.className = 'validation-message';
         }
     });
 
-    isbnInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') searchIsbnBtn.click();
+    isbnInput?.addEventListener('keypress', e => {
+        if (e.key === 'Enter') searchIsbnBtn?.click();
     });
 
     document.addEventListener('keydown', e => {
