@@ -75,9 +75,14 @@
                 <a href="@Url.Action("Register", "Account")">Create Account</a>
             </div>
 
-        </form>
-    </div>
+        </form> <div class="opac-access-container" style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <p style="margin-bottom: 10px; font-size: 14px; color: #555;">Are you a student looking for a book?</p>
+            <a asp-controller="Opac" asp-action="Opac" class="btn btn-primary" style="display: inline-block; background-color: #2980b9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                <i class="fas fa-search"></i> Browse Library Catalog
+            </a>
+        </div>
 
+    </div>
     <script src="~/js/login.js"></script>
     <script src="~/js/passwordToggle.js"></script>
 </body>

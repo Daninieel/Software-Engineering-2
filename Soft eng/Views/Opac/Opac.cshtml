@@ -1,0 +1,321 @@
+﻿@model List<Soft_eng.Models.LogBook>
+@{
+    ViewBag.Title = "Student Library Catalog";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPAC - Saint Isidore Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/opac.css" asp-append-version="true" />
+</head>
+<body>
+
+    <header class="opac-header">
+        <div class="opac-header-left">
+            <div class="opac-logo-circle">
+                <img src="~/images/school_logo.jpg" alt="Logo">
+            </div>
+            <span class="opac-school-name">Saint Isidore Academy - Library Catalog</span>
+        </div>
+        <a asp-controller="Account" asp-action="Login" class="btn-back-login">
+            <i class="fas fa-arrow-left"></i>
+            <span>Home</span>
+        </a>
+    </header>
+
+    <div class="opac-container">
+
+        @{
+            string activeQuery    = ViewBag.SearchQuery  as string ?? "";
+            string activeAvail    = ViewBag.Availability as string ?? "";
+            string activeShelf    = ViewBag.ShelfLocation as string ?? "";
+            string activeSort     = ViewBag.SortBy       as string ?? "title_asc";
+            bool   hasAnyFilter   = !string.IsNullOrEmpty(activeQuery) ||
+                                    !string.IsNullOrEmpty(activeAvail) ||
+                                    !string.IsNullOrEmpty(activeShelf);
+        }
+
+        @if (hasAnyFilter)
+        {
+            <div class="active-filters-bar">
+                <span><i class="fas fa-filter"></i> Active filters:</span>
+
+                @if (!string.IsNullOrEmpty(activeQuery))
+                {
+                    <span class="filter-tag">
+                        <i class="fas fa-search"></i> "@activeQuery"
+                        <a href="/Opac/Opac?availability=@activeAvail&shelfLocation=@activeShelf&sortBy=@activeSort">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </span>
+                }
+
+                @if (!string.IsNullOrEmpty(activeAvail))
+                {
+                    <span class="filter-tag">
+                        <i class="fas fa-circle-check"></i> @activeAvail
+                        <a href="/Opac/Opac?query=@activeQuery&shelfLocation=@activeShelf&sortBy=@activeSort">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </span>
+                }
+
+                @if (!string.IsNullOrEmpty(activeShelf))
+                {
+                    <span class="filter-tag">
+                        <i class="fas fa-layer-group"></i> @activeShelf
+                        <a href="/Opac/Opac?query=@activeQuery&availability=@activeAvail&sortBy=@activeSort">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </span>
+                }
+
+                <a href="/Opac/Opac" class="clear-all-filters">Clear all</a>
+            </div>
+        }
+
+        <form asp-controller="Opac" asp-action="Opac" method="get" class="search-section">
+
+            <div class="search-bar-row">
+                <input type="text" name="query" value="@activeQuery"
+                       placeholder="Search for books by title, author, or ISBN..." />
+                <button type="submit">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <a href="/Opac/Opac" class="btn-clear">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+
+            <div class="filter-row">
+
+                <div class="filter-group">
+                    <label><i class="fas fa-circle-check"></i> Availability</label>
+                    <select name="availability">
+                        <option value="">All</option>
+                        @if (activeAvail == "Available")
+                        {
+                            <option value="Available" selected>Available</option>
+                            <option value="Checked Out">Checked Out</option>
+                        }
+                        else if (activeAvail == "Checked Out")
+                        {
+                            <option value="Available">Available</option>
+                            <option value="Checked Out" selected>Checked Out</option>
+                        }
+                        else
+                        {
+                            <option value="Available">Available</option>
+                            <option value="Checked Out">Checked Out</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label><i class="fas fa-layer-group"></i> Shelf Location</label>
+                    <select name="shelfLocation">
+                        <option value="">All Locations</option>
+                        @if (ViewBag.ShelfLocations != null)
+                        {
+                            foreach (var loc in ViewBag.ShelfLocations)
+                            {
+                                string locStr = loc as string ?? loc.ToString();
+                                if (activeShelf == locStr)
+                                {
+                                    <option value="@locStr" selected>@locStr</option>
+                                }
+                                else
+                                {
+                                    <option value="@locStr">@locStr</option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label><i class="fas fa-arrow-down-a-z"></i> Sort By</label>
+                    <select name="sortBy">
+                        @if (activeSort == "title_asc")
+                        {
+                            <option value="title_asc" selected>Title A-Z</option>
+                            <option value="title_desc">Title Z-A</option>
+                            <option value="author_asc">Author A-Z</option>
+                            <option value="author_desc">Author Z-A</option>
+                        }
+                        else if (activeSort == "title_desc")
+                        {
+                            <option value="title_asc">Title A-Z</option>
+                            <option value="title_desc" selected>Title Z-A</option>
+                            <option value="author_asc">Author A-Z</option>
+                            <option value="author_desc">Author Z-A</option>
+                        }
+                        else if (activeSort == "author_asc")
+                        {
+                            <option value="title_asc">Title A-Z</option>
+                            <option value="title_desc">Title Z-A</option>
+                            <option value="author_asc" selected>Author A-Z</option>
+                            <option value="author_desc">Author Z-A</option>
+                        }
+                        else if (activeSort == "author_desc")
+                        {
+                            <option value="title_asc">Title A-Z</option>
+                            <option value="title_desc">Title Z-A</option>
+                            <option value="author_asc">Author A-Z</option>
+                            <option value="author_desc" selected>Author Z-A</option>
+                        }
+                        else
+                        {
+                            <option value="title_asc" selected>Title A-Z</option>
+                            <option value="title_desc">Title Z-A</option>
+                            <option value="author_asc">Author A-Z</option>
+                            <option value="author_desc">Author Z-A</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-apply-filters">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+
+            </div>
+
+        </form>
+
+        <div class="results-count">
+            @if (Model.Any())
+            {
+                <span><strong>@Model.Count</strong> book@(Model.Count == 1 ? "" : "s") found</span>
+            }
+        </div>
+
+        <div class="book-grid">
+            @if (Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    string cleanIsbn = string.IsNullOrWhiteSpace(item.ISBN)
+                        ? ""
+                        : item.ISBN.Replace("-", "").Trim();
+
+                    <div class="book-card">
+                        <div class="book-cover-container">
+                            <img id="cover-@item.BookID"
+                                 src="~/images/library.png"
+                                 alt="Cover of @item.BookTitle"
+                                 data-isbn="@cleanIsbn"
+                                 data-title="@item.BookTitle"
+                                 data-author="@item.Author"
+                                 class="book-cover-img" />
+                        </div>
+
+                        <div class="book-info">
+                            <h4 class="book-title">@item.BookTitle</h4>
+                            <div class="book-author">
+                                <i class="fas fa-pen-nib"></i> @item.Author
+                            </div>
+                            <div class="book-meta">
+                                <span>
+                                    <i class="fas fa-layer-group"></i>
+                                    <strong>Shelf:</strong> @item.ShelfLocation
+                                </span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(cleanIsbn))
+                            {
+                                <div class="book-meta">
+                                    <span>
+                                        <i class="fas fa-barcode"></i>
+                                        <strong>ISBN:</strong> @item.ISBN
+                                    </span>
+                                </div>
+                            }
+                            @if (item.Availability == "Available")
+                            {
+                                <span class="status-badge status-available">
+                                    <i class="fas fa-check-circle"></i> Available
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-borrowed">
+                                    <i class="fas fa-times-circle"></i> Borrowed
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fas fa-books"></i>
+                    <h2>No books found.</h2>
+                    <p>Try adjusting your search or filter options.</p>
+                </div>
+            }
+        </div>
+
+    </div>
+
+    <script>
+        const GOOGLE_BOOKS_API_KEY = "YOUR_API_KEY_HERE";
+
+        async function loadCover(img) {
+            const isbn   = img.dataset.isbn;
+            const title  = img.dataset.title;
+            const author = img.dataset.author;
+
+            const query = isbn
+                ? `isbn:${isbn}`
+                : `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
+
+            try {
+                const res  = await fetch(
+                    `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${GOOGLE_BOOKS_API_KEY}&maxResults=1&fields=items/volumeInfo/imageLinks`
+                );
+                const data = await res.json();
+                const thumbnail = data?.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+
+                if (thumbnail) {
+                    img.src = thumbnail.replace("http://", "https://");
+                    img.classList.add("cover-loaded");
+                    return;
+                }
+            } catch (_) {}
+
+            // Fallback 1: Open Library
+            if (isbn) {
+                const olUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+
+                await new Promise((resolve) => {
+                    const testImg   = new Image();
+                    testImg.onload  = () => {
+                        if (testImg.naturalWidth > 10) {
+                            img.src = olUrl;
+                            img.classList.add("cover-loaded");
+                        }
+                        resolve();
+                    };
+                    testImg.onerror = () => resolve();
+                    testImg.src     = olUrl;
+                });
+
+                if (img.classList.contains("cover-loaded")) return;
+            }
+
+            // Fallback 2: generic icon
+            img.classList.add("cover-generic");
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".book-cover-img").forEach(loadCover);
+        });
+    </script>
+
+</body>
+</html>

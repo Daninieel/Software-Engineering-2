@@ -45,12 +45,17 @@ app.UseAuthorization();
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path.StartsWithSegments("/Opac"))
+    {
+        await next();
+        return;
+    }
+
     if (context.User.Identity?.IsAuthenticated == true)
     {
         var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var token = context.User.FindFirst("SessionToken")?.Value;
         var sessionService = context.RequestServices.GetRequiredService<SessionService>();
-
         if (userId != null && token != null && !sessionService.IsValidSession(userId, token))
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
