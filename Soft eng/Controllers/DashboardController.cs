@@ -42,6 +42,22 @@ namespace Soft_eng.Controllers
             return View();
         }
 
+        // ── NEW: Dedicated Analytics page ──
+        public async Task<IActionResult> Analytics(int? year, int? month)
+        {
+            var data = await GetDashboardViewModel(year, month);
+            ViewBag.TotalBooks = data.TotalBooks;
+            ViewBag.TotalBorrowed = data.TotalBorrowed;
+            ViewBag.TotalReturned = data.TotalReturned;
+            ViewBag.TotalOverdue = data.TotalOverdue;
+            ViewBag.TotalMissing = data.TotalMissing;
+            ViewBag.TotalDamaged = data.TotalDamaged;
+            ViewBag.TotalFine = data.TotalFine;
+            ViewBag.SelectedYear = year.HasValue ? year.Value : (int?)null;
+            ViewBag.SelectedMonth = month.HasValue ? month.Value : (int?)null;
+            return View();
+        }
+
         private async Task<dynamic> GetDashboardViewModel(int? year = null, int? month = null)
         {
             int totalBooks = 0, totalBorrowed = 0, totalReturned = 0,

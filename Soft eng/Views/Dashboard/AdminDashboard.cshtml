@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewBag.Title = "Admin Dashboard";
     Layout = null;
 
@@ -56,11 +56,28 @@
         <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
-                    <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
-                        <a asp-controller="Dashboard" asp-action="AdminDashboard">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                    </li>
+                    <!-- ── Dashboards Dropdown (Main Overview + Analytics) ── -->
+                    <li class="dropdown-item @(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "open" : "")">
+    <a href="javascript:void(0)" class="dropdown-toggle" id="mainDashboardBtn">
+        <span class="dropdown-toggle-inner">
+            <i class="fas fa-tachometer-alt"></i> Dashboards
+        </span>
+        <i class="fas fa-chevron-down arrow-icon"
+           style="@(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "transform:rotate(180deg);" : "")"></i>
+    </a>
+    <ul class="submenu @(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "show" : "")" id="mainDashboardSubmenu">
+        <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
+            <a asp-controller="Dashboard" asp-action="AdminDashboard">
+                <i class="fas fa-home"></i> Main Overview
+            </a>
+        </li>
+        <li class="@(ViewBag.Title == "Analytics" ? "active" : "")">
+            <a asp-controller="Dashboard" asp-action="Analytics">
+                <i class="fas fa-chart-pie"></i> Analytics
+            </a>
+        </li>
+    </ul>
+</li>
 
                     <li class="@(ViewBag.Title == "Pending Users" ? "active" : "")">
                         <a asp-controller="Account" asp-action="PendingUsers">
@@ -285,13 +302,12 @@
         </main>
     </div>
 
+    <!-- Logout Modal -->
     <div id="logoutModal" style="
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
         z-index: 9999;
         justify-content: center;
@@ -301,67 +317,38 @@
             background-color: #ffffff;
             border-radius: 12px;
             padding: 40px 36px 32px;
-            width: 360px;
-            max-width: 90%;
+            width: 360px; max-width: 90%;
             text-align: center;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
             font-family: 'Poppins', sans-serif;
         ">
             <div style="
-                width: 56px;
-                height: 56px;
+                width: 56px; height: 56px;
                 background-color: #fff3cd;
                 border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                display: flex; align-items: center; justify-content: center;
                 margin: 0 auto 18px;
             ">
                 <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
             </div>
-            <p style="
-                font-size: 18px;
-                font-weight: 600;
-                color: #333333;
-                margin: 0 0 8px;
-            ">Do you wish to logout?</p>
-            <p style="
-                font-size: 13px;
-                color: #777777;
-                margin: 0 0 24px;
-            ">You will need to log in again to access the system.</p>
-            <div style="
-                display: flex;
-                justify-content: center;
-                gap: 14px;
-            ">
+            <p style="font-size: 18px; font-weight: 600; color: #333333; margin: 0 0 8px;">Do you wish to logout?</p>
+            <p style="font-size: 13px; color: #777777; margin: 0 0 24px;">You will need to log in again to access the system.</p>
+            <div style="display: flex; justify-content: center; gap: 14px;">
                 <button onclick="confirmLogout();" style="
-                    background-color: #e74c3c;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 10px 28px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    font-family: 'Poppins', sans-serif;
-                    transition: background-color 0.2s;
+                    background-color: #e74c3c; color: #ffffff;
+                    border: none; border-radius: 6px;
+                    padding: 10px 28px; font-size: 14px; font-weight: 600;
+                    cursor: pointer; font-family: 'Poppins', sans-serif;
                 " onmouseover="this.style.backgroundColor='#c0392b'"
                         onmouseout="this.style.backgroundColor='#e74c3c'">
                     Yes
                 </button>
 
                 <button onclick="closeLogoutModal();" style="
-                    background-color: #2980b9;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 10px 28px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    font-family: 'Poppins', sans-serif;
-                    transition: background-color 0.2s;
+                    background-color: #2980b9; color: #ffffff;
+                    border: none; border-radius: 6px;
+                    padding: 10px 28px; font-size: 14px; font-weight: 600;
+                    cursor: pointer; font-family: 'Poppins', sans-serif;
                 " onmouseover="this.style.backgroundColor='#1a6da0'"
                         onmouseout="this.style.backgroundColor='#2980b9'">
                     No
@@ -379,18 +366,30 @@
         function showLogoutModal() {
             document.getElementById('logoutModal').style.display = 'flex';
         }
-
         function closeLogoutModal() {
             document.getElementById('logoutModal').style.display = 'none';
         }
-
         function confirmLogout() {
             document.getElementById('logoutForm').submit();
         }
-
         document.getElementById('logoutModal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeLogoutModal();
+            if (e.target === this) closeLogoutModal();
+        });
+    </script>
+
+    <!-- ── Dashboards submenu toggle ── -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const dashBtn  = document.getElementById("mainDashboardBtn");
+            const dashMenu = document.getElementById("mainDashboardSubmenu");
+            if (dashBtn && dashMenu) {
+                dashBtn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const isOpen = dashMenu.style.display === "block";
+                    dashMenu.style.display = isOpen ? "none" : "block";
+                    const arrow = dashBtn.querySelector(".arrow-icon");
+                    if (arrow) arrow.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
+                });
             }
         });
     </script>

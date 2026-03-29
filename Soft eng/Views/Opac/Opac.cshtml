@@ -275,9 +275,9 @@
                 : `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
 
             try {
-                const res  = await fetch(
-                    `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${GOOGLE_BOOKS_API_KEY}&maxResults=1&fields=items/volumeInfo/imageLinks`
-                );
+                const res = await fetch(
+    `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${GOOGLE_BOOKS_API_KEY}&maxResults=1`
+);
                 const data = await res.json();
                 const thumbnail = data?.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
 
@@ -288,7 +288,7 @@
                 }
             } catch (_) {}
 
-            // Fallback 1: Open Library
+
             if (isbn) {
                 const olUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
 

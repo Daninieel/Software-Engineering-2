@@ -234,15 +234,24 @@ namespace Soft_eng.Controllers
                     await updateAvail.ExecuteNonQueryAsync();
                 }
 
-                // ── Create or update fine ──
-                // Damaged/Missing: use exact custom amount entered (required above)
-                // Overdue only: use fineAmount if provided, otherwise default 5.00
-                // Teachers are always exempt
+
+                if (DateTime.Now.Date > due.Date)
+                    isOverdue = true;
+
                 if ((isOverdue || isDamagedOrMissing) && borrowerType.Trim().ToLower() != "teacher")
                 {
-                    decimal fineToSave = isDamagedOrMissing
-                        ? fineAmount!.Value
-                        : (fineAmount.HasValue && fineAmount.Value > 0 ? fineAmount.Value : 5.00m);
+                    decimal fineToSave;
+
+                    if (isDamagedOrMissing)
+                    {
+                        fineToSave = fineAmount!.Value; 
+                    }
+                    else
+                    {
+
+                        int daysOverdue = (DateTime.Now.Date - due.Date).Days;
+                        fineToSave = 5.00m + (daysOverdue > 0 ? daysOverdue * 1.00m : 0);
+                    }
 
                     using var checkFineCmd = new MySqlCommand(
                         "SELECT FineID FROM Fine WHERE LoanID = @id AND PaymentStatus = 'Unpaid'", _connection);
@@ -305,12 +314,27 @@ namespace Soft_eng.Controllers
 
                 if (isOverdue)
                 {
+                    // Fetch DateDue to calculate days late
+                    DateTime dateDue = DateTime.Now;
+                    using (var dateCmd = new MySqlCommand(
+                        "SELECT DateDue FROM Loan WHERE LoanID = @loanId", _connection))
+                    {
+                        dateCmd.Parameters.AddWithValue("@loanId", loanId);
+                        var dateResult = await dateCmd.ExecuteScalarAsync();
+                        if (dateResult != null && dateResult != DBNull.Value)
+                            dateDue = Convert.ToDateTime(dateResult);
+                    }
+
+                    // AUTO COMPUTE: ₱5 base + ₱1 per day overdue
+                    int daysLate = (DateTime.Now.Date - dateDue.Date).Days;
+                    decimal calculatedFine = 5.00m + (daysLate > 0 ? daysLate * 1.00m : 0);
+
                     using var insCmd = new MySqlCommand(@"
-                        INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
-                        SELECT @loanId, 'Unpaid', @fine, @fine FROM DUAL 
-                        WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')", _connection);
+        INSERT INTO Fine (LoanID, PaymentStatus, FineAmount, totalFineAmount) 
+        SELECT @loanId, 'Unpaid', @fine, @fine FROM DUAL 
+        WHERE NOT EXISTS (SELECT 1 FROM Fine WHERE LoanID = @loanId AND PaymentStatus = 'Unpaid')", _connection);
                     insCmd.Parameters.AddWithValue("@loanId", loanId);
-                    insCmd.Parameters.AddWithValue("@fine", 5.00m);
+                    insCmd.Parameters.AddWithValue("@fine", calculatedFine);
                     await insCmd.ExecuteNonQueryAsync();
                 }
                 else

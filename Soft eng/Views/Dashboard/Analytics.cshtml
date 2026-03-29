@@ -1,0 +1,481 @@
+﻿@{
+    ViewBag.Title = "Analytics";
+    Layout = null;
+
+    int? selectedYear = ViewBag.SelectedYear as int?;
+    int? selectedMonth = ViewBag.SelectedMonth as int?;
+
+    var monthNames = new[]
+    {
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+    };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Saint Isidore Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/dashboard.admin.css">
+    <link rel="stylesheet" href="~/css/filter-dropdown.css">
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <header class="top-header admin">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="Logo">
+            </div>
+            <a href="/dashboard/AdminDashboard" style="text-decoration:none;color:white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+        <div class="user-area">
+            <div class="welcome-text" id="welcomeText"></div>
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar" id="sidebar">
+            <nav>
+                <ul>
+                    <!-- ── Dashboards Dropdown (Main Overview + Analytics) ── -->
+                    <li class="dropdown-item @(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "open" : "")">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="mainDashboardBtn">
+                            <span class="dropdown-toggle-inner">
+                                <i class="fas fa-tachometer-alt"></i> Dashboards
+                            </span>
+                            <i class="fas fa-chevron-down arrow-icon"
+                               style="@(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "transform:rotate(180deg);" : "")"></i>
+                        </a>
+                        <ul class="submenu @(ViewBag.Title == "Admin Dashboard" || ViewBag.Title == "Analytics" ? "show" : "")" id="mainDashboardSubmenu">
+                            <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
+                                <a asp-controller="Dashboard" asp-action="AdminDashboard">
+                                    <i class="fas fa-home"></i> Main Overview
+                                </a>
+                            </li>
+                            <li class="@(ViewBag.Title == "Analytics" ? "active" : "")">
+                                <a asp-controller="Dashboard" asp-action="Analytics">
+                                    <i class="fas fa-chart-pie"></i> Analytics
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Pending Users" ? "active" : "")">
+                        <a asp-controller="Account" asp-action="PendingUsers">
+                            <i class="fas fa-user-check"></i> Pending Approvals
+                        </a>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Inventory Admin" ? "active" : "")">
+                        <a asp-controller="Inventory" asp-action="Inventory" asp-route-fromAdmin="true">
+                            <i class="fas fa-book"></i> Logbook
+                        </a>
+                    </li>
+
+                    <li class="dropdown-item">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                            <i class="fas fa-layer-group"></i> Book Management
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu" id="bookManagementSubmenuLib">
+                            <li><a asp-controller="Inventory" asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-controller="Loan" asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-controller="Request" asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-controller="Inventory" asp-action="ArchivedBooksAdmin"><i class="fas fa-archive"></i> Archived Books</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Fine Admin" || ViewBag.Title == "Fine" ? "active" : "")">
+                        <a asp-controller="Loan" asp-action="FineAdmin">
+                            <i class="fas fa-money-bill-wave"></i> Fine
+                        </a>
+                    </li>
+
+                    <li>
+                        <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                            <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="logout-text">Log Out</span>
+                            </a>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="content-area page-content">
+
+            <!-- Hero Banner -->
+            <div class="analytics-hero">
+                <div class="hero-badge"><i class="fas fa-chart-line"></i> Analytics</div>
+                <h2>Library Analytics &amp; Reports</h2>
+                <p>Track borrowing trends, fines, and book inventory performance over time.</p>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="analytics-filter-bar">
+                <span class="filter-label"><i class="fas fa-filter"></i> Filter by:</span>
+
+                <form method="get" asp-action="Analytics" asp-controller="Dashboard"
+                      style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <label style="font-size:13px;font-weight:600;color:#555;">
+                            <i class="fas fa-calendar-alt" style="color:#3498db;"></i> Year
+                        </label>
+                        <select name="year" onchange="this.form.submit()">
+                            <option value="">All Years</option>
+                            @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 5; y--)
+                            {
+                                if (selectedYear.HasValue && selectedYear.Value == y)
+                                {
+                                    <option value="@y" selected="selected">@y</option>
+                                }
+                                else
+                                {
+                                    <option value="@y">@y</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="filter-divider"></div>
+
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <label style="font-size:13px;font-weight:600;color:#555;">
+                            <i class="fas fa-calendar-day" style="color:#9b59b6;"></i> Month
+                        </label>
+                        <select name="month" onchange="this.form.submit()">
+                            <option value="">All Months</option>
+                            @for (int m = 1; m <= 12; m++)
+                            {
+                                if (selectedMonth.HasValue && selectedMonth.Value == m)
+                                {
+                                    <option value="@m" selected="selected">@monthNames[m - 1]</option>
+                                }
+                                else
+                                {
+                                    <option value="@m">@monthNames[m - 1]</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @if (selectedYear.HasValue || selectedMonth.HasValue)
+                    {
+                        <div class="filter-divider"></div>
+                        <a asp-action="Analytics" asp-controller="Dashboard" class="clear-filter-btn">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                        <span class="filter-active-badge">
+                            <i class="fas fa-check-circle"></i>
+                            @(selectedMonth.HasValue? monthNames[selectedMonth.Value - 1] + " " : "")@(selectedYear.HasValue? selectedYear.Value.ToString() : "All Years")
+                        </span>
+                    }
+                </form>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-dark">
+                    <div class="kpi-icon"><i class="fas fa-book"></i></div>
+                    <div class="kpi-label">Total Books</div>
+                    <div class="kpi-value">@ViewBag.TotalBooks</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-icon"><i class="fas fa-book-open"></i></div>
+                    <div class="kpi-label">Borrowed</div>
+                    <div class="kpi-value">@ViewBag.TotalBorrowed</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-icon"><i class="fas fa-undo-alt"></i></div>
+                    <div class="kpi-label">Returned</div>
+                    <div class="kpi-value">@ViewBag.TotalReturned</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-orange">
+                    <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                    <div class="kpi-label">Overdue</div>
+                    <div class="kpi-value">@ViewBag.TotalOverdue</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-red">
+                    <div class="kpi-icon"><i class="fas fa-search"></i></div>
+                    <div class="kpi-label">Missing</div>
+                    <div class="kpi-value">@ViewBag.TotalMissing</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-purple">
+                    <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="kpi-label">Damaged</div>
+                    <div class="kpi-value">@ViewBag.TotalDamaged</div>
+                    <div class="kpi-accent"></div>
+                </div>
+                <div class="kpi-card kpi-teal">
+                    <div class="kpi-icon"><i class="fas fa-coins"></i></div>
+                    <div class="kpi-label">Total Fines</div>
+                    <div class="kpi-value" style="font-size:22px;">&#8369;@ViewBag.TotalFine</div>
+                    <div class="kpi-accent"></div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1: Bar + Doughnut -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Book Status Overview</h3>
+                    <p class="chart-subtitle">Comparison of all book activity metrics</p>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Status Distribution</h3>
+                    <p class="chart-subtitle">Proportional breakdown</p>
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Charts Row 2: Grouped Bar + Polar -->
+            <div class="charts-grid-bottom">
+                <div class="chart-card">
+                    <h3>Borrowed vs Returned</h3>
+                    <p class="chart-subtitle">Side-by-side activity comparison</p>
+                    <canvas id="lineChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Inventory Health</h3>
+                    <p class="chart-subtitle">Missing, Damaged vs Active books</p>
+                    <canvas id="polarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="summary-table-card">
+                <h3>Analytics Summary</h3>
+                <p class="chart-subtitle">At-a-glance breakdown of all metrics</p>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Count / Amount</th>
+                            <th>Status</th>
+                            <th>% of Total Books</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int tb = ViewBag.TotalBooks > 0 ? (int)ViewBag.TotalBooks : 1;
+                        }
+                        <tr>
+                            <td><i class="fas fa-book-open" style="color:#3498db;margin-right:8px;"></i>Borrowed Books</td>
+                            <td><strong>@ViewBag.TotalBorrowed</strong></td>
+                            <td><span class="badge badge-blue">Active</span></td>
+                            <td>@Math.Round((double)(int)ViewBag.TotalBorrowed / tb * 100, 1)%</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-undo-alt" style="color:#2ecc71;margin-right:8px;"></i>Returned Books</td>
+                            <td><strong>@ViewBag.TotalReturned</strong></td>
+                            <td><span class="badge badge-green">Completed</span></td>
+                            <td>@Math.Round((double)(int)ViewBag.TotalReturned / tb * 100, 1)%</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-clock" style="color:#f39c12;margin-right:8px;"></i>Overdue Books</td>
+                            <td><strong>@ViewBag.TotalOverdue</strong></td>
+                            <td><span class="badge badge-orange">Needs Action</span></td>
+                            <td>@Math.Round((double)(int)ViewBag.TotalOverdue / tb * 100, 1)%</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-search" style="color:#e74c3c;margin-right:8px;"></i>Missing Books</td>
+                            <td><strong>@ViewBag.TotalMissing</strong></td>
+                            <td><span class="badge badge-red">Critical</span></td>
+                            <td>@Math.Round((double)(int)ViewBag.TotalMissing / tb * 100, 1)%</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-exclamation-triangle" style="color:#9b59b6;margin-right:8px;"></i>Damaged Books</td>
+                            <td><strong>@ViewBag.TotalDamaged</strong></td>
+                            <td><span class="badge badge-gray">Review</span></td>
+                            <td>@Math.Round((double)(int)ViewBag.TotalDamaged / tb * 100, 1)%</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-coins" style="color:#1abc9c;margin-right:8px;"></i>Total Fines</td>
+                            <td><strong>&#8369;@ViewBag.TotalFine</strong></td>
+                            <td><span class="badge badge-green">Tracked</span></td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:#fff;border-radius:12px;padding:40px 36px 32px;width:360px;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-family:'Poppins',sans-serif;">
+            <div style="width:56px;height:56px;background:#fff3cd;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+                <i class="fas fa-sign-out-alt" style="color:#d4a017;font-size:22px;"></i>
+            </div>
+            <p style="font-size:18px;font-weight:600;color:#333;margin:0 0 8px;">Do you wish to logout?</p>
+            <p style="font-size:13px;color:#777;margin:0 0 24px;">You will need to log in again to access the system.</p>
+            <div style="display:flex;justify-content:center;gap:14px;">
+                <button onclick="confirmLogout();"
+                        style="background:#e74c3c;color:#fff;border:none;border-radius:6px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;"
+                        onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+                <button onclick="closeLogoutModal();"
+                        style="background:#2980b9;color:#fff;border:none;border-radius:6px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;"
+                        onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.loggedInUser = @Html.Raw(Json.Serialize(User.Identity.Name ?? "Guest"));
+        window.userRole = @Html.Raw(Json.Serialize(User.IsInRole("Admin") ? "Admin" : "Librarian"));
+    </script>
+
+    <script>
+        const DATA = {
+            borrowed:   @ViewBag.TotalBorrowed,
+            returned:   @ViewBag.TotalReturned,
+            overdue:    @ViewBag.TotalOverdue,
+            missing:    @ViewBag.TotalMissing,
+            damaged:    @ViewBag.TotalDamaged,
+            totalBooks: @ViewBag.TotalBooks
+        };
+        const COLORS = {
+            blue: '#3498db', green: '#2ecc71', orange: '#f39c12',
+            red: '#e74c3c', purple: '#9b59b6', teal: '#1abc9c', dark: '#2c3e50'
+        };
+
+        // 1. Bar Chart
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Borrowed', 'Returned', 'Overdue', 'Missing', 'Damaged'],
+                datasets: [{
+                    label: 'Count',
+                    data: [DATA.borrowed, DATA.returned, DATA.overdue, DATA.missing, DATA.damaged],
+                    backgroundColor: [COLORS.blue+'cc', COLORS.green+'cc', COLORS.orange+'cc', COLORS.red+'cc', COLORS.purple+'cc'],
+                    borderColor:     [COLORS.blue, COLORS.green, COLORS.orange, COLORS.red, COLORS.purple],
+                    borderWidth: 2, borderRadius: 8, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} books` } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f0f2f7' }, ticks: { font: { family: 'Poppins', size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 11 } } }
+                }
+            }
+        });
+
+        // 2. Doughnut Chart
+        new Chart(document.getElementById('doughnutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Borrowed', 'Returned', 'Overdue', 'Missing', 'Damaged'],
+                datasets: [{
+                    data: [DATA.borrowed, DATA.returned, DATA.overdue, DATA.missing, DATA.damaged],
+                    backgroundColor: [COLORS.blue, COLORS.green, COLORS.orange, COLORS.red, COLORS.purple],
+                    borderWidth: 3, borderColor: '#fff', hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true, cutout: '65%',
+                plugins: { legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 11 }, padding: 14 } } }
+            }
+        });
+
+        // 3. Grouped Bar Chart
+        new Chart(document.getElementById('lineChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Total Activity'],
+                datasets: [
+                    { label: 'Borrowed', data: [DATA.borrowed], backgroundColor: COLORS.blue+'99',   borderColor: COLORS.blue,   borderWidth: 2, borderRadius: 6 },
+                    { label: 'Returned', data: [DATA.returned], backgroundColor: COLORS.green+'99',  borderColor: COLORS.green,  borderWidth: 2, borderRadius: 6 },
+                    { label: 'Overdue',  data: [DATA.overdue],  backgroundColor: COLORS.orange+'99', borderColor: COLORS.orange, borderWidth: 2, borderRadius: 6 }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top', labels: { font: { family: 'Poppins', size: 11 }, padding: 14 } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f0f2f7' }, ticks: { font: { family: 'Poppins', size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 11 } } }
+                }
+            }
+        });
+
+        // 4. Polar Area Chart
+        new Chart(document.getElementById('polarChart'), {
+            type: 'polarArea',
+            data: {
+                labels: ['Missing', 'Damaged', 'Overdue', 'Available'],
+                datasets: [{
+                    data: [DATA.missing, DATA.damaged, DATA.overdue,
+                           Math.max(0, DATA.totalBooks - DATA.missing - DATA.damaged - DATA.borrowed)],
+                    backgroundColor: [COLORS.red+'bb', COLORS.purple+'bb', COLORS.orange+'bb', COLORS.teal+'bb'],
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 11 }, padding: 12 } } },
+                scales: { r: { ticks: { font: { family: 'Poppins', size: 10 }, backdropColor: 'transparent' }, grid: { color: '#eef0f5' } } }
+            }
+        });
+
+        // Logout helpers
+        function showLogoutModal()  { document.getElementById('logoutModal').style.display = 'flex'; }
+        function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
+        function confirmLogout()    { document.getElementById('logoutForm').submit(); }
+        document.getElementById('logoutModal').addEventListener('click', function(e) { if (e.target === this) closeLogoutModal(); });
+
+        // Dashboards dropdown toggle
+        document.addEventListener("DOMContentLoaded", function () {
+            const dashBtn  = document.getElementById("mainDashboardBtn");
+            const dashMenu = document.getElementById("mainDashboardSubmenu");
+            if (dashBtn && dashMenu) {
+                dashBtn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const isOpen = dashMenu.style.display === "block";
+                    dashMenu.style.display = isOpen ? "none" : "block";
+                    const arrow = dashBtn.querySelector(".arrow-icon");
+                    if (arrow) arrow.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
+                });
+            }
+        });
+    </script>
+
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/welcome.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+</body>
+</html>
