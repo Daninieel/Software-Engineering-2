@@ -42,13 +42,18 @@
     </header>
 
     <div class="main-layout">
-
         <aside class="sidebar" id="sidebar">
             <nav>
                 <ul>
                     <li class="@(ViewBag.Title == "Admin Dashboard" ? "active" : "")">
                         <a asp-controller="Dashboard" asp-action="AdminDashboard">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Pending Users" ? "active" : "")">
+                        <a asp-controller="Account" asp-action="PendingUsers">
+                            <i class="fas fa-user-check"></i> Pending Approvals
                         </a>
                     </li>
 

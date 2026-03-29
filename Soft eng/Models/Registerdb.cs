@@ -40,5 +40,7 @@ namespace Soft_eng.Models
         public DateTime? PasswordResetExpiry { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public bool IsAdminApproved { get; set; } = false;
     }
 }

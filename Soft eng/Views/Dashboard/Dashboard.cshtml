@@ -1,6 +1,15 @@
-@{
+﻿@{
     ViewBag.Title = "Dashboard";
     Layout = null;
+
+    int? selectedYear = ViewBag.SelectedYear as int?;
+    int? selectedMonth = ViewBag.SelectedMonth as int?;
+
+    var monthNames = new[]
+    {
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+    };
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -42,66 +51,121 @@
         </div>
     </header>
 
-     <div class="main-layout">
-    <aside class="sidebar" id="sidebar">
-    <nav>
-        <ul>
-            <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
-                <a asp-controller="Dashboard" asp-action="Dashboard">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-            </li>
+    <div class="main-layout">
+        <aside class="sidebar" id="sidebar">
+            <nav>
+                <ul>
+                    <li class="@(ViewBag.Title == "Dashboard" ? "active" : "")">
+                        <a asp-controller="Dashboard" asp-action="Dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
 
-            <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
-                <a asp-controller="Inventory" asp-action="Inventory">
-                    <i class="fas fa-book"></i> Logbook
-                </a>
-            </li>
+                    <li class="@(ViewBag.Title == "Inventory" ? "active" : "")">
+                        <a asp-controller="Inventory" asp-action="Inventory">
+                            <i class="fas fa-book"></i> Logbook
+                        </a>
+                    </li>
 
-            <li class="dropdown-item">
-                <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
-                    <i class="fas fa-layer-group"></i> Book Management
-                    <i class="fas fa-chevron-down arrow-icon"></i>
-                </a>
-                <ul class="submenu" id="bookManagementSubmenuLib">
-                    <li><a asp-controller="Inventory" asp-action="Addbooks"><i class="fas fa-plus"></i> Add Books</a></li>
-                    <li><a asp-controller="Loan" asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
-                    <li><a asp-controller="Request" asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
-                    <li><a asp-controller="Inventory" asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
+                    <li class="dropdown-item">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtnLib">
+                            <i class="fas fa-layer-group"></i> Book Management
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu" id="bookManagementSubmenuLib">
+                            <li><a asp-controller="Inventory" asp-action="Addbooks"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-controller="Loan" asp-action="BorrowedBooks"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-controller="Request" asp-action="RequestedBooks"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-controller="Inventory" asp-action="ArchivedBooks"><i class="fas fa-archive"></i> Archived Books</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
+                        <a asp-controller="Loan" asp-action="Fine">
+                            <i class="fas fa-money-bill-wave"></i> Fine
+                        </a>
+                    </li>
+
+                    <li>
+                        <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                            <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="logout-text">Log Out</span>
+                            </a>
+                        </form>
+                    </li>
                 </ul>
-            </li>
-
-            <li class="@(ViewBag.Title == "Fine" ? "active" : "")">
-                <a asp-controller="Loan" asp-action="Fine">
-                    <i class="fas fa-money-bill-wave"></i> Fine
-                </a>
-            </li>
-
-            <li>
-                <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
-                    <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span class="logout-text">Log Out</span>
-                    </a>
-                </form>
-            </li>
-        </ul>
-    </nav>
-</aside>
+            </nav>
+        </aside>
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <main class="content-area page-content">
             <h2>Dashboard</h2>
 
-             <div class="dashboard-header">
-    <div class="search-filter">
-        <form method="post" asp-action="GlobalSearch" asp-controller="Dashboard" style="width: 100%;">
-            <input type="text" name="query" class="search-box" placeholder="Search books or borrowers..." required />
-            <input type="hidden" name="fromAdmin" value="false" />
-        </form>
-    </div>
-</div>
+            <div class="dashboard-header">
+
+                <div class="search-filter">
+                    <form method="post" asp-action="GlobalSearch" asp-controller="Dashboard" style="width:100%;">
+                        <input type="text" name="query" class="search-box"
+                               placeholder="Search books or borrowers..." required />
+                        <input type="hidden" name="fromAdmin" value="false" />
+                    </form>
+                </div>
+
+                <form method="get" asp-action="Dashboard" asp-controller="Dashboard"
+                      class="date-filter-bar">
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-calendar-alt"></i> Year</label>
+                        <select name="year" onchange="this.form.submit()">
+                            <option value="">All</option>
+                            @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 5; y--)
+                            {
+                                if (selectedYear.HasValue && selectedYear.Value == y)
+                                {
+                                    <option value="@y" selected="selected">@y</option>
+                                }
+                                else
+                                {
+                                    <option value="@y">@y</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-calendar-day"></i> Month</label>
+                        <select name="month" onchange="this.form.submit()">
+                            <option value="">All</option>
+                            @for (int m = 1; m <= 12; m++)
+                            {
+                                if (selectedMonth.HasValue && selectedMonth.Value == m)
+                                {
+                                    <option value="@m" selected="selected">@monthNames[m - 1]</option>
+                                }
+                                else
+                                {
+                                    <option value="@m">@monthNames[m - 1]</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @if (selectedYear.HasValue || selectedMonth.HasValue)
+                    {
+                        <a asp-action="Dashboard" asp-controller="Dashboard" class="clear-filter-btn">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                        <span class="filter-active-badge">
+                            <i class="fas fa-filter"></i>
+                            @(selectedMonth.HasValue? monthNames[selectedMonth.Value - 1] + " " : "")@(selectedYear.HasValue? selectedYear.Value.ToString() : "All Years")
+                        </span>
+                    }
+
+                </form>
+
+            </div>
 
             <div class="stats-container">
                 <div class="row-1">
@@ -276,7 +340,9 @@
                     font-family: 'Poppins', sans-serif;
                     transition: background-color 0.2s;
                 " onmouseover="this.style.backgroundColor='#c0392b'"
-                   onmouseout="this.style.backgroundColor='#e74c3c'">Yes</button>
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
 
                 <button onclick="closeLogoutModal();" style="
                     background-color: #2980b9;
@@ -290,7 +356,9 @@
                     font-family: 'Poppins', sans-serif;
                     transition: background-color 0.2s;
                 " onmouseover="this.style.backgroundColor='#1a6da0'"
-                   onmouseout="this.style.backgroundColor='#2980b9'">No</button>
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
             </div>
         </div>
     </div>

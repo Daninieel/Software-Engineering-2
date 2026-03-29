@@ -50,6 +50,12 @@
                         </a>
                     </li>
 
+                    <li class="@(ViewBag.Title == "Pending Users" ? "active" : "")">
+                        <a asp-controller="Account" asp-action="PendingUsers">
+                            <i class="fas fa-user-check"></i> Pending Approvals
+                        </a>
+                    </li>
+
                     <li class="@(ViewBag.Title == "Inventory Admin" ? "active" : "")">
                         <a asp-controller="Inventory" asp-action="Inventory" asp-route-fromAdmin="true">
                             <i class="fas fa-book"></i> Logbook

@@ -1,4 +1,4 @@
-* {
+﻿* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -251,15 +251,140 @@ body {
     padding: 20px;
 }
 
+/* ── Dashboard Header ── */
 .dashboard-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
+    gap: 12px;
+    margin-bottom: 25px;
 }
 
+.search-filter {
+    flex: 1;
+    min-width: 0;
+}
+
+    .search-filter form {
+        display: flex;
+        width: 100%;
+    }
+
+.search-box {
+    width: 100%;
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    height: 44px;
+}
+
+    .search-box:focus {
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+
+/* ── Date Filter Bar ── */
+.date-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0 12px;
+    height: 44px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+}
+
+    .filter-group label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+        white-space: nowrap;
+        cursor: default;
+    }
+
+        .filter-group label i {
+            color: #e74c3c;
+            font-size: 12px;
+        }
+
+    .filter-group select {
+        border: none;
+        outline: none;
+        font-family: 'Poppins', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        color: #333;
+        background: transparent;
+        cursor: pointer;
+        height: 100%;
+    }
+
+        .filter-group select:focus {
+            color: #e74c3c;
+        }
+
+/* Clear button */
+.clear-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 14px;
+    height: 44px;
+    background: #fdf2f2;
+    border: 1px solid #f5c6c6;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #e74c3c;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+    .clear-filter-btn:hover {
+        background: #e74c3c;
+        border-color: #e74c3c;
+        color: white;
+    }
+
+/* Active badge */
+.filter-active-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: #e74c3c;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+}
+
+    .filter-active-badge i {
+        font-size: 11px;
+    }
+
+/* ── Stats ── */
 .time-filter {
     padding: 12px 20px;
     border: 1px solid #ddd;
@@ -545,6 +670,7 @@ tbody tr:hover {
         transform: translateY(-2px);
     }
 
+/* ── Responsive ── */
 @media (max-width: 1024px) {
     .row-4 {
         grid-template-columns: 1fr;
@@ -637,6 +763,26 @@ tbody tr:hover {
         padding: 10px;
     }
 
+    /* Stack search and filters vertically on mobile */
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .search-filter {
+        width: 100%;
+    }
+
+    .date-filter-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .filter-group {
+        padding: 0 8px 0 0;
+    }
+
     .time-filter,
     .filter-dropdown {
         max-width: 100%;
@@ -706,6 +852,16 @@ tbody tr:hover {
 
     .total-books-value {
         font-size: 40px;
+    }
+
+    .filter-active-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .clear-filter-btn {
+        font-size: 11px;
+        padding: 4px 10px;
     }
 }
 
@@ -825,6 +981,18 @@ tbody tr:hover {
     .no-data {
         padding: 30px 15px;
         font-size: 13px;
+    }
+
+    .date-filter-bar {
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 12px;
+    }
+
+    .filter-group select {
+        font-size: 12px;
     }
 }
 

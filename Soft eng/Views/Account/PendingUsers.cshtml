@@ -1,0 +1,296 @@
+﻿@model IEnumerable<Soft_eng.Models.Registerdb>
+@{
+    ViewBag.Title = "Pending Users";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals - Saint Isidore Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/dashboard.admin.css">
+    <link rel="stylesheet" href="~/css/PendingUsers.css">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+    <!-- ── HEADER ── -->
+    <header class="top-header admin">
+        <div class="logo-area">
+            <button class="hamburger-btn" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="logo-circle">
+                <img src="~/images/school_logo.jpg" alt="Logo">
+            </div>
+            <a href="/dashboard/AdminDashboard" style="text-decoration: none; color: white;">
+                <span class="school-name">SAINT ISIDORE ACADEMY</span>
+            </a>
+        </div>
+        <div class="user-area">
+            <div class="user-avatar admin-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/1946/1946429.png" alt="Admin Avatar">
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+
+        <!-- ── SIDEBAR ── -->
+        <aside class="sidebar" id="sidebar">
+            <nav>
+                <ul>
+                    <li>
+                        <a asp-controller="Dashboard" asp-action="AdminDashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+
+                    <li class="active">
+                        <a asp-controller="Account" asp-action="PendingUsers">
+                            <i class="fas fa-user-check"></i> Pending Approvals
+                        </a>
+                    </li>
+
+                    <li>
+                        <a asp-controller="Inventory" asp-action="Inventory" asp-route-fromAdmin="true">
+                            <i class="fas fa-book"></i> Logbook
+                        </a>
+                    </li>
+
+                    <li class="dropdown-item">
+                        <a href="javascript:void(0)" class="dropdown-toggle" id="bookManagementBtn">
+                            <i class="fas fa-layer-group"></i> Book Management
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu" id="bookManagementSubmenu">
+                            <li><a asp-controller="Inventory" asp-action="AddBooksAdmin"><i class="fas fa-plus"></i> Add Books</a></li>
+                            <li><a asp-controller="Loan" asp-action="BorrowedBooksAdmin"><i class="fas fa-book-reader"></i> Borrowed Books</a></li>
+                            <li><a asp-controller="Request" asp-action="RequestedBooksAdmin"><i class="fas fa-bookmark"></i> Requested Books</a></li>
+                            <li><a asp-controller="Inventory" asp-action="ArchivedBooksAdmin"><i class="fas fa-archive"></i> Archived Books</a></li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <a asp-controller="Loan" asp-action="FineAdmin">
+                            <i class="fas fa-money-bill-wave"></i> Fine
+                        </a>
+                    </li>
+
+                    <li>
+                        <form asp-action="Logout" asp-controller="Account" method="post" id="logoutForm" style="display:inline;">
+                            <a href="javascript:void(0);" onclick="showLogoutModal();" class="logout-link">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span class="logout-text">Log Out</span>
+                            </a>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- ── MAIN CONTENT ── -->
+        <main class="content-area page-content">
+
+            <!-- Page Title -->
+            <div class="page-header">
+                <h2>
+                    <i class="fas fa-user-clock"></i>
+                    Pending User Approvals
+                    @if (Model.Any())
+                    {
+                        <span class="badge-count">@Model.Count() pending</span>
+                    }
+                </h2>
+            </div>
+
+            <!-- Success Alert -->
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert-success-custom">
+                    <i class="fas fa-check-circle"></i>
+                    @TempData["SuccessMessage"]
+                </div>
+            }
+
+            <!-- Search -->
+            <div class="search-filter">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name, email, or role..." />
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="pending-table-card">
+                <table id="pendingTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Date Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty-state">
+                                        <i class="fas fa-user-check"></i>
+                                        <p>No pending users requiring approval.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            int index = 1;
+                            @foreach (var user in Model)
+                            {
+                                string initials = string.Join("", user.FullName.Split(' ')
+                                .Where(w => w.Length > 0)
+                                .Take(2)
+                                .Select(w => w[0].ToString().ToUpper()));
+
+                                string roleClass = user.Role?.ToLower() switch
+                                {
+                                    "librarian" => "role-librarian",
+                                    "school admin" => "role-admin",
+                                    "staff" => "role-staff",
+                                    _ => "role-default"
+                                };
+
+                                <tr class="book-row" data-search="@user.FullName.ToLower() @user.Email.ToLower() @user.Role?.ToLower()">
+                                    <td>@index</td>
+                                    <td>
+                                        <div class="name-cell">
+                                            <div class="user-initials">@initials</div>
+                                            <span>@user.FullName</span>
+                                        </div>
+                                    </td>
+                                    <td>@user.Email</td>
+                                    <td>
+                                        <span class="role-badge @roleClass">@user.Role</span>
+                                    </td>
+                                    <td>
+                                        <span class="date-text">
+                                            <i class="fas fa-calendar-alt" style="margin-right:5px;color:#c0392b;font-size:0.8rem;"></i>
+                                            @user.CreatedAt.ToString("MMM dd, yyyy")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-group">
+                                            <form asp-action="ApproveUser" asp-controller="Account" method="post" style="display:inline;">
+                                                <input type="hidden" name="userId" value="@user.UserID" />
+                                                <button type="submit" class="btn-approve">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                            </form>
+                                            <form asp-action="RejectUser" asp-controller="Account" method="post" style="display:inline;"
+                                                  onsubmit="return confirm('Reject and permanently delete @user.FullName\'s registration?');">
+                                                <input type="hidden" name="userId" value="@user.UserID" />
+                                                <button type="submit" class="btn-reject">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                index++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ── LOGOUT MODAL (same as AdminDashboard) ── -->
+    <div id="logoutModal" style="
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;">
+        <div style="
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px 36px 32px;
+            width: 360px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            font-family: 'Poppins', sans-serif;">
+            <div style="
+                width: 56px; height: 56px;
+                background-color: #fff3cd;
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                margin: 0 auto 18px;">
+                <i class="fas fa-sign-out-alt" style="color: #d4a017; font-size: 22px;"></i>
+            </div>
+            <p style="font-size: 18px; font-weight: 600; color: #333; margin: 0 0 8px;">Do you wish to logout?</p>
+            <p style="font-size: 13px; color: #777; margin: 0 0 24px;">You will need to log in again to access the system.</p>
+            <div style="display: flex; justify-content: center; gap: 14px;">
+                <button onclick="confirmLogout();" style="
+                    background-color: #e74c3c; color: #fff;
+                    border: none; border-radius: 6px;
+                    padding: 10px 28px; font-size: 14px; font-weight: 600;
+                    cursor: pointer; font-family: 'Poppins', sans-serif;"
+                        onmouseover="this.style.backgroundColor='#c0392b'"
+                        onmouseout="this.style.backgroundColor='#e74c3c'">
+                    Yes
+                </button>
+                <button onclick="closeLogoutModal();" style="
+                    background-color: #2980b9; color: #fff;
+                    border: none; border-radius: 6px;
+                    padding: 10px 28px; font-size: 14px; font-weight: 600;
+                    cursor: pointer; font-family: 'Poppins', sans-serif;"
+                        onmouseover="this.style.backgroundColor='#1a6da0'"
+                        onmouseout="this.style.backgroundColor='#2980b9'">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/dropdown-fix.js"></script>
+    <script src="~/js/sidebar-mobile.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        // Logout modal
+        function showLogoutModal()  { document.getElementById('logoutModal').style.display = 'flex'; }
+        function closeLogoutModal() { document.getElementById('logoutModal').style.display = 'none'; }
+        function confirmLogout()    { document.getElementById('logoutForm').submit(); }
+        document.getElementById('logoutModal').addEventListener('click', function (e) {
+            if (e.target === this) closeLogoutModal();
+        });
+
+        // Live search
+        document.getElementById('searchInput').addEventListener('input', function () {
+            const query = this.value.trim().toLowerCase();
+            document.querySelectorAll('#pendingTable tbody tr').forEach(function (row) {
+                if (!row.dataset.search) return;
+                row.classList.toggle('hidden-row', !row.dataset.search.includes(query));
+            });
+        });
+    </script>
+
+</body>
+</html>

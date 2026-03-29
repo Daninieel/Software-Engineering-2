@@ -46,6 +46,9 @@ namespace Soft_eng.Controllers
             return View();
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  LOGIN
+        // ─────────────────────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> Login(string email, string password)
         {
@@ -57,6 +60,7 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim().ToLower();
 
+            // Hardcoded super-admin bypass — skips all DB checks
             if (normalizedEmail == "admin@sia" && password == "adminsia123")
             {
                 var sessionToken = _sessionService.CreateSession("admin@sia");
@@ -78,7 +82,7 @@ namespace Soft_eng.Controllers
                 if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
 
                 using var cmd = new MySqlCommand(
-                    "SELECT UserID, FullName, Password, Role, IsEmailVerified FROM Register WHERE Email = @e LIMIT 1",
+                    "SELECT UserID, FullName, Password, Role, IsEmailVerified, IsAdminApproved FROM Register WHERE Email = @e LIMIT 1",
                     _connection);
                 cmd.Parameters.AddWithValue("@e", normalizedEmail);
 
@@ -90,6 +94,7 @@ namespace Soft_eng.Controllers
                     return View();
                 }
 
+                // Step 1: Email verification check
                 bool isEmailVerified = Convert.ToInt16(reader["IsEmailVerified"]) == 1;
                 if (!isEmailVerified)
                 {
@@ -97,6 +102,15 @@ namespace Soft_eng.Controllers
                     return View();
                 }
 
+                // Step 2: Admin approval check
+                bool isAdminApproved = Convert.ToInt16(reader["IsAdminApproved"]) == 1;
+                if (!isAdminApproved)
+                {
+                    ViewBag.ErrorMessage = "Your account has been verified but is still pending Administrator approval.";
+                    return View();
+                }
+
+                // Step 3: Password check
                 if (!BCrypt.Net.BCrypt.Verify(password, reader.GetString("Password")))
                 {
                     ViewBag.ErrorMessage = "Invalid email or password.";
@@ -107,15 +121,15 @@ namespace Soft_eng.Controllers
                 string fullName = reader.GetString("FullName");
                 string role = reader.IsDBNull(reader.GetOrdinal("Role")) ? "Librarian" : reader.GetString("Role");
 
-                var sessionToken = _sessionService.CreateSession(userId);
+                var userSessionToken = _sessionService.CreateSession(userId);
 
                 var userClaims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, fullName),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim(ClaimTypes.Email, normalizedEmail),
+                    new Claim(ClaimTypes.Name,           fullName),
+                    new Claim(ClaimTypes.Role,           role),
+                    new Claim(ClaimTypes.Email,          normalizedEmail),
                     new Claim(ClaimTypes.NameIdentifier, userId),
-                    new Claim("SessionToken", sessionToken)
+                    new Claim("SessionToken",            userSessionToken)
                 };
                 var userIdentity = new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(userIdentity));
@@ -135,6 +149,9 @@ namespace Soft_eng.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  REGISTER
+        // ─────────────────────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> Register(Registerdb model)
         {
@@ -163,10 +180,11 @@ namespace Soft_eng.Controllers
                 DateTime tokenExpiry = DateTime.Now.AddHours(24);
                 string hashed = BCrypt.Net.BCrypt.HashPassword(model.Password);
 
+                // IsAdminApproved = 0: every new registration starts unapproved
                 using var cmd = new MySqlCommand(
                     @"INSERT INTO Register 
-                      (FullName, Email, Password, ConfirmPassword, Role, IsEmailVerified, VerificationToken, TokenExpiry, CreatedAt) 
-                      VALUES (@n, @e, @p, @c, @role, 0, @token, @expiry, @created)",
+                      (FullName, Email, Password, ConfirmPassword, Role, IsEmailVerified, IsAdminApproved, VerificationToken, TokenExpiry, CreatedAt) 
+                      VALUES (@n, @e, @p, @c, @role, 0, 0, @token, @expiry, @created)",
                     _connection);
 
                 cmd.Parameters.AddWithValue("@n", model.FullName);
@@ -187,12 +205,14 @@ namespace Soft_eng.Controllers
                     try
                     {
                         await SendVerificationEmail(normalizedEmail, verificationLink);
-                        ViewBag.SuccessMessage = $"Registration successful! We've sent a verification email to {normalizedEmail}. Please check your inbox and click the verification link to activate your account.";
+                        ViewBag.SuccessMessage = $"Registration successful! We've sent a verification email to {normalizedEmail}. " +
+                                                 "Please check your inbox and click the verification link to activate your account.";
                     }
                     catch
                     {
                         ModelState.AddModelError("", "Failed to send verification email. Please check if your email address is correct.");
-                        using var deleteCmd = new MySqlCommand("DELETE FROM Register WHERE Email = @e AND IsEmailVerified = 0", _connection);
+                        using var deleteCmd = new MySqlCommand(
+                            "DELETE FROM Register WHERE Email = @e AND IsEmailVerified = 0", _connection);
                         deleteCmd.Parameters.AddWithValue("@e", normalizedEmail);
                         await deleteCmd.ExecuteNonQueryAsync();
                         return View(model);
@@ -213,6 +233,9 @@ namespace Soft_eng.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  LOGOUT
+        // ─────────────────────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> Logout()
         {
@@ -221,6 +244,9 @@ namespace Soft_eng.Controllers
             return RedirectToAction("Login", "Account");
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  EMAIL VERIFICATION
+        // ─────────────────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> VerifyEmail(string? token, string? email)
         {
@@ -282,7 +308,7 @@ namespace Soft_eng.Controllers
                 updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
                 await updateCmd.ExecuteNonQueryAsync();
 
-                ViewBag.Message = "Email verified successfully! Your account is now active. You can log in now.";
+                ViewBag.Message = "Email verified successfully! Your account is now pending Administrator approval before you can log in.";
                 ViewBag.IsSuccess = true;
                 return View("VerificationResult");
             }
@@ -298,6 +324,9 @@ namespace Soft_eng.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  FORGOT PASSWORD
+        // ─────────────────────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> ForgotPassword(string email)
         {
@@ -309,6 +338,7 @@ namespace Soft_eng.Controllers
 
             string normalizedEmail = email.Trim().ToLower();
 
+            // Special handling for admin@sia — skip email, redirect directly
             if (string.Equals(normalizedEmail, "admin@sia", StringComparison.OrdinalIgnoreCase))
             {
                 try
@@ -349,6 +379,7 @@ namespace Soft_eng.Controllers
                 finally { await _connection.CloseAsync(); }
             }
 
+            // Enforce Gmail-only for regular users
             var gmailPattern = @"^[a-zA-Z0-9._%+-]+@gmail\.com$";
             if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, gmailPattern))
             {
@@ -376,20 +407,20 @@ namespace Soft_eng.Controllers
                     }
                 }
 
-                string token = Guid.NewGuid().ToString();
-                DateTime tokenExpiry = DateTime.Now.AddHours(1);
+                string token2 = Guid.NewGuid().ToString();
+                DateTime tokenExpiry2 = DateTime.Now.AddHours(1);
 
                 using (var updateCmd = new MySqlCommand(
                     "UPDATE Register SET PasswordResetToken = @token, PasswordResetExpiry = @expiry WHERE Email = @e",
                     _connection))
                 {
-                    updateCmd.Parameters.AddWithValue("@token", token);
-                    updateCmd.Parameters.AddWithValue("@expiry", tokenExpiry);
+                    updateCmd.Parameters.AddWithValue("@token", token2);
+                    updateCmd.Parameters.AddWithValue("@expiry", tokenExpiry2);
                     updateCmd.Parameters.AddWithValue("@e", normalizedEmail);
                     await updateCmd.ExecuteNonQueryAsync();
                 }
 
-                string? link = Url.Action("ResetPassword", "Account", new { token, email = normalizedEmail }, Request.Scheme);
+                string? link = Url.Action("ResetPassword", "Account", new { token = token2, email = normalizedEmail }, Request.Scheme);
                 if (!string.IsNullOrEmpty(link))
                     await SendPasswordResetEmail(normalizedEmail, link);
 
@@ -404,6 +435,9 @@ namespace Soft_eng.Controllers
             finally { await _connection.CloseAsync(); }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  RESET PASSWORD
+        // ─────────────────────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> ResetPassword(string? email, string? newPassword, string? confirmPassword, string? token)
         {
@@ -484,6 +518,101 @@ namespace Soft_eng.Controllers
             return await ResetPassword(email, newPassword, confirmPassword, token);
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  PENDING USERS — Admin approval queue
+        // ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Shows all users who verified their email but have not yet been approved by an admin.
+        /// Add [Authorize(Roles = "Admin")] to restrict access.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> PendingUsers()
+        {
+            var pendingUsers = new List<Registerdb>();
+
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                using var cmd = new MySqlCommand(
+                    "SELECT UserID, FullName, Email, Role, CreatedAt FROM Register WHERE IsAdminApproved = 0 AND IsEmailVerified = 1",
+                    _connection);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    pendingUsers.Add(new Registerdb
+                    {
+                        UserID = reader.GetInt32("UserID"),
+                        FullName = reader.GetString("FullName"),
+                        Email = reader.GetString("Email"),
+                        Role = reader.GetString("Role"),
+                        CreatedAt = reader.GetDateTime("CreatedAt")
+                    });
+                }
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return View(pendingUsers);
+        }
+
+        /// <summary>
+        /// Approves a pending user so they can log in.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> ApproveUser(int userId)
+        {
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                using var cmd = new MySqlCommand(
+                    "UPDATE Register SET IsAdminApproved = 1 WHERE UserID = @id", _connection);
+                cmd.Parameters.AddWithValue("@id", userId);
+                await cmd.ExecuteNonQueryAsync();
+
+                TempData["SuccessMessage"] = "User successfully approved.";
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return RedirectToAction("PendingUsers");
+        }
+
+        /// <summary>
+        /// Rejects and permanently deletes a pending user registration.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> RejectUser(int userId)
+        {
+            try
+            {
+                if (_connection.State != ConnectionState.Open) await _connection.OpenAsync();
+
+                using var cmd = new MySqlCommand(
+                    "DELETE FROM Register WHERE UserID = @id", _connection);
+                cmd.Parameters.AddWithValue("@id", userId);
+                await cmd.ExecuteNonQueryAsync();
+
+                TempData["SuccessMessage"] = "User registration rejected and removed.";
+            }
+            finally
+            {
+                await _connection.CloseAsync();
+            }
+
+            return RedirectToAction("PendingUsers");
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        //  PRIVATE HELPERS
+        // ─────────────────────────────────────────────────────────────
         private async Task SendVerificationEmail(string email, string link)
         {
             try
@@ -511,6 +640,7 @@ namespace Soft_eng.Controllers
                                 <a href='{link}' style='color: #c0392b; text-decoration: underline; font-weight: bold;'>Click here to verify your email address</a>
                             </p>
                             <p><strong>Important:</strong> This verification link will expire in 24 hours.</p>
+                            <p>After verification, your account will be reviewed and approved by an administrator before you can log in.</p>
                             <p>If you did not create an account, please ignore this email.</p>
                             <hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>
                             <p style='font-size: 12px; color: #666;'>Saint Isidore Academy Library<br>This is an automated message, please do not reply.</p>
